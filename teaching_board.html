@@ -2092,6 +2092,35 @@ function buildSetForm(body){
   };
   pendPaint();
 
+  /* --- reset to the sheet built into this board --- */
+  var rs=document.createElement('div'); rs.className='setCard';
+  rs.innerHTML='<h4>જોડાણ રીસેટ</h4>'+
+    '<button class="btn" id="rsBtn" style="width:100%">🔄 આ બોર્ડની ડિફૉલ્ટ શીટ વાપરો</button>'+
+    '<div class="note">પેનલમાં જૂની શીટનું URL સચવાયેલું હોય તો આ દબાવો — '+
+    'નવી શાળા શીટ સાથે તરત જોડાઈ જશે.<br><span style="font-family:var(--mono);font-size:10.5px">'+
+    esc(DEFAULT_SHEET_URL)+'</span></div>';
+  body.appendChild(rs);
+  $('rsBtn').onclick=function(){
+    store.set('vrd_main_sheet','');
+    store.set('vrd_main_url','');
+    store.set('vrd_main_cfg',null);
+    MAIN.url=''; MAIN.cfg=null;
+    var b=$('rsBtn'); b.textContent='🔄 જોડાય છે…';
+    resolveWebApp(DEFAULT_SHEET_URL,function(u){
+      MAIN.url=u;
+      store.set('vrd_main_url',u);
+      store.set('vrd_main_sheet',DEFAULT_SHEET_URL);
+      loadConfig(function(){
+        b.textContent='✅ જોડાઈ ગયું — શીટ બદલાઈ';
+        var mu=$('muIn'); if(mu) mu.value=DEFAULT_SHEET_URL;
+      });
+    },function(e){
+      b.textContent='🔄 આ બોર્ડની ડિફૉલ્ટ શીટ વાપરો';
+      alert('જોડાણ ન થયું: '+e+'\n\nશીટ "Anyone with the link" તરીકે શેર કરેલી છે? '+
+            'અને એક વાર Deploy કરેલું છે?');
+    });
+  };
+
   var c2=document.createElement('div'); c2.className='setCard';
   c2.innerHTML='<h4>CONNECTION STATUS</h4>'+
     '<div id="cfgSum" style="font-size:13px;line-height:2;color:#cbd5e1;font-family:var(--mono)"></div>'+
@@ -7900,14 +7929,23 @@ function ensureConnection(){
       loadContent();                       /* animations/simulations refresh too */
     });
   }
-  function tryResolve(){
-    var sheet = store.get('vrd_main_sheet','') || DEFAULT_SHEET_URL;
+  function useSheet(sheet,then,fail){
     resolveWebApp(sheet,function(webapp){
       MAIN.url=webapp;
       store.set('vrd_main_url',webapp);
       store.set('vrd_main_sheet',sheet);
-      connected();
-    },function(){ /* offline / not shared — try again in 15 min */ });
+      then&&then();
+    },function(e){ fail&&fail(e) });
+  }
+  function tryResolve(){
+    var saved = store.get('vrd_main_sheet','');
+    if(saved && saved!==DEFAULT_SHEET_URL){
+      /* saved sheet first; if it no longer answers, fall back to the
+         sheet built into this board version */
+      useSheet(saved, connected, function(){
+        useSheet(DEFAULT_SHEET_URL, connected);
+      });
+    }else useSheet(DEFAULT_SHEET_URL, connected);
   }
   if(MAIN.url){
     api('ping',{},function(d){
