@@ -4940,6 +4940,153 @@ function genDec(op){
 }
 
 /* ==================================================================
+   વાંચન · લેખન — Gujarati data + question makers.
+   Nothing here needs text-to-speech: everything is seen, tapped,
+   dragged, traced or read aloud BY the child.
+   ================================================================== */
+var KAKKO=['ક','ખ','ગ','ઘ','ચ','છ','જ','ઝ','ટ','ઠ','ડ','ઢ','ણ','ત','થ','દ','ધ','ન',
+           'પ','ફ','બ','ભ','મ','ય','ર','લ','વ','શ','ષ','સ','હ','ળ'];
+var SWAR=['અ','આ','ઇ','ઈ','ઉ','ઊ','એ','ઐ','ઓ','ઔ','અં','અઃ'];
+var MATRA=[['કાનો','ા','આ'],['હ્રસ્વ ઇ','િ','ઇ'],['દીર્ઘ ઈ','ી','ઈ'],
+           ['હ્રસ્વ ઉ','ુ','ઉ'],['દીર્ઘ ઊ','ૂ','ઊ'],['એક માત્રા','ે','એ'],
+           ['બે માત્રા','ૈ','ઐ'],['ઓ','ો','ઓ'],['ઔ','ૌ','ઔ'],['અનુસ્વાર','ં','અં']];
+var GWORDS=[
+  ['શાળા','🏫'],['પુસ્તક','📚'],['ઘર','🏠'],['ઝાડ','🌳'],['સૂરજ','☀'],['ચંદ્ર','🌙'],
+  ['ફૂલ','🌸'],['પાણી','💧'],['ગાય','🐄'],['કૂતરો','🐕'],['બિલાડી','🐈'],['માછલી','🐟'],
+  ['પક્ષી','🐦'],['કેળું','🍌'],['સફરજન','🍎'],['દૂધ','🥛'],['દીવો','🪔'],['બસ','🚌'],
+  ['ટ્રેન','🚂'],['હાથી','🐘'],['વાદળ','☁'],['તારો','⭐'],['ઘડિયાળ','⏰'],['ચાવી','🔑'],
+  ['છત્રી','☂'],['કેક','🍰'],['દડો','⚽'],['કલમ','🖊']
+];
+var JODAKSHAR=[['ક્ત','ક','ત'],['ત્ર','ત','ર'],['દ્ધ','દ','ધ'],['સ્ત','સ','ત'],
+               ['પ્ર','પ','ર'],['શ્ર','શ','ર'],['ક્ર','ક','ર'],['દ્વ','દ','વ'],
+               ['ન્દ','ન','દ'],['સ્વ','સ','વ'],['ત્ય','ત','ય'],['મ્બ','મ','બ']];
+var GSENT=[
+  'મને શાળા ગમે છે','સૂરજ પૂર્વમાં ઊગે છે','ગાય દૂધ આપે છે',
+  'હું રોજ પુસ્તક વાંચું છું','ઝાડ પર પક્ષી બેઠું છે','મા મને વાર્તા કહે છે',
+  'બાળકો બગીચામાં રમે છે','પાણી જીવન માટે જરૂરી છે','અમે સવારે વહેલા ઊઠીએ છીએ'
+];
+var GOPP=[['મોટું','નાનું'],['દિવસ','રાત'],['ઊંચું','નીચું'],['ગરમ','ઠંડું'],
+          ['સાચું','ખોટું'],['ખુલ્લું','બંધ'],['આગળ','પાછળ'],['ઉપર','નીચે'],
+          ['સવાર','સાંજ'],['નવું','જૂનું']];
+var GSYN=[['પાણી','જળ'],['ઘર','મકાન'],['સૂરજ','સૂર્ય'],['રસ્તો','માર્ગ'],
+          ['મિત્ર','દોસ્ત'],['વૃક્ષ','ઝાડ'],['આકાશ','ગગન'],['પુષ્પ','ફૂલ']];
+var GPARA=[
+  {t:'અમારી શાળા ગામની વચ્ચે આવેલી છે. શાળામાં મોટું મેદાન છે. મેદાનમાં અમે રોજ રમીએ છીએ. '+
+     'અમારા શિક્ષક અમને સરસ ભણાવે છે. હું શાળાએ જવાનું ખૂબ ગમે છે.', q:'શાળા ક્યાં આવેલી છે?',
+   opts:['ગામની વચ્ચે','શહેરમાં','નદી કિનારે','જંગલમાં'], ans:'ગામની વચ્ચે'},
+  {t:'સૂરજ પૂર્વ દિશામાં ઊગે છે અને પશ્ચિમમાં આથમે છે. સૂરજથી આપણને પ્રકાશ અને ગરમી મળે છે. '+
+     'સૂરજના પ્રકાશથી છોડ ખોરાક બનાવે છે.', q:'સૂરજ કઈ દિશામાં ઊગે છે?',
+   opts:['પૂર્વ','પશ્ચિમ','ઉત્તર','દક્ષિણ'], ans:'પૂર્વ'},
+  {t:'ગાય એક પાલતુ પ્રાણી છે. ગાય આપણને દૂધ આપે છે. દૂધમાંથી દહીં, માખણ અને ઘી બને છે. '+
+     'ગાય ઘાસ ખાય છે.', q:'ગાય શું ખાય છે?', opts:['ઘાસ','માછલી','રોટલી','ફળ'], ans:'ઘાસ'}
+];
+var GSPELL=[['શાળા','સાળા'],['પુસ્તક','પુસ્તખ'],['વિદ્યાર્થી','વિદ્યાર્તી'],
+            ['સૂરજ','સુરજ'],['દૂધ','દુધ'],['પક્ષી','પક્શી'],['ઝાડ','જાડ'],['ઘર','ધર']];
+
+var READ_TOOLS=[
+  ['r_barakhadi','1. બારાખડી','અક્ષર + માત્રા ઓળખ'],
+  ['r_akshar','2. અક્ષર ઓળખ','આ અક્ષર કયો?'],
+  ['r_matra','3. માત્રા જોડો','ક + ા = કા'],
+  ['r_picword','4. ચિત્ર–શબ્દ','ચિત્ર જોઈ શબ્દ ઓળખો'],
+  ['r_missing','5. ખૂટતો અક્ષર','શ_ળા — અક્ષર પસંદ કરો'],
+  ['r_jod','6. જોડાક્ષર','ક્ત · ત્ર · જ્ઞ'],
+  ['r_wpm','7. ફકરો વાંચન · WPM','1 મિનિટ · ઝડપ અને ચોકસાઈ'],
+  ['r_samaj','8. વાંચન સમજ','ફકરો વાંચી પ્રશ્ન']
+];
+var WRITE_TOOLS=[
+  ['w_trace','1. અક્ષર લેખન','આંગળીથી અક્ષર ઘૂંટો'],
+  ['w_matra','2. માત્રા ભરો','ક_ન → કાનો પસંદ કરો'],
+  ['w_sentence','3. વાક્ય ગોઠવો','શબ્દો ક્રમમાં ગોઠવો'],
+  ['w_spell','4. જોડણી સુધારો','સાચી જોડણી પસંદ કરો'],
+  ['w_opp','5. વિરુદ્ધાર્થી','મોટું × નાનું'],
+  ['w_syn','6. સમાનાર્થી','પાણી = જળ'],
+  ['w_punct','7. વિરામચિહ્ન','. ? , ! ક્યાં આવે']
+];
+
+function pick_(a){ return a[Math.floor(Math.random()*a.length)] }
+function opts4_(ans, pool){
+  var o=[ans], g=0;
+  while(o.length<4 && g++<60){ var x=pick_(pool); if(o.indexOf(x)<0) o.push(x) }
+  return shuffle(o);
+}
+function bigTxt(t,size,col){
+  return '<div style="text-align:center;font-family:var(--guj);font-size:'+(size||60)+'px;'+
+    'color:'+(col||'var(--ink)')+';line-height:1.35;margin:6px 0">'+t+'</div>';
+}
+
+/* ---------------- વાંચન generators ---------------- */
+function genRead(id){
+  if(id==='r_akshar'){                      /* which letter is this? */
+    var L=pick_(KAKKO);
+    return {html:bigTxt(L,86,'#fbbf24'), q:'આ અક્ષર કયો છે?',
+      opts:opts4_(L,KAKKO), ans:L, exp:'આ અક્ષર છે: '+L, text:true};
+  }
+  if(id==='r_matra'){                       /* letter + matra = ? */
+    var b=pick_(KAKKO), m=pick_(MATRA);
+    var made=b+m[1];
+    var pool=[]; KAKKO.forEach(function(k){ MATRA.forEach(function(mm){ pool.push(k+mm[1]) }) });
+    return {html:bigTxt(b+' + '+m[1]+'  ( '+m[0]+' )',48),
+      q:'કયો અક્ષર બનશે?', opts:opts4_(made,pool), ans:made,
+      exp:b+' + '+m[0]+' = '+made, text:true};
+  }
+  if(id==='r_barakhadi'){                   /* which matra makes this form? */
+    var b2=pick_(KAKKO), m2=pick_(MATRA);
+    return {html:bigTxt(b2+' → '+(b2+m2[1]),56),
+      q:'કઈ માત્રા લાગી છે?', opts:opts4_(m2[0],MATRA.map(function(x){return x[0]})),
+      ans:m2[0], exp:b2+m2[1]+' માં '+m2[0]+' છે', text:true};
+  }
+  if(id==='r_picword'){                     /* picture → word */
+    var w=pick_(GWORDS);
+    return {html:'<div style="text-align:center;font-size:90px">'+w[1]+'</div>',
+      q:'આ ચિત્ર કયો શબ્દ છે?',
+      opts:opts4_(w[0],GWORDS.map(function(x){return x[0]})), ans:w[0],
+      exp:w[1]+' = '+w[0], text:true};
+  }
+  if(id==='r_jod'){                         /* conjunct letters */
+    var j=pick_(JODAKSHAR);
+    return {html:bigTxt(j[1]+' + '+j[2]+' = ?',52),
+      q:'જોડાક્ષર કયો બનશે?',
+      opts:opts4_(j[0],JODAKSHAR.map(function(x){return x[0]})), ans:j[0],
+      exp:j[1]+' + '+j[2]+' = '+j[0], text:true};
+  }
+  /* r_samaj — comprehension */
+  var p=pick_(GPARA);
+  return {html:'<div style="font-family:var(--guj);font-size:19px;line-height:2;'+
+      'background:#0d1626;border-radius:12px;padding:14px 16px">'+p.t+'</div>',
+    q:p.q, opts:shuffle(p.opts.slice()), ans:p.ans, exp:'જવાબ: '+p.ans, text:true};
+}
+
+/* ---------------- લેખન generators ---------------- */
+function genWrite(id){
+  if(id==='w_spell'){                       /* which spelling is right? */
+    var s=pick_(GSPELL);
+    return {html:'<div style="text-align:center;font-size:42px">✍</div>',
+      q:'સાચી જોડણી કઈ?', opts:shuffle([s[0],s[1]]), ans:s[0],
+      exp:'સાચું: '+s[0]+' (ખોટું: '+s[1]+')', text:true};
+  }
+  if(id==='w_opp'){
+    var o=pick_(GOPP);
+    return {html:bigTxt(o[0],54,'#93c5fd'), q:'આનો વિરુદ્ધાર્થી શબ્દ કયો?',
+      opts:opts4_(o[1],GOPP.map(function(x){return x[1]})), ans:o[1],
+      exp:o[0]+' × '+o[1], text:true};
+  }
+  if(id==='w_syn'){
+    var y=pick_(GSYN);
+    return {html:bigTxt(y[0],54,'#93c5fd'), q:'આનો સમાનાર્થી શબ્દ કયો?',
+      opts:opts4_(y[1],GSYN.map(function(x){return x[1]})), ans:y[1],
+      exp:y[0]+' = '+y[1], text:true};
+  }
+  /* w_punct — which punctuation mark? */
+  var kind=Math.random()<0.5?'?':'.';
+  var sent = kind==='?' ? pick_(['તું ક્યાં જાય છે','આ શું છે','તારું નામ શું છે'])
+                        : pick_(['હું શાળાએ જાઉં છું','સૂરજ ઊગ્યો','આ મારું ઘર છે']);
+  return {html:bigTxt(sent+' __',30),
+    q:'કયું વિરામચિહ્ન આવશે?', opts:shuffle(['.', '?', ',', '!']), ans:kind,
+    exp: kind==='?' ? 'પ્રશ્ન પૂછાય છે → પ્રશ્નાર્થ ચિહ્ન ?' : 'વિધાન પૂરું થાય છે → પૂર્ણવિરામ .',
+    text:true};
+}
+
+/* ==================================================================
    FLN — new design. Three sections: વાંચન · લેખન · ગણન.
    ગણન: 5 tools — number quiz + notebook-style + − × ÷.
    Modes: 📘 શિક્ષક (no roll, auto-demo, password boards only)
@@ -4955,6 +5102,41 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
   render();
 
 
+    /* ---------- shared row builders ---------- */
+  function toolRow(w2,label,sub,onMode){
+    var r=document.createElement('div');
+    r.style.cssText='display:flex;gap:8px;align-items:center;max-width:900px;'+
+      'margin:0 auto 9px;width:100%;flex-wrap:wrap';
+    var lab=document.createElement('div');
+    lab.style.cssText='flex:1;min-width:210px;padding:15px 16px;border-radius:13px;'+
+      'border:1px solid var(--line);background:#111827;font-family:var(--guj)';
+    lab.innerHTML='<div style="font-size:15.5px;font-weight:700">'+label+'</div>'+
+      '<div style="font-size:11.5px;color:var(--dim);margin-top:2px">'+sub+'</div>';
+    r.appendChild(lab);
+    function mb(txt,mode,c1,c2){
+      var e=document.createElement('button');
+      e.style.cssText='flex:0 0 auto;padding:11px 13px;border-radius:11px;border:1px solid '+c1+
+        ';background:'+c2+';color:var(--ink);font-family:var(--guj);font-size:13px;font-weight:600;cursor:pointer';
+      e.textContent=txt;
+      e.onclick=function(){ onMode(mode) };
+      r.appendChild(e);
+    }
+    if(!guestMode) mb('📘 શિક્ષક','L','#1d4ed8','#132441');
+    mb('✍ પ્રેક્ટિસ','P','#b45309','#2a2010');
+    mb('📝 ટેસ્ટ','T','#166534','#0d1f16');
+    w2.appendChild(r);
+    return r;
+  }
+  function wideBtn(w2,html,col,bg,fn){
+    var b=document.createElement('button');
+    b.style.cssText='display:block;width:100%;max-width:900px;margin:0 auto 9px;padding:14px 16px;'+
+      'border-radius:13px;border:1px solid '+col+';background:'+bg+';color:var(--ink);'+
+      'font-family:var(--guj);font-size:15px;font-weight:700;cursor:pointer;text-align:left';
+    b.innerHTML=html;
+    b.onclick=fn;
+    w2.appendChild(b);
+    return b;
+  }
   /* ---------- frame ---------- */
   function render(){
     body.innerHTML='';
@@ -4982,51 +5164,31 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
     });
     w.appendChild(bar);
 
-    if(st.sec!=='ganan'){
-      var c=document.createElement('div'); c.className='evCard'; c.style.textAlign='center';
-      c.innerHTML='<div style="font-size:44px">🌱</div>'+
-        '<div style="font-family:var(--guj);font-size:15px;color:var(--dim);margin-top:8px">'+
-        (st.sec==='vanchan'?'વાંચન':'લેખન')+' વિભાગ — ડિઝાઇન ટૂંક સમયમાં</div>';
-      w.appendChild(c);
+    if(st.sec==='vanchan' || st.sec==='lekhan'){
+      var isR=(st.sec==='vanchan');
+      var hd=document.createElement('div');
+      hd.style.cssText='max-width:900px;margin:0 auto 10px;width:100%;padding:13px 16px;'+
+        'border-radius:13px;font-family:var(--guj);border:1px solid '+(isR?'#0ea5e9':'#a855f7')+
+        ';background:'+(isR?'#0c2233':'#1e1030');
+      hd.innerHTML='<div style="font-size:16px;font-weight:800">'+(isR?'📖 વાંચન':'✍ લેખન')+'</div>'+
+        '<div style="font-size:11.5px;color:var(--dim);margin-top:3px">'+
+        (isR?'અક્ષર · માત્રા · શબ્દ · જોડાક્ષર · ફકરો વાંચન (WPM) · સમજ'
+           :'અક્ષર લેખન · માત્રા · વાક્ય · જોડણી · સમાનાર્થી-વિરુદ્ધાર્થી · વિરામચિહ્ન')+
+        ' — દરેક સાધન 📘 શિક્ષક · ✍ પ્રેક્ટિસ · 📝 ટેસ્ટ માં</div>';
+      w.appendChild(hd);
+      wideBtn(w,'🌱 વ્યક્તિગત પ્રગતિ — '+(isR?'વાંચન':'લેખન')+
+        ' <span style="font-weight:400;font-size:11.5px;color:var(--dim)">'+
+        'રોલ નં આપો → નબળી કુશળતા શોધી, પ્રેક્ટિસ કરાવી, ટેસ્ટ લઈ આગળ લઈ જશે</span>',
+        '#22c55e','#0d2818',function(){ GROWTH_SCOPE=st.sec; NAV.go('growth') });
+      vlList(w, isR?READ_TOOLS:WRITE_TOOLS, st.sec);
+      wideBtn(w,'👥 બે વિદ્યાર્થી સાથે — '+(isR?'વાંચન':'લેખન')+
+        ' <span style="font-weight:400;font-size:11.5px;color:var(--dim)">'+
+        'બંને બાજુ અલગ વિદ્યાર્થી</span>','#7c3aed','#1c1030',
+        function(){ DUAL_SCOPE=st.sec; NAV.go('fin2') });
       body.appendChild(w); return;
     }
 
     /* ગણન tools */
-    /* ---------- shared row builders ---------- */
-    function toolRow(w2,label,sub,onMode){
-      var r=document.createElement('div');
-      r.style.cssText='display:flex;gap:8px;align-items:center;max-width:900px;'+
-        'margin:0 auto 9px;width:100%;flex-wrap:wrap';
-      var lab=document.createElement('div');
-      lab.style.cssText='flex:1;min-width:210px;padding:15px 16px;border-radius:13px;'+
-        'border:1px solid var(--line);background:#111827;font-family:var(--guj)';
-      lab.innerHTML='<div style="font-size:15.5px;font-weight:700">'+label+'</div>'+
-        '<div style="font-size:11.5px;color:var(--dim);margin-top:2px">'+sub+'</div>';
-      r.appendChild(lab);
-      function mb(txt,mode,c1,c2){
-        var e=document.createElement('button');
-        e.style.cssText='flex:0 0 auto;padding:11px 13px;border-radius:11px;border:1px solid '+c1+
-          ';background:'+c2+';color:var(--ink);font-family:var(--guj);font-size:13px;font-weight:600;cursor:pointer';
-        e.textContent=txt;
-        e.onclick=function(){ onMode(mode) };
-        r.appendChild(e);
-      }
-      if(!guestMode) mb('📘 શિક્ષક','L','#1d4ed8','#132441');
-      mb('✍ પ્રેક્ટિસ','P','#b45309','#2a2010');
-      mb('📝 ટેસ્ટ','T','#166534','#0d1f16');
-      w2.appendChild(r);
-      return r;
-    }
-    function wideBtn(w2,html,col,bg,fn){
-      var b=document.createElement('button');
-      b.style.cssText='display:block;width:100%;max-width:900px;margin:0 auto 9px;padding:14px 16px;'+
-        'border-radius:13px;border:1px solid '+col+';background:'+bg+';color:var(--ink);'+
-        'font-family:var(--guj);font-size:15px;font-weight:700;cursor:pointer;text-align:left';
-      b.innerHTML=html;
-      b.onclick=fn;
-      w2.appendChild(b);
-      return b;
-    }
     /* દાખલા બનાવો + બે વિદ્યાર્થી — inside each number section */
     function extras(w2,withGen,type){
       type=type||'whole';
@@ -5062,6 +5224,11 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
         w.appendChild(inner);
       }
     }
+
+    wideBtn(w,'🌱 વ્યક્તિગત પ્રગતિ — ગણન '+
+      '<span style="font-weight:400;font-size:11.5px;color:var(--dim)">'+
+      'રોલ નં આપો → નબળી કુશળતા શોધી, પ્રેક્ટિસ કરાવી, ટેસ્ટ લઈ આગળ લઈ જશે</span>',
+      '#22c55e','#0d2818',function(){ GROWTH_SCOPE='ganan'; NAV.go('growth') });
 
     /* ======== 1. બેઝિક ======== */
     tab('vrd_besik_open','🌱','બેઝિક · 1 થી 10 નો પાયો',
@@ -5251,107 +5418,423 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
     }
     w.appendChild(c);
   }
-  function isBesik(id){
-    for(var i=0;i<BESIK.length;i++) if(BESIK[i][0]===id) return true;
-    return false;
+  /* ================================================================
+     વાંચન · લેખન — tool lists and the special (non-MCQ) players
+     ================================================================ */
+  function vlList(w2,list,type){
+    list.forEach(function(t){
+      toolRow(w2,t[1],t[2],function(mode){
+        st.tool=t[0]; st.mode=mode;
+        st.cfg={lab:vlName(t[0])};
+        st.stu=null; st.g=null; st.playing=null;
+        render();
+      });
+    });
   }
-  function besikName(id){
-    for(var i=0;i<BESIK.length;i++) if(BESIK[i][0]===id) return BESIK[i][1].replace(/^\d+\.\s*/,'');
-    return 'બેઝિક';
+  /* ---------- Gujarati letter pad (no system keyboard) ---------- */
+  function gujPad(host,onPick,rows){
+    var pad=document.createElement('div');
+    pad.style.cssText='display:grid;grid-template-columns:repeat(8,1fr);gap:6px;'+
+      'max-width:560px;margin:10px auto 0';
+    (rows||KAKKO).forEach(function(ch){
+      var b=document.createElement('button');
+      b.style.cssText='padding:12px 0;border-radius:10px;border:1px solid var(--line);'+
+        'background:#111827;color:var(--ink);font-family:var(--guj);font-size:20px;cursor:pointer';
+      b.textContent=ch;
+      b.onclick=function(){ onPick(ch,b) };
+      pad.appendChild(b);
+    });
+    host.appendChild(pad);
+    return pad;
   }
-  function dotsRow(n,color,cross,size){
-    if(n===0) return '<div style="text-align:center;font-family:var(--guj);font-size:16px;'+
-      'color:var(--dim);border:2px dashed var(--line);border-radius:14px;padding:26px">ખાલી — કંઈ નથી</div>';
-    var s='<div style="text-align:center;line-height:1.15">';
-    for(var i=0;i<n;i++){
-      var x=cross&&i>=n-cross;
-      s+='<span style="display:inline-block;width:'+(size||38)+'px;height:'+(size||38)+'px;'+
-        'border-radius:50%;margin:5px;background:'+(x?'#450a0a':(color||'#60a5fa'))+
-        ';position:relative">'+(x?'<span style="position:absolute;inset:0;display:flex;'+
-        'align-items:center;justify-content:center;color:#ef4444;font-size:26px">✖</span>':'')+'</span>'+
-        ((i%5===4)?'<span style="display:inline-block;width:16px"></span>':'');
+  /* ---------- 5. ખૂટતો અક્ષર / 2. માત્રા ભરો ---------- */
+  function playFill(w2,kind){
+    var NQ=8;
+    if(st.g && st.g.kind!=='fill') st.g=null;
+    if(!st.g) st.g={kind:'fill',i:0,score:0,first:true,r:fillGen(kind)};
+    var g=st.g;
+    if(g.i>=NQ){
+      var g0=g; st.g=null;
+      endCard(w2,g0.score,NQ,vlName(st.tool),function(){ st.g=null; render() });
+      return;
     }
-    return s+'</div>';
-  }
-  function emoRow(n,em,cross){
-    if(n===0) return dotsRow(0);
-    var s='<div style="text-align:center;line-height:1.2">';
-    for(var i=0;i<n;i++){
-      var x=cross&&i>=n-cross;
-      s+='<span style="font-size:42px;margin:3px;display:inline-block;position:relative;'+
-        (x?'opacity:.45':'')+'">'+em+
-        (x?'<span style="position:absolute;inset:0;display:flex;align-items:center;'+
-           'justify-content:center;color:#ef4444;font-size:40px">✖</span>':'')+'</span>';
+    stuBanner(w2,{mode:st.mode==='L'?'D':'S',stu:st.stu||{roll:'',name:''},
+      stuCls:st.cls||'',subject:vlName(st.tool)});
+    var r=g.r;
+    var c=document.createElement('div'); c.className='evCard';
+    c.innerHTML='<div class="evTop"><span>'+(g.i+1)+' / '+NQ+'</span><span>સાચા: '+g.score+'</span></div>'+
+      bigTxt(r.shown,58,'#fbbf24')+
+      '<div class="evQ" style="text-align:center;font-size:17px">'+r.q+'</div>'+
+      '<div id="flH" style="text-align:center;font-family:var(--guj);font-size:13.5px;'+
+      'color:#fbbf24;min-height:20px"></div>';
+    w2.appendChild(c);
+    var locked=false;
+    var myGen=window.PAGE_GEN;
+    function next(d){
+      lessonTimeout(function(){
+        if(window.PAGE_GEN!==myGen || !st.playing) return;
+        g.i++; g.first=true; g.r=fillGen(kind); render();
+      }, d||900);
     }
-    return s+'</div>';
+    gujPad(c,function(ch,btn){
+      if(locked) return;
+      var hb=document.getElementById('flH');
+      if(ch===r.ans){
+        locked=true;
+        btn.style.background='#0d2818'; btn.style.borderColor='#22c55e';
+        if(g.first) g.score++;
+        sndOK();
+        if(hb){ hb.style.color='#22c55e'; hb.textContent='✅ '+r.exp }
+        next();
+      }else{
+        sndNO();
+        if(st.mode==='T'){
+          locked=true;
+          btn.style.background='#450a0a'; btn.style.borderColor='#ef4444';
+          if(hb){ hb.style.color='#f87171'; hb.textContent='સાચો જવાબ: '+r.ans }
+          next(1400);
+        }else{
+          g.first=false;
+          btn.style.background='#450a0a';
+          lessonTimeout(function(){ btn.style.background='#111827' },500);
+          if(hb){ hb.style.color='#fbbf24'; hb.textContent='💡 ફરી પ્રયત્ન કરો' }
+        }
+      }
+    }, kind==='matra' ? MATRA.map(function(m){ return m[1] }) : KAKKO);
+    if(st.mode==='L'){
+      lessonTimeout(function(){
+        if(window.PAGE_GEN!==myGen || !st.playing) return;
+        var hb=document.getElementById('flH');
+        if(hb){ hb.style.color='#22c55e'; hb.textContent='📘 '+r.exp }
+        g.score++; next(1800);
+      },1600);
+    }
   }
+  function fillGen(kind){
+    if(kind==='matra'){
+      var b=pick_(KAKKO), m=pick_(MATRA);
+      return {shown:b+'_', q:'કઈ માત્રા લગાડીએ તો "'+(b+m[1])+'" બને?',
+        ans:m[1], exp:b+' + '+m[0]+' = '+(b+m[1])};
+    }
+    var w=pick_(GWORDS)[0];
+    var chars=w.split('');
+    var idx=Math.floor(Math.random()*chars.length);
+    var miss=chars[idx];
+    /* pick a plain letter position when possible */
+    for(var i=0;i<chars.length && KAKKO.indexOf(miss)<0;i++){
+      idx=i; miss=chars[i];
+    }
+    var shown=chars.map(function(ch,i2){ return i2===idx?'_':ch }).join('');
+    return {shown:shown, q:'ખૂટતો અક્ષર કયો?', ans:miss, exp:'સાચો શબ્દ: '+w};
+  }
+  /* ---------- 7. ફકરો વાંચન · WPM ---------- */
+  function playWpm(w2){
+    if(!st.g) st.g={kind:'wpm', p:pick_(GPARA), started:0, mistakes:0, done:false, left:60};
+    var g=st.g;
+    stuBanner(w2,{mode:st.mode==='L'?'D':'S',stu:st.stu||{roll:'',name:''},
+      stuCls:st.cls||'',subject:'વાંચન · WPM'});
+    var words=g.p.t.split(/\s+/).filter(Boolean).length;
+    var c=document.createElement('div'); c.className='evCard';
+    c.innerHTML='<div class="evTop"><span>ફકરો · '+words+' શબ્દ</span>'+
+      '<span id="wpTime">'+(g.started?g.left:60)+' સેકન્ડ</span></div>'+
+      '<div style="font-family:var(--guj);font-size:23px;line-height:2.1;'+
+      'background:#0d1626;border-radius:12px;padding:16px 18px">'+g.p.t+'</div>'+
+      '<div style="text-align:center;font-family:var(--guj);font-size:13.5px;color:var(--dim);margin-top:8px">'+
+      'વિદ્યાર્થી મોટેથી વાંચે — શિક્ષક દરેક ભૂલ પર ✗ દબાવે</div>';
+    w2.appendChild(c);
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;gap:10px;justify-content:center;margin-top:10px;flex-wrap:wrap';
+    function b(t,fn,style){
+      var x=document.createElement('button');
+      x.className='btn'; x.style.cssText+=';padding:13px 22px;font-size:16px'+(style||'');
+      x.textContent=t; x.onclick=fn; row.appendChild(x); return x;
+    }
+    var myGen=window.PAGE_GEN;
+    if(!g.started){
+      var sb=b('▶ શરૂ કરો (1 મિનિટ)',function(){
+        g.started=Date.now(); g.left=60;
+        tick();
+        render();
+      }); sb.classList.add('pri');
+    }else if(!g.done){
+      b('✗ ભૂલ ('+g.mistakes+')',function(){ g.mistakes++; sndNO(); render() },';border-color:#7f1d1d;background:#2a1214');
+      b('⏹ પૂરું',function(){ finish() },';border-color:#166534;background:#0d2818');
+    }
+    c.appendChild(row);
+    function tick(){
+      lessonTimeout(function(){
+        if(window.PAGE_GEN!==myGen || !st.playing || g.done) return;
+        g.left--;
+        var el=document.getElementById('wpTime');
+        if(el) el.textContent=g.left+' સેકન્ડ';
+        if(g.left<=0) finish(); else tick();
+      },1000);
+    }
+    if(g.started && !g.done && g.left===60) tick();
+    function finish(){
+      g.done=true;
+      var secs=Math.max(1, 60-g.left);
+      var read=words;                       /* whole passage assumed read */
+      var wpm=Math.round(read/secs*60);
+      var acc=Math.max(0, Math.round((read-g.mistakes)/read*100));
+      var g0=g; st.g=null;
+      body_result(wpm,acc,secs);
+    }
+    function body_result(wpm,acc,secs){
+      var res=document.createElement('div'); res.className='evCard';
+      res.style.textAlign='center';
+      res.innerHTML='<div style="font-size:44px">'+(wpm>=60?'🏆':wpm>=30?'👍':'💪')+'</div>'+
+        '<div style="font-family:var(--mono);font-size:34px;font-weight:800">'+wpm+' WPM</div>'+
+        '<div style="font-family:var(--guj);font-size:14px;color:var(--dim)">'+
+        'ચોકસાઈ '+acc+'% · ભૂલ '+(st.g?0:0)+' · સમય '+secs+' સેકન્ડ</div>'+
+        '<div id="wpSv" style="font-family:var(--mono);font-size:12px;margin-top:8px;color:#9ca3af"></div>';
+      var again=document.createElement('button');
+      again.className='btn pri'; again.style.cssText+=';width:100%;padding:12px;margin-top:10px';
+      again.textContent='🔁 બીજો ફકરો';
+      again.onclick=function(){ st.g=null; render() };
+      res.appendChild(again);
+      w2.appendChild(res);
+      if(st.mode!=='L' && st.stu){
+        flnSave(st.stu, st.cls, 'FLN વાંચન · WPM',
+          (st.mode==='P'?'પ્રેક્ટિસ':'ટેસ્ટ')+' · ચોકસાઈ '+acc+'%',
+          wpm, 100, function(ok){
+            var e=document.getElementById('wpSv');
+            if(e){ e.textContent=ok?'✅ FLN શીટમાં સેવ':'❌ સેવ ન થયું'; e.style.color=ok?'#22c55e':'#f87171' }
+          });
+      }
+    }
+  }
+  /* ---------- 1. અક્ષર લેખન (trace) ---------- */
+  function playTrace(w2){
+    if(!st.g) st.g={kind:'trace', ch:pick_(KAKKO), n:0};
+    var g=st.g;
+    stuBanner(w2,{mode:st.mode==='L'?'D':'S',stu:st.stu||{roll:'',name:''},
+      stuCls:st.cls||'',subject:'અક્ષર લેખન'});
+    var c=document.createElement('div'); c.className='evCard';
+    c.innerHTML='<div class="evTop"><span>ઘૂંટેલા અક્ષર: '+g.n+'</span><span>'+g.ch+'</span></div>';
+    var box=document.createElement('div');
+    box.style.cssText='position:relative;height:340px;background:#0a0f1a;border-radius:14px;overflow:hidden';
+    box.innerHTML='<div style="position:absolute;inset:0;display:flex;align-items:center;'+
+      'justify-content:center;font-family:var(--guj);font-size:260px;color:#1e293b;'+
+      'pointer-events:none;user-select:none">'+g.ch+'</div>';
+    var cv=document.createElement('canvas');
+    cv.style.cssText='position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair';
+    box.appendChild(cv);
+    c.appendChild(box);
+    w2.appendChild(c);
+    var ctx=null, drawing=false, lx=0, ly=0;
+    function fit(){
+      var r=cv.getBoundingClientRect();
+      if(cv.width!==Math.round(r.width)||cv.height!==Math.round(r.height)){
+        cv.width=Math.round(r.width); cv.height=Math.round(r.height);
+        ctx=cv.getContext('2d');
+        ctx.lineWidth=14; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle='#22c55e';
+      }
+    }
+    lessonTimeout(fit,60);
+    cv.addEventListener('pointerdown',function(e){
+      fit(); drawing=true;
+      var r=cv.getBoundingClientRect();
+      lx=e.clientX-r.left; ly=e.clientY-r.top;
+      try{ cv.setPointerCapture(e.pointerId) }catch(err){}
+    });
+    cv.addEventListener('pointermove',function(e){
+      if(!drawing||!ctx) return;
+      var r=cv.getBoundingClientRect();
+      var x=e.clientX-r.left, y=e.clientY-r.top;
+      ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(x,y); ctx.stroke();
+      lx=x; ly=y;
+    });
+    cv.addEventListener('pointerup',function(){ drawing=false });
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;gap:10px;justify-content:center;margin-top:10px;flex-wrap:wrap';
+    function b(t,fn,pri){
+      var x=document.createElement('button');
+      x.className='btn'+(pri?' pri':''); x.style.cssText+=';padding:12px 20px;font-size:15px';
+      x.textContent=t; x.onclick=fn; row.appendChild(x);
+    }
+    b('🧽 ભૂંસો',function(){ if(ctx) ctx.clearRect(0,0,cv.width,cv.height) });
+    b('✔ થઈ ગયું',function(){
+      g.n++; sndOK();
+      if(ctx) ctx.clearRect(0,0,cv.width,cv.height);
+      if(st.mode!=='L' && st.stu && g.n>=5){
+        flnSave(st.stu, st.cls, 'FLN લેખન · અક્ષર',
+          (st.mode==='P'?'પ્રેક્ટિસ':'ટેસ્ટ'), g.n, g.n, function(){});
+      }
+      g.ch=pick_(KAKKO); render();
+    },true);
+    b('➡ બીજો અક્ષર',function(){ g.ch=pick_(KAKKO); if(ctx) ctx.clearRect(0,0,cv.width,cv.height); render() });
+    c.appendChild(row);
+  }
+  /* ---------- 3. વાક્ય ગોઠવો ---------- */
+  function playSentence(w2){
+    var NQ=6;
+    if(st.g && st.g.kind!=='sent') st.g=null;
+    if(!st.g) st.g={kind:'sent',i:0,score:0,first:true,s:pick_(GSENT),picked:[]};
+    var g=st.g;
+    if(g.i>=NQ){
+      var g0=g; st.g=null;
+      endCard(w2,g0.score,NQ,'વાક્ય ગોઠવો',function(){ st.g=null; render() });
+      return;
+    }
+    stuBanner(w2,{mode:st.mode==='L'?'D':'S',stu:st.stu||{roll:'',name:''},
+      stuCls:st.cls||'',subject:'વાક્ય ગોઠવો'});
+    var words=g.s.split(' ');
+    var c=document.createElement('div'); c.className='evCard';
+    c.innerHTML='<div class="evTop"><span>'+(g.i+1)+' / '+NQ+'</span><span>સાચા: '+g.score+'</span></div>'+
+      '<div class="evQ" style="text-align:center;font-size:16px">શબ્દો ક્રમમાં ગોઠવો</div>'+
+      '<div id="snLine" style="min-height:64px;border:2px dashed #334155;border-radius:12px;'+
+      'padding:10px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center;'+
+      'font-family:var(--guj);font-size:22px"></div>'+
+      '<div id="snH" style="text-align:center;font-family:var(--guj);font-size:13.5px;'+
+      'color:#fbbf24;min-height:20px;margin-top:6px"></div>';
+    w2.appendChild(c);
+    var pool=document.createElement('div');
+    pool.style.cssText='display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:8px';
+    var myGen=window.PAGE_GEN;
+    function paint(){
+      var line=document.getElementById('snLine');
+      if(line) line.textContent=g.picked.join(' ');
+    }
+    shuffle(words.slice()).forEach(function(wd){
+      var b=document.createElement('button');
+      b.style.cssText='padding:12px 16px;border-radius:11px;border:1px solid var(--line);'+
+        'background:#111827;color:var(--ink);font-family:var(--guj);font-size:20px;cursor:pointer';
+      b.textContent=wd;
+      b.onclick=function(){
+        if(b.disabled) return;
+        b.disabled=true; b.style.opacity='.35';
+        g.picked.push(wd); paint();
+        if(g.picked.length===words.length){
+          var ok=g.picked.join(' ')===g.s;
+          var hb=document.getElementById('snH');
+          if(ok){
+            if(g.first) g.score++;
+            sndOK();
+            if(hb){ hb.style.color='#22c55e'; hb.textContent='✅ સાચું!' }
+            lessonTimeout(function(){
+              if(window.PAGE_GEN!==myGen||!st.playing) return;
+              g.i++; g.first=true; g.s=pick_(GSENT); g.picked=[]; render();
+            },900);
+          }else{
+            sndNO(); g.first=false;
+            if(hb){ hb.style.color='#f87171';
+              hb.textContent=(st.mode==='T'?('સાચું વાક્ય: '+g.s):'ફરી ગોઠવો') }
+            if(st.mode==='T'){
+              lessonTimeout(function(){
+                if(window.PAGE_GEN!==myGen||!st.playing) return;
+                g.i++; g.first=true; g.s=pick_(GSENT); g.picked=[]; render();
+              },1600);
+            }else{
+              lessonTimeout(function(){
+                if(window.PAGE_GEN!==myGen||!st.playing) return;
+                g.picked=[]; render();
+              },1200);
+            }
+          }
+        }
+      };
+      pool.appendChild(b);
+    });
+    c.appendChild(pool);
+    var clr=document.createElement('button');
+    clr.className='btn'; clr.style.cssText+=';display:block;margin:10px auto 0;padding:10px 22px';
+    clr.textContent='↺ ફરી ગોઠવો';
+    clr.onclick=function(){ g.picked=[]; render() };
+    c.appendChild(clr);
+    paint();
+    if(st.mode==='L'){
+      lessonTimeout(function(){
+        if(window.PAGE_GEN!==myGen||!st.playing) return;
+        g.picked=words.slice(); paint();
+        var hb=document.getElementById('snH');
+        if(hb){ hb.style.color='#22c55e'; hb.textContent='📘 '+g.s }
+        g.score++;
+        lessonTimeout(function(){
+          if(window.PAGE_GEN!==myGen||!st.playing) return;
+          g.i++; g.s=pick_(GSENT); g.picked=[]; render();
+        },2000);
+      },1500);
+    }
+  }
+  /* ---------- generic MCQ player for વાંચન/લેખન ---------- */
+  function playVL(w2){
+    var NQ=10;
+    if(st.g && st.g.kind!=='vl') st.g=null;
+    if(!st.g) st.g={kind:'vl',i:0,score:0,first:true,
+      r:(isRead(st.tool)?genRead(st.tool):genWrite(st.tool))};
+    var g=st.g;
+    if(g.i>=NQ){
+      var g0=g; st.g=null;
+      endCard(w2,g0.score,NQ,vlName(st.tool),function(){ st.g=null; render() });
+      return;
+    }
+    stuBanner(w2,{mode:st.mode==='L'?'D':'S',stu:st.stu||{roll:'',name:''},
+      stuCls:st.cls||'',subject:vlName(st.tool)});
+    var r=g.r;
+    var c=document.createElement('div'); c.className='evCard';
+    c.innerHTML='<div class="evTop"><span>'+(g.i+1)+' / '+NQ+'</span><span>સાચા: '+g.score+'</span></div>'+
+      (r.html||'')+
+      '<div class="evQ" style="text-align:center;font-size:17px">'+r.q+'</div>'+
+      '<div id="vlH" style="text-align:center;font-family:var(--guj);font-size:13.5px;'+
+      'color:#fbbf24;min-height:20px"></div>';
+    var gr=document.createElement('div'); gr.className='evGrid';
+    var locked=false;
+    var myGen=window.PAGE_GEN;
+    function next(d){
+      lessonTimeout(function(){
+        if(window.PAGE_GEN!==myGen || !st.playing) return;
+        g.i++; g.first=true;
+        g.r=(isRead(st.tool)?genRead(st.tool):genWrite(st.tool));
+        render();
+      }, d||900);
+    }
+    r.opts.forEach(function(o){
+      var b=document.createElement('button'); b.className='evOpt';
+      b.style.cssText+=';text-align:center;font-family:var(--guj);font-size:24px;padding:16px 10px';
+      b.textContent=o;
+      b.onclick=function(){
+        if(locked) return;
+        var hb=document.getElementById('vlH');
+        if(o===r.ans){
+          locked=true; gr.style.pointerEvents='none'; b.classList.add('ok');
+          if(g.first) g.score++;
+          sndOK();
+          if(hb){ hb.style.color='#22c55e'; hb.textContent='✅ '+r.exp }
+          next();
+        }else{
+          sndNO();
+          if(st.mode==='T'){
+            locked=true; gr.style.pointerEvents='none'; b.classList.add('bad');
+            for(var i2=0;i2<gr.children.length;i2++)
+              if(gr.children[i2].textContent===r.ans) gr.children[i2].classList.add('ok');
+            if(hb){ hb.style.color='#f87171'; hb.textContent='સાચો જવાબ: '+r.ans }
+            next(1500);
+          }else{
+            g.first=false; b.classList.add('bad');
+            lessonTimeout(function(){ b.classList.remove('bad') },600);
+            if(hb){ hb.style.color='#fbbf24'; hb.textContent='💡 '+r.exp }
+          }
+        }
+      };
+      gr.appendChild(b);
+    });
+    c.appendChild(gr);
+    w2.appendChild(c);
+    if(st.mode==='L'){
+      lessonTimeout(function(){
+        if(window.PAGE_GEN!==myGen || !st.playing) return;
+        for(var i3=0;i3<gr.children.length;i3++)
+          if(gr.children[i3].textContent===r.ans) gr.children[i3].classList.add('ok');
+        gr.style.pointerEvents='none';
+        var hb=document.getElementById('vlH');
+        if(hb){ hb.style.color='#22c55e'; hb.textContent='📘 '+r.exp }
+        g.score++; next(2000);
+      },1700);
+    }
+  }
+
   /* one question for a basic activity */
-  function besikGen(id){
-    var n,a,b,em=EMO[R2(0,EMO.length-1)];
-    function opts4(ans,lo,hi){
-      var o=[ans], guard=0;
-      while(o.length<4 && guard++<40){ var x=R2(lo,hi); if(o.indexOf(x)<0) o.push(x) }
-      return shuffle(o);
-    }
-    if(id==='bcount'){
-      n=R2(1,10);
-      return {html:emoRow(n,em), q:'કેટલા છે?', say:'કેટલા છે?',
-        opts:opts4(n,1,10), ans:n, exp:'કુલ '+n+' — '+GU_NUM[n]};
-    }
-    if(id==='bhear'){
-      n=R2(1,10);
-      return {html:'<div style="text-align:center;font-size:60px">🔊</div>',
-        q:'સાંભળો અને આંકડો દબાવો', say:GU_NUM[n],
-        opts:opts4(n,1,10), ans:n, exp:n+' એટલે '+GU_NUM[n], repeat:GU_NUM[n]};
-    }
-    if(id==='bword'){
-      n=R2(1,10);
-      var o=[GU_NUM[n]], g=0;
-      while(o.length<4 && g++<40){ var x=GU_NUM[R2(1,10)]; if(o.indexOf(x)<0) o.push(x) }
-      return {html:'<div style="text-align:center;font-size:86px;font-family:var(--mono);color:#fbbf24">'+n+'</div>',
-        q:'આ આંકડાનું નામ શું?', say:'આ આંકડાનું નામ શું?',
-        opts:shuffle(o), ans:GU_NUM[n], exp:n+' = '+GU_NUM[n], text:true};
-    }
-    if(id==='bmake'){
-      n=R2(2,9);
-      return {build:'make', target:n, q:'બરાબર '+n+' ટપકાં બનાવો', say:GU_NUM[n]+' ટપકાં બનાવો',
-        exp:n+' ટપકાં'};
-    }
-    if(id==='bmore'){
-      a=R2(1,9); b=a; while(b===a) b=R2(1,9);
-      return {two:[a,b], q:'કયા જૂથમાં વધારે?', say:'કયા જૂથમાં વધારે?',
-        opts:['A','B'], ans:(a>b?'A':'B'), exp:'A = '+a+' , B = '+b};
-    }
-    if(id==='border'){
-      var t=R2(0,2), s0;
-      if(t===0){ n=R2(1,9);
-        return {html:'<div style="text-align:center;font-size:64px;font-family:var(--mono)">'+n+' → ?</div>',
-          q:n+' પછી કઈ સંખ્યા?', say:GU_NUM[n]+' પછી કઈ સંખ્યા?',
-          opts:opts4(n+1,1,10), ans:n+1, exp:n+' પછી '+(n+1)}; }
-      if(t===1){ n=R2(2,10);
-        return {html:'<div style="text-align:center;font-size:64px;font-family:var(--mono)">? ← '+n+'</div>',
-          q:n+' પહેલાં કઈ સંખ્યા?', say:GU_NUM[n]+' પહેલાં કઈ સંખ્યા?',
-          opts:opts4(n-1,1,10), ans:n-1, exp:n+' પહેલાં '+(n-1)}; }
-      s0=R2(1,7);
-      return {html:'<div style="text-align:center;font-size:48px;font-family:var(--mono)">'+
-          s0+' , '+(s0+1)+' , <span style="color:#fbbf24">__</span> , '+(s0+3)+'</div>',
-        q:'ખાલી જગ્યાએ કઈ સંખ્યા?', say:'ખૂટતી સંખ્યા કઈ?',
-        opts:opts4(s0+2,1,10), ans:s0+2, exp:'ક્રમ: '+s0+', '+(s0+1)+', '+(s0+2)+', '+(s0+3)};
-    }
-    if(id==='badd'){
-      a=R2(1,5); b=R2(1,10-a);
-      return {html:'<div style="display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap">'+
-          '<div>'+emoRow(a,em)+'</div><div style="font-size:40px;color:#fbbf24">+</div>'+
-          '<div>'+emoRow(b,em)+'</div></div>',
-        q:'બધાં મળીને કેટલાં?', say:'બધાં મળીને કેટલાં?',
-        opts:opts4(a+b,1,10), ans:a+b, exp:a+' + '+b+' = '+(a+b)};
-    }
-    /* bsub */
-    a=R2(3,10); b=R2(1,a-1);
-    return {html:emoRow(a,em,b),
-      q:a+' માંથી '+b+' ✖ થયાં — કેટલાં બચ્યાં?', say:'કેટલાં બચ્યાં?',
-      opts:opts4(a-b,0,10), ans:a-b, exp:a+' − '+b+' = '+(a-b)};
-  }
 
   function backBtn(w,fn){
     var b=document.createElement('button');
@@ -5370,7 +5853,9 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
       st.stu=null; st.g=null; render();
     });
     /* config screen first (basic tools have none) */
-    if(!st.cfg && !isBesik(st.tool) && !isNum(st.tool)){ cfgScreen(w); return }
+    if(!st.cfg && !isBesik(st.tool) && !isNum(st.tool)
+       && !isRead(st.tool) && !isWrite(st.tool)){ cfgScreen(w); return }
+    if((isRead(st.tool)||isWrite(st.tool)) && !st.cfg) st.cfg={lab:vlName(st.tool)};
     if(isBesik(st.tool) && !st.cfg) st.cfg={lab:'બેઝિક'};
     if(isNum(st.tool) && !st.cfg) st.cfg={lab:numName(st.tool)};
     /* roll no for P/T */
@@ -5379,7 +5864,13 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
       return;
     }
     st.playing=true;
-    if(isBesik(st.tool)) playBesik(w);
+    if(st.tool==='r_wpm') playWpm(w);
+    else if(st.tool==='w_trace') playTrace(w);
+    else if(st.tool==='w_sentence') playSentence(w);
+    else if(st.tool==='r_missing') playFill(w,'letter');
+    else if(st.tool==='w_matra') playFill(w,'matra');
+    else if(isRead(st.tool)||isWrite(st.tool)) playVL(w);
+    else if(isBesik(st.tool)) playBesik(w);
     else if(isNum(st.tool)) playNum(w);
     else if(st.tool==='quiz') playQuiz(w);
     else playNb(w);
@@ -5465,6 +5956,8 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
   function actName(id){
     if(isBesik(id)) return 'FLN બેઝિક · '+besikName(id);
     if(isNum(id))   return 'FLN '+numName(id);
+    if(isRead(id))  return 'FLN વાંચન · '+vlName(id);
+    if(isWrite(id)) return 'FLN લેખન · '+vlName(id);
     return ACT[id];
   }
   function saveSession(score,total,done){
@@ -6655,10 +7148,503 @@ definePage('eval2','👥 મૂલ્યાંકન · બે વિદ્ય�
   }
 });
 
+/* ---- shared by the FLN page and the progress coach ---- */
+function besikGen(id){
+  var n,a,b,em=EMO[R2(0,EMO.length-1)];
+  function opts4(ans,lo,hi){
+    var o=[ans], guard=0;
+    while(o.length<4 && guard++<40){ var x=R2(lo,hi); if(o.indexOf(x)<0) o.push(x) }
+    return shuffle(o);
+  }
+  if(id==='bcount'){
+    n=R2(1,10);
+    return {html:emoRow(n,em), q:'કેટલા છે?', say:'કેટલા છે?',
+      opts:opts4(n,1,10), ans:n, exp:'કુલ '+n+' — '+GU_NUM[n]};
+  }
+  if(id==='bhear'){
+    n=R2(1,10);
+    return {html:'<div style="text-align:center;font-size:60px">🔊</div>',
+      q:'સાંભળો અને આંકડો દબાવો', say:GU_NUM[n],
+      opts:opts4(n,1,10), ans:n, exp:n+' એટલે '+GU_NUM[n], repeat:GU_NUM[n]};
+  }
+  if(id==='bword'){
+    n=R2(1,10);
+    var o=[GU_NUM[n]], g=0;
+    while(o.length<4 && g++<40){ var x=GU_NUM[R2(1,10)]; if(o.indexOf(x)<0) o.push(x) }
+    return {html:'<div style="text-align:center;font-size:86px;font-family:var(--mono);color:#fbbf24">'+n+'</div>',
+      q:'આ આંકડાનું નામ શું?', say:'આ આંકડાનું નામ શું?',
+      opts:shuffle(o), ans:GU_NUM[n], exp:n+' = '+GU_NUM[n], text:true};
+  }
+  if(id==='bmake'){
+    n=R2(2,9);
+    return {build:'make', target:n, q:'બરાબર '+n+' ટપકાં બનાવો', say:GU_NUM[n]+' ટપકાં બનાવો',
+      exp:n+' ટપકાં'};
+  }
+  if(id==='bmore'){
+    a=R2(1,9); b=a; while(b===a) b=R2(1,9);
+    return {two:[a,b], q:'કયા જૂથમાં વધારે?', say:'કયા જૂથમાં વધારે?',
+      opts:['A','B'], ans:(a>b?'A':'B'), exp:'A = '+a+' , B = '+b};
+  }
+  if(id==='border'){
+    var t=R2(0,2), s0;
+    if(t===0){ n=R2(1,9);
+      return {html:'<div style="text-align:center;font-size:64px;font-family:var(--mono)">'+n+' → ?</div>',
+        q:n+' પછી કઈ સંખ્યા?', say:GU_NUM[n]+' પછી કઈ સંખ્યા?',
+        opts:opts4(n+1,1,10), ans:n+1, exp:n+' પછી '+(n+1)}; }
+    if(t===1){ n=R2(2,10);
+      return {html:'<div style="text-align:center;font-size:64px;font-family:var(--mono)">? ← '+n+'</div>',
+        q:n+' પહેલાં કઈ સંખ્યા?', say:GU_NUM[n]+' પહેલાં કઈ સંખ્યા?',
+        opts:opts4(n-1,1,10), ans:n-1, exp:n+' પહેલાં '+(n-1)}; }
+    s0=R2(1,7);
+    return {html:'<div style="text-align:center;font-size:48px;font-family:var(--mono)">'+
+        s0+' , '+(s0+1)+' , <span style="color:#fbbf24">__</span> , '+(s0+3)+'</div>',
+      q:'ખાલી જગ્યાએ કઈ સંખ્યા?', say:'ખૂટતી સંખ્યા કઈ?',
+      opts:opts4(s0+2,1,10), ans:s0+2, exp:'ક્રમ: '+s0+', '+(s0+1)+', '+(s0+2)+', '+(s0+3)};
+  }
+  if(id==='badd'){
+    a=R2(1,5); b=R2(1,10-a);
+    return {html:'<div style="display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap">'+
+        '<div>'+emoRow(a,em)+'</div><div style="font-size:40px;color:#fbbf24">+</div>'+
+        '<div>'+emoRow(b,em)+'</div></div>',
+      q:'બધાં મળીને કેટલાં?', say:'બધાં મળીને કેટલાં?',
+      opts:opts4(a+b,1,10), ans:a+b, exp:a+' + '+b+' = '+(a+b)};
+  }
+  /* bsub */
+  a=R2(3,10); b=R2(1,a-1);
+  return {html:emoRow(a,em,b),
+    q:a+' માંથી '+b+' ✖ થયાં — કેટલાં બચ્યાં?', say:'કેટલાં બચ્યાં?',
+    opts:opts4(a-b,0,10), ans:a-b, exp:a+' − '+b+' = '+(a-b)};
+}
+function dotsRow(n,color,cross,size){
+  if(n===0) return '<div style="text-align:center;font-family:var(--guj);font-size:16px;'+
+    'color:var(--dim);border:2px dashed var(--line);border-radius:14px;padding:26px">ખાલી — કંઈ નથી</div>';
+  var s='<div style="text-align:center;line-height:1.15">';
+  for(var i=0;i<n;i++){
+    var x=cross&&i>=n-cross;
+    s+='<span style="display:inline-block;width:'+(size||38)+'px;height:'+(size||38)+'px;'+
+      'border-radius:50%;margin:5px;background:'+(x?'#450a0a':(color||'#60a5fa'))+
+      ';position:relative">'+(x?'<span style="position:absolute;inset:0;display:flex;'+
+      'align-items:center;justify-content:center;color:#ef4444;font-size:26px">✖</span>':'')+'</span>'+
+      ((i%5===4)?'<span style="display:inline-block;width:16px"></span>':'');
+  }
+  return s+'</div>';
+}
+function emoRow(n,em,cross){
+  if(n===0) return dotsRow(0);
+  var s='<div style="text-align:center;line-height:1.2">';
+  for(var i=0;i<n;i++){
+    var x=cross&&i>=n-cross;
+    s+='<span style="font-size:42px;margin:3px;display:inline-block;position:relative;'+
+      (x?'opacity:.45':'')+'">'+em+
+      (x?'<span style="position:absolute;inset:0;display:flex;align-items:center;'+
+         'justify-content:center;color:#ef4444;font-size:40px">✖</span>':'')+'</span>';
+  }
+  return s+'</div>';
+}
+function besikName(id){
+  for(var i=0;i<BESIK.length;i++) if(BESIK[i][0]===id) return BESIK[i][1].replace(/^\d+\.\s*/,'');
+  return 'બેઝિક';
+}
+function vlName(id){
+  var all=READ_TOOLS.concat(WRITE_TOOLS);
+  for(var i=0;i<all.length;i++)
+    if(all[i][0]===id) return all[i][1].replace(/^\d+\.\s*/,'');
+  return id;
+}
+function isRead(id){ return String(id).indexOf('r_')===0 }
+function isWrite(id){ return String(id).indexOf('w_')===0 }
+function isBesik(id){
+  for(var i=0;i<BESIK.length;i++) if(BESIK[i][0]===id) return true;
+  return false;
+}
+
+/* ==================================================================
+   🌱 વ્યક્તિગત પ્રગતિ — PERSONAL PROGRESS (levels · stars · medals)
+   The coach never keeps its own list of skills: it reads whatever
+   tools the section currently has, so adding or removing a tool
+   updates the journey automatically.
+   ================================================================== */
+var GROWTH_SCOPE='ganan';
+/* tools that need drawing, typing or a teacher — the coach uses
+   only the ones a child can do alone by tapping */
+var GROWTH_SKIP={r_wpm:1, r_missing:1, w_trace:1, w_matra:1, w_sentence:1, bmake:1};
+
+function growthName(sc){ return {vanchan:'વાંચન',lekhan:'લેખન',ganan:'ગણન'}[sc]||'ગણન' }
+
+/* ---- the journey, built from the section's own tool lists ---- */
+function growthLevels(sc){
+  var L=[];
+  if(sc==='vanchan' || sc==='lekhan'){
+    var src=(sc==='vanchan'?READ_TOOLS:WRITE_TOOLS)
+      .filter(function(t){ return !GROWTH_SKIP[t[0]] })
+      .map(function(t){ return t[0] });
+    for(var i=0;i<src.length;i+=3){
+      L.push({name:'લેવલ '+(L.length+1), ids:src.slice(i,i+3)});
+    }
+    return L;
+  }
+  /* ગણન — the same groups the section itself shows */
+  var basic=BESIK.filter(function(b){ return !GROWTH_SKIP[b[0]] }).map(function(b){ return b[0] });
+  for(var j=0;j<basic.length;j+=4)
+    L.push({name:'લેવલ '+(L.length+1)+' · બેઝિક', ids:basic.slice(j,j+4)});
+  NUMSETS.forEach(function(ns){
+    L.push({name:'લેવલ '+(L.length+1)+' · '+ns[2],
+      ids:NUMTOOLS.map(function(t){ return 'n_'+ns[0]+'_'+t[0] })});
+  });
+  return L;
+}
+function growthTools(sc){
+  var out=[];
+  growthLevels(sc).forEach(function(l){ out=out.concat(l.ids) });
+  return out;
+}
+function growthLabel(id){
+  if(id.indexOf('n_')===0) return numName(id);
+  if(id.indexOf('r_')===0 || id.indexOf('w_')===0) return vlName(id);
+  return besikName(id);
+}
+function growthAct(id){
+  if(id.indexOf('n_')===0) return 'FLN '+numName(id);
+  if(id.indexOf('r_')===0) return 'FLN વાંચન · '+vlName(id);
+  if(id.indexOf('w_')===0) return 'FLN લેખન · '+vlName(id);
+  return 'FLN બેઝિક · '+besikName(id);
+}
+function growthGen(id){
+  if(id.indexOf('n_')===0){ var p=id.split('_'); return numGen(p[1],p[2]) }
+  if(id.indexOf('r_')===0) return genRead(id);
+  if(id.indexOf('w_')===0) return genWrite(id);
+  var r,g=0;
+  do{ r=besikGen(id) }while(r.build && g++<20);
+  return r;
+}
+function starsFor(pct){ return pct>=90?3 : pct>=80?2 : pct>=60?1 : 0 }
+function starRow(n,size){
+  var s='';
+  for(var i=0;i<3;i++)
+    s+='<span style="font-size:'+(size||16)+'px;opacity:'+(i<n?1:0.22)+'">⭐</span>';
+  return s;
+}
+function medalFor(avg){ return avg>=90?'🥇' : avg>=80?'🥈' : avg>=60?'🥉' : '' }
+
+definePage('growth','🌱 વ્યક્તિગત પ્રગતિ · Personal Progress',function(body){
+  body.classList.add('mid');
+  var SC=GROWTH_SCOPE||'ganan';
+  var LEVELS=growthLevels(SC);
+  var S={}, hosts={};
+  var wrap=document.createElement('div');
+  wrap.style.cssText='display:flex;gap:10px;width:100%;max-width:1700px;margin:0 auto;'+
+    'align-items:stretch;flex-wrap:nowrap';
+  body.appendChild(wrap);
+  /* two students side by side — left and right, each fully independent */
+  mkPane('L');
+  mkPane('R');
+
+  function mkPane(sd){
+    var h=document.createElement('div');
+    h.style.cssText='flex:1 1 0;min-width:0;border:1px solid var(--line);border-radius:16px;'+
+      'padding:10px;background:#0b1220;height:calc(100vh - 190px);overflow-y:auto;'+
+      'overscroll-behavior:contain;-webkit-overflow-scrolling:touch';
+    wrap.appendChild(h); hosts[sd]=h;
+    S[sd]={stage:'roll', xp:0, passedToday:0, streak:0};
+    draw(sd);
+  }
+  function card(sd){
+    var c=document.createElement('div'); c.className='evCard';
+    c.style.cssText+=';margin:0 0 10px';
+    hosts[sd].appendChild(c); return c;
+  }
+  function head(sd){
+    var s=S[sd];
+    var d=document.createElement('div');
+    d.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap';
+    d.innerHTML='<span style="font-family:var(--head);font-size:12px;letter-spacing:2px;color:'+
+      (sd==='L'?'#93c5fd':'#fca5a5')+'">'+(sd==='L'?'ડાબી બાજુ':'જમણી બાજુ')+'</span>'+
+      '<span style="font-family:var(--head);font-size:11px;letter-spacing:1px;color:#22c55e">'+
+      growthName(SC).toUpperCase()+'</span>'+
+      '<span style="flex:1;font-family:var(--guj);font-size:13px;color:var(--dim)">'+
+      (s.stu?('👦 '+esc(s.stu.roll+'. '+(s.stu.name||''))+
+        (s.xp?('  ·  ⭐ '+s.xp):'')):'')+'</span>';
+    var b=document.createElement('button');
+    b.className='btn'; b.style.padding='6px 12px'; b.textContent='↺ બદલો';
+    b.onclick=function(){ S[sd]={stage:'roll',xp:0,passedToday:0,streak:0}; draw(sd) };
+    d.appendChild(b);
+    hosts[sd].appendChild(d);
+  }
+  function draw(sd){
+    var s=S[sd];
+    hosts[sd].innerHTML='';
+    head(sd);
+    if(s.stage==='roll') return stRoll(sd);
+    if(s.stage==='load'){ var c=card(sd);
+      c.innerHTML='<div style="text-align:center;font-family:var(--guj);padding:20px">પરિણામ જોવાય છે…</div>';
+      return; }
+    if(s.stage==='map')  return stMap(sd);
+    if(s.stage==='play') return stPlay(sd);
+    if(s.stage==='done') return stDone(sd);
+    if(s.stage==='level')return stLevelUp(sd);
+  }
+  /* ---------- who ---------- */
+  function stRoll(sd){
+    var s=S[sd];
+    flnStu(hosts[sd],true,function(stu,cls){
+      s.stu=stu; s.cls=cls; s.stage='load'; draw(sd);
+      studentApi('results',{cls:'ધોરણ '+cls},function(d){
+        var rows=((d&&d.fln&&d.fln[cls])||[]).filter(function(r){
+          return String(r.roll).trim()===String(stu.roll).trim();
+        });
+        s.best=bestByTool(rows);
+        s.xp=totalStars(s.best);
+        s.stage='map'; draw(sd);
+      },function(){ s.best={}; s.xp=0; s.stage='map'; draw(sd) });
+    });
+  }
+  function bestByTool(rows){
+    var best={};
+    rows.forEach(function(r){
+      if((r.mode||'ટેસ્ટ')!=='ટેસ્ટ') return;                 /* tests only */
+      growthTools(SC).forEach(function(id){
+        if(String(r.act||'')===growthAct(id)){
+          if(best[id]===undefined || r.pct>best[id]) best[id]=r.pct;
+        }
+      });
+    });
+    return best;
+  }
+  function totalStars(best){
+    var n=0;
+    for(var k in best) n+=starsFor(best[k]);
+    return n;
+  }
+  function levelState(sd,li){
+    var s=S[sd], lv=LEVELS[li];
+    var done=0, sum=0, tried=0;
+    lv.ids.forEach(function(id){
+      var p=s.best[id];
+      if(p!==undefined){ tried++; sum+=p; if(p>=80) done++ }
+    });
+    return {done:done, total:lv.ids.length, tried:tried,
+            avg: tried? Math.round(sum/tried):0,
+            complete: done===lv.ids.length};
+  }
+  function currentLevel(sd){
+    for(var i=0;i<LEVELS.length;i++) if(!levelState(sd,i).complete) return i;
+    return -1;                                   /* everything done */
+  }
+  function nextSkill(sd){
+    var li=currentLevel(sd);
+    if(li<0) return null;
+    var s=S[sd], lv=LEVELS[li], pend=[];
+    lv.ids.forEach(function(id){
+      var p=s.best[id];
+      if(p===undefined) pend.push({id:id, pct:-1, key:1000});   /* not tried yet */
+      else if(p<80)     pend.push({id:id, pct:p,  key:p});      /* known weak */
+    });
+    /* weakest known skill first; skills never tried come after them */
+    pend.sort(function(a,b){ return a.key-b.key });
+    return pend.length? {id:pend[0].id, li:li} : null;
+  }
+  /* ---------- the map ---------- */
+  function stMap(sd){
+    var s=S[sd];
+    var cur=currentLevel(sd);
+    var c=card(sd);
+    var totalSkills=growthTools(SC).length, passed=0;
+    growthTools(SC).forEach(function(id){ if((s.best[id]||0)>=80) passed++ });
+    var pctDone=totalSkills? Math.round(passed/totalSkills*100):0;
+    c.innerHTML='<div style="text-align:center;font-family:var(--guj)">'+
+      '<div style="font-size:36px">'+(cur<0?'👑':(pctDone>=60?'🏆':pctDone>=30?'🚀':'🌱'))+'</div>'+
+      '<div style="font-size:17px;font-weight:800">'+esc(stuLabel({stu:s.stu}))+'</div>'+
+      '<div style="font-size:12.5px;color:var(--dim);margin-top:2px">'+
+      growthName(SC)+' · '+passed+' / '+totalSkills+' કુશળતા પાસ · ⭐ '+s.xp+'</div>'+
+      '<div class="rpBarW" style="height:14px;margin:10px 0 2px"><div class="rpBarF" '+
+      'style="width:'+Math.max(3,pctDone)+'%;background:#22c55e"></div></div></div>';
+    /* level ladder */
+    LEVELS.forEach(function(lv,li){
+      var st2=levelState(sd,li);
+      var locked = li>cur && cur>=0;
+      var d=document.createElement('div');
+      d.style.cssText='margin-top:10px;border:1px solid '+
+        (st2.complete?'#166534':(li===cur?'#b45309':'var(--line)'))+
+        ';border-radius:12px;padding:10px 12px;background:'+
+        (st2.complete?'#0d1f16':(li===cur?'#2a2010':'#0d1626'))+(locked?';opacity:.55':'');
+      var h2='<div style="display:flex;justify-content:space-between;align-items:center;'+
+        'font-family:var(--guj);font-size:14px;font-weight:700">'+
+        '<span>'+(st2.complete?'✅ ':(li===cur?'▶ ':'🔒 '))+esc(lv.name)+'</span>'+
+        '<span style="font-size:15px">'+(st2.complete?(medalFor(st2.avg)||'✅'):(st2.done+'/'+st2.total))+'</span></div>';
+      lv.ids.forEach(function(id){
+        var p=s.best[id];
+        h2+='<div style="display:flex;justify-content:space-between;align-items:center;'+
+          'font-family:var(--guj);font-size:12.5px;padding:3px 0;color:'+
+          (p===undefined?'var(--dim)':(p>=80?'#22c55e':'#fbbf24'))+'">'+
+          '<span>'+(p===undefined?'○':(p>=80?'✔':'●'))+' '+esc(growthLabel(id))+'</span>'+
+          '<span>'+(p===undefined?'—':starRow(starsFor(p),13))+'</span></div>';
+      });
+      d.innerHTML=h2;
+      c.appendChild(d);
+    });
+    var t=nextSkill(sd);
+    if(!t){
+      var win=document.createElement('div');
+      win.style.cssText='text-align:center;font-family:var(--guj);font-size:15px;color:#22c55e;margin-top:12px';
+      win.innerHTML='👑 બધા લેવલ પૂરા! ⭐ '+s.xp+' સ્ટાર';
+      c.appendChild(win);
+      return;
+    }
+    var go=document.createElement('button');
+    go.className='btn pri';
+    go.style.cssText+=';width:100%;padding:14px;margin-top:12px;font-size:15px';
+    go.innerHTML='▶ રમવા જાઓ — '+esc(growthLabel(t.id))+
+      '<div style="font-weight:400;font-size:11.5px;color:#bbf7d0">પહેલાં પ્રેક્ટિસ, પછી ટેસ્ટ · 3 સ્ટાર મેળવો</div>';
+    go.onclick=function(){ startSkill(sd,t) };
+    c.appendChild(go);
+  }
+  function startSkill(sd,t){
+    var s=S[sd];
+    s.target=t; s.phase='P'; s.qi=0; s.score=0; s.first=true;
+    s.r=growthGen(t.id); s.stage='play'; draw(sd);
+  }
+  /* ---------- practice → test ---------- */
+  function stPlay(sd){
+    var s=S[sd], NQ=6;
+    if(s.qi>=NQ){
+      if(s.phase==='P'){
+        s.phase='T'; s.qi=0; s.score=0; s.first=true; s.r=growthGen(s.target.id);
+        var c0=card(sd); c0.style.textAlign='center';
+        c0.innerHTML='<div style="font-size:40px">✍→📝</div>'+
+          '<div style="font-family:var(--guj);font-size:16px;font-weight:700;margin-top:6px">પ્રેક્ટિસ પૂરી!</div>'+
+          '<div style="font-family:var(--guj);font-size:13px;color:var(--dim);margin-top:4px">'+
+          'હવે ટેસ્ટ — 6 પ્રશ્ન · 80%+ એટલે લેવલમાં ✔</div>';
+        var b=document.createElement('button');
+        b.className='btn pri'; b.style.cssText+=';width:100%;padding:13px;margin-top:10px';
+        b.textContent='📝 ટેસ્ટ શરૂ કરો';
+        b.onclick=function(){ draw(sd) };
+        c0.appendChild(b);
+        return;
+      }
+      var pct=Math.round(s.score/NQ*100);
+      s.lastPct=pct;
+      var old=s.best[s.target.id];
+      if(old===undefined || pct>old) s.best[s.target.id]=pct;
+      s.xp=totalStars(s.best);
+      flnSave(s.stu, s.cls, growthAct(s.target.id),
+        'પ્રગતિ · '+LEVELS[s.target.li].name, s.score, NQ, function(){}, 'ટેસ્ટ');
+      if(pct>=80){ s.passedToday++; s.streak++ } else s.streak=0;
+      var lv=levelState(sd,s.target.li);
+      s.stage = (pct>=80 && lv.complete) ? 'level' : 'done';
+      draw(sd);
+      return;
+    }
+    var r=s.r;
+    var c=card(sd);
+    c.innerHTML='<div class="evTop"><span>'+(s.phase==='P'?'✍ પ્રેક્ટિસ':'📝 ટેસ્ટ')+' · '+
+      esc(growthLabel(s.target.id))+'</span><span>'+(s.qi+1)+' / '+NQ+
+      (s.phase==='T'?(' · '+starRow(starsFor(Math.round(s.score/NQ*100)),12)):'')+'</span></div>'+
+      (r.html||'')+
+      '<div class="evQ" style="text-align:center;font-size:16px">'+r.q+'</div>'+
+      '<div id="gw'+sd+'" style="text-align:center;font-family:var(--guj);font-size:12.5px;'+
+      'color:#fbbf24;min-height:18px"></div>';
+    var gr=document.createElement('div'); gr.className='evGrid';
+    var locked=false;
+    r.opts.forEach(function(o){
+      var b=document.createElement('button'); b.className='evOpt';
+      b.style.cssText+=';text-align:center;font-family:var(--guj);font-size:20px;padding:14px 8px';
+      b.textContent=o;
+      b.onclick=function(){
+        if(locked) return;
+        var hb=document.getElementById('gw'+sd);
+        if(o===r.ans){
+          locked=true; gr.style.pointerEvents='none'; b.classList.add('ok');
+          if(s.first) s.score++;
+          sndOK();
+          if(hb){ hb.style.color='#22c55e'; hb.textContent='✅ '+(r.exp||'') }
+          lessonTimeout(function(){ s.qi++; s.first=true; s.r=growthGen(s.target.id); draw(sd) },850);
+        }else{
+          sndNO();
+          if(s.phase==='T'){
+            locked=true; gr.style.pointerEvents='none'; b.classList.add('bad');
+            for(var i=0;i<gr.children.length;i++)
+              if(gr.children[i].textContent===r.ans) gr.children[i].classList.add('ok');
+            if(hb){ hb.style.color='#f87171'; hb.textContent='સાચો જવાબ: '+r.ans }
+            lessonTimeout(function(){ s.qi++; s.first=true; s.r=growthGen(s.target.id); draw(sd) },1400);
+          }else{
+            s.first=false; b.classList.add('bad');
+            lessonTimeout(function(){ b.classList.remove('bad') },600);
+            if(hb){ hb.style.color='#fbbf24'; hb.textContent='💡 '+(r.exp||'ફરી પ્રયત્ન કરો') }
+          }
+        }
+      };
+      gr.appendChild(b);
+    });
+    c.appendChild(gr);
+  }
+  /* ---------- skill result ---------- */
+  function stDone(sd){
+    var s=S[sd], pct=s.lastPct, pass=pct>=80, st2=starsFor(pct);
+    var c=card(sd); c.style.textAlign='center';
+    c.innerHTML='<div style="font-size:46px">'+(pass?'🎉':'💪')+'</div>'+
+      '<div style="margin:4px 0">'+starRow(st2,30)+'</div>'+
+      '<div style="font-family:var(--guj);font-size:16px;font-weight:800">'+esc(growthLabel(s.target.id))+'</div>'+
+      '<div style="font-family:var(--mono);font-size:28px;font-weight:800;color:'+
+      (pass?'#22c55e':'#fbbf24')+'">'+pct+'%</div>'+
+      '<div style="font-family:var(--guj);font-size:13px;color:var(--dim);margin-top:4px">'+
+      (pass?('કુશળતા પાસ! ⭐ કુલ '+s.xp+' સ્ટાર'):'80% જોઈએ — ફરી પ્રેક્ટિસ કરીએ')+'</div>'+
+      (s.streak>=3?('<div style="font-family:var(--guj);font-size:13px;color:#fbbf24;margin-top:6px">'+
+        '🔥 સળંગ '+s.streak+' કુશળતા પાસ!</div>'):'');
+    var b1=document.createElement('button');
+    b1.className='btn pri'; b1.style.cssText+=';width:100%;padding:13px;margin-top:12px';
+    if(pass){
+      var nx=nextSkill(sd);
+      b1.innerHTML = nx? ('➡ આગળ — '+esc(growthLabel(nx.id))) : '🗺 નકશો જુઓ';
+      b1.onclick=function(){ if(nx) startSkill(sd,nx); else { s.stage='map'; draw(sd) } };
+    }else{
+      b1.textContent='🔁 ફરી પ્રેક્ટિસ';
+      b1.onclick=function(){
+        s.phase='P'; s.qi=0; s.score=0; s.first=true;
+        s.r=growthGen(s.target.id); s.stage='play'; draw(sd);
+      };
+    }
+    c.appendChild(b1);
+    var b2=document.createElement('button');
+    b2.className='btn'; b2.style.cssText+=';width:100%;padding:11px;margin-top:6px';
+    b2.textContent='🗺 મારો નકશો';
+    b2.onclick=function(){ s.stage='map'; draw(sd) };
+    c.appendChild(b2);
+  }
+  /* ---------- level completed ---------- */
+  function stLevelUp(sd){
+    var s=S[sd], li=s.target.li, lv=LEVELS[li], st2=levelState(sd,li);
+    var medal=medalFor(st2.avg)||'🏅';
+    var c=card(sd); c.style.textAlign='center';
+    c.innerHTML='<div style="font-size:64px">'+medal+'</div>'+
+      '<div style="font-family:var(--guj);font-size:20px;font-weight:800;color:#22c55e">'+
+      esc(lv.name)+' પૂરું!</div>'+
+      '<div style="font-family:var(--guj);font-size:13.5px;color:var(--dim);margin-top:4px">'+
+      'સરેરાશ '+st2.avg+'% · ⭐ કુલ '+s.xp+' સ્ટાર</div>'+
+      '<div style="margin-top:8px">'+lv.ids.map(function(id){
+        return '<div style="font-family:var(--guj);font-size:12.5px;color:#22c55e">✔ '+
+          esc(growthLabel(id))+'  '+starRow(starsFor(s.best[id]||0),12)+'</div>';
+      }).join('')+'</div>';
+    sndOK();
+    var nx=nextSkill(sd);
+    var b1=document.createElement('button');
+    b1.className='btn pri'; b1.style.cssText+=';width:100%;padding:14px;margin-top:12px;font-size:15px';
+    b1.innerHTML = nx? ('🚀 આગળનું લેવલ — '+esc(growthLabel(nx.id)))
+                     : '👑 બધા લેવલ પૂરા — નકશો જુઓ';
+    b1.onclick=function(){ if(nx) startSkill(sd,nx); else { s.stage='map'; draw(sd) } };
+    c.appendChild(b1);
+    var b2=document.createElement('button');
+    b2.className='btn'; b2.style.cssText+=';width:100%;padding:11px;margin-top:6px';
+    b2.textContent='🗺 મારો નકશો';
+    b2.onclick=function(){ s.stage='map'; draw(sd) };
+    c.appendChild(b2);
+  }
+});
+
 definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',function(body){
   body.classList.add('mid');
   var SCOPE=DUAL_SCOPE||'whole';
-  var SCNAME={whole:'પૂર્ણ સંખ્યા',int:'પૂર્ણાંક',frac:'અપૂર્ણાંક',dec:'દશાંશ',besik:'બેઝિક'}[SCOPE]||'પૂર્ણ સંખ્યા';
+  var SCNAME={whole:'પૂર્ણ સંખ્યા',int:'પૂર્ણાંક',frac:'અપૂર્ણાંક',dec:'દશાંશ',
+              besik:'બેઝિક',vanchan:'વાંચન',lekhan:'લેખન'}[SCOPE]||'પૂર્ણ સંખ્યા';
   function isBesik2(id){
     for(var i=0;i<BESIK.length;i++) if(BESIK[i][0]===id) return true;
     return false;
@@ -6688,6 +7674,8 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
             mul:'FLN ગુણાકાર',div:'FLN ભાગાકાર'};
   function act2Name(id){
     if(isNum(id)) return 'FLN '+numName(id);
+    if(isRead(id))  return 'FLN વાંચન · '+vlName(id);
+    if(isWrite(id)) return 'FLN લેખન · '+vlName(id);
     if(isBesik2(id)){
       for(var i=0;i<BESIK.length;i++)
         if(BESIK[i][0]===id) return 'FLN બેઝિક · '+BESIK[i][1].replace(/^\d+\.\s*/,'');
@@ -6716,7 +7704,7 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
     if(s.stage==='mode') return stMode(sd);
     if(s.stage==='roll') return stRoll(sd);
     if(s.stage==='end')  return stEnd(sd);
-    if(isNum(s.tool)||isBesik2(s.tool)) paneMcq(sd);
+    if(isNum(s.tool)||isBesik2(s.tool)||isRead(s.tool)||isWrite(s.tool)) paneMcq(sd);
     else if(s.tool==='quiz') paneQuiz(sd);
     else paneNb(sd);
   }
@@ -6745,7 +7733,13 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
   function stTool(sd){
     var s=S[sd], c=card(sd);
     var items;
-    if(SCOPE==='besik'){
+    if(SCOPE==='vanchan'){
+      items=READ_TOOLS.filter(function(t){ return t[0]!=='r_wpm' })
+        .map(function(t){ return [t[1].replace(/^\d+\.\s*/,''), t[0]] });
+    }else if(SCOPE==='lekhan'){
+      items=WRITE_TOOLS.filter(function(t){ return t[0]!=='w_trace' })
+        .map(function(t){ return [t[1].replace(/^\d+\.\s*/,''), t[0]] });
+    }else if(SCOPE==='besik'){
       items=BESIK.map(function(b){ return [b[1].replace(/^\d+\.\s*/,''), b[0]] });
     }else if(SCOPE==='int'||SCOPE==='frac'||SCOPE==='dec'){
       items=NUMTOOLS.map(function(t){
@@ -6758,7 +7752,10 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
     }
     chips(c,SCNAME+' — સાધન પસંદ કરો',items,function(t){
       s.tool=t;
-      if(isNum(t)||isBesik2(t)){ s.cfg={lab:(isNum(t)?numName(t):'બેઝિક')}; s.stage='mode' }
+      if(isNum(t)||isBesik2(t)||isRead(t)||isWrite(t)){
+        s.cfg={lab:(isNum(t)?numName(t):(isRead(t)||isWrite(t)?vlName(t):'બેઝિક'))};
+        s.stage='mode';
+      }
       else s.stage='cfg';
       draw(sd);
     });
@@ -6818,6 +7815,8 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
   }
   function mcqGen(s){
     if(isNum(s.tool)){ var p=s.tool.split('_'); return numGen(p[1],p[2]) }
+    if(isRead(s.tool))  return genRead(s.tool);
+    if(isWrite(s.tool)) return genWrite(s.tool);
     var r, guard=0;
     do{ r=besikGen(s.tool) }while(r.build && guard++<20);
     return r;
@@ -6826,7 +7825,7 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
     var s=S[sd];
     s.stage='play';
     s.g={p:1,score:0,perfect:0,i:0,first:true};
-    if(isNum(s.tool)||isBesik2(s.tool)) s.g.r=mcqGen(s);
+    if(isNum(s.tool)||isBesik2(s.tool)||isRead(s.tool)||isWrite(s.tool)) s.g.r=mcqGen(s);
     else if(s.tool==='quiz') s.g.r=genQuiz(s.cfg);
     else s.g.P=newP(s);
     draw(sd);
