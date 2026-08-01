@@ -1692,7 +1692,7 @@ blankPage('report','Student Report');
 (function(){
 
 /* ---------------- state ---------------- */
-var DEFAULT_SHEET_URL='https://docs.google.com/spreadsheets/d/1syaplgH15dbRIsIEvaqWmzWWj02LRITHUCUtfzdSOmQ/edit';
+var DEFAULT_SHEET_URL='https://docs.google.com/spreadsheets/d/1WxaGFsZKock7WirGpBdfoy3RSOc_oesc4UBhRXOBmeM/edit';
 var MAIN={
   url : store.get('vrd_main_url',''),
   cfg : store.get('vrd_main_cfg',null)      /* cached config from main sheet */
@@ -7934,7 +7934,7 @@ setTimeout(function(){ pendPaint(); pendFlush() },4000);   /* send anything left
 applySixCam();
 /* ---- one sheet only: forget any older sheet a panel may have saved ---- */
 (function forceOneSheet(){
-  var STAMP='vrd_sheet_lock_v2';
+  var STAMP='vrd_sheet_lock_v3';
   if(store.get(STAMP,'')===DEFAULT_SHEET_URL) return;
   var saved=store.get('vrd_main_sheet','');
   if(saved && saved!==DEFAULT_SHEET_URL){
