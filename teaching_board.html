@@ -1692,7 +1692,7 @@ blankPage('report','Student Report');
 (function(){
 
 /* ---------------- state ---------------- */
-var DEFAULT_SHEET_URL='https://docs.google.com/spreadsheets/d/1WxaGFsZKock7WirGpBdfoy3RSOc_oesc4UBhRXOBmeM/edit';
+var DEFAULT_SHEET_URL='https://docs.google.com/spreadsheets/d/1syaplgH15dbRIsIEvaqWmzWWj02LRITHUCUtfzdSOmQ/edit';
 var MAIN={
   url : store.get('vrd_main_url',''),
   cfg : store.get('vrd_main_cfg',null)      /* cached config from main sheet */
@@ -1960,14 +1960,14 @@ function buildSetLock(body){
 function buildSetForm(body){
   /* her main sheet URL sits in the box by default — just tap SAVE */
   var c=document.createElement('div'); c.className='setCard';
-  c.innerHTML='<h4>મુખ્ય શીટ URL · MAIN SHEET / WEB APP URL</h4>'+
+  c.innerHTML='<h4>શાળા શીટ URL · SCHOOL SHEET LINK</h4>'+
     '<input id="muIn" autocomplete="off">'+
     '<button class="btn pri" id="muSave" style="width:100%">SAVE &amp; TEST CONNECTION</button>'+
     '<div class="setMsg" id="muMsg"></div>'+
-    '<div class="note">આ બોર્ડ <b>એક જ શાળા શીટ</b> સાથે જોડાય છે (ઉપર દેખાય તે). '+
-    'બોર્ડ જાતે જ શીટના SETTINGS ટૅબમાંથી WEBAPP URL શોધી લે છે — '+
-    'શીટ <b>Share → Anyone with the link</b> હોવી જોઈએ અને એક વાર <b>Deploy</b> કરેલી હોવી જોઈએ.<br>'+
-    'જોડાણ ન થાય તો અહીં સીધો <b>/exec</b> વાળો Web App URL પેસ્ટ કરી શકાય.</div>';
+    '<div class="note">અહીં ફક્ત <b>Google Sheet ની લિંક</b> નાખવાની છે — Web App URL નહીં. '+
+    'બોર્ડ જાતે જ શીટના <b>SETTINGS → WEBAPP URL</b> માંથી જોડાણ શોધી લે છે.<br>'+
+    'શરત: શીટ <b>Share → Anyone with the link (Viewer)</b> હોવી જોઈએ અને સ્ક્રિપ્ટ એક વાર '+
+    '<b>Deploy</b> કરેલી હોવી જોઈએ.</div>';
   body.appendChild(c);
   $('muIn').value = DEFAULT_SHEET_URL;
 
@@ -2174,19 +2174,26 @@ function buildSetForm(body){
   }
   $('muSave').onclick=function(){
     var u=$('muIn').value.trim(), m=$('muMsg');
-    if(/docs\.google\.com/.test(u)){
-      /* sheet URL — fetch its LINKS tab and pull MAIN_WEBAPP_URL */
-      m.className='setMsg'; m.textContent='શીટમાંથી Web App URL શોધી રહ્યા છીએ…';
-      resolveWebApp(u,function(webapp){ testAndSave(webapp,u) },
-        function(e){
-          m.className='setMsg bad';
-          m.textContent='❌ શીટમાંથી ન મળ્યું ('+e+'). શીટ Share → "Anyone with link" કરો અને LINKS ટૅબમાં MAIN_WEBAPP_URL ભરેલો હોવો જોઈએ. અથવા સીધો /exec URL નાખો.';
-        });
+    if(!u){ u=DEFAULT_SHEET_URL; $('muIn').value=u }
+    /* a Web App URL pasted by mistake — accept it, but say so */
+    if(/^https:\/\/script\.google(usercontent)?\.com\//.test(u)){
+      m.className='setMsg'; m.textContent='આ Web App URL છે — ચલાવી લઈએ છીએ…';
+      testAndSave(u,'');
       return;
     }
-    if(!/^https:\/\/script\.google(usercontent)?\.com\//.test(u)){
-      m.className='setMsg bad'; m.textContent='શીટનો URL અથવા /exec વાળો Web App URL નાખો'; return }
-    testAndSave(u,'');
+    if(!/docs\.google\.com\/spreadsheets/.test(u)){
+      m.className='setMsg bad';
+      m.textContent='Google Sheet ની લિંક નાખો (docs.google.com/spreadsheets/…)';
+      return;
+    }
+    m.className='setMsg'; m.textContent='શીટ સાથે જોડાઈ રહ્યા છીએ…';
+    resolveWebApp(u,function(webapp){ testAndSave(webapp,u) },
+      function(e){
+        m.className='setMsg bad';
+        m.textContent='❌ જોડાણ ન થયું ('+e+').  તપાસો: (1) શીટ Share → Anyone with the link, '+
+          '(2) સ્ક્રિપ્ટ Deploy કરેલી છે, (3) SETTINGS ટૅબમાં WEBAPP URL ભરાયેલો છે '+
+          '(એક વાર /exec લિંક બ્રાઉઝરમાં ખોલવાથી આપોઆપ ભરાય છે).';
+      });
   };
   $('cfgRef').onclick=function(){
     var m=$('muMsg'); m.className='setMsg'; m.textContent='Refreshing config…';
@@ -7934,7 +7941,7 @@ setTimeout(function(){ pendPaint(); pendFlush() },4000);   /* send anything left
 applySixCam();
 /* ---- one sheet only: forget any older sheet a panel may have saved ---- */
 (function forceOneSheet(){
-  var STAMP='vrd_sheet_lock_v3';
+  var STAMP='vrd_sheet_lock_v4';
   if(store.get(STAMP,'')===DEFAULT_SHEET_URL) return;
   var saved=store.get('vrd_main_sheet','');
   if(saved && saved!==DEFAULT_SHEET_URL){
