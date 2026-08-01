@@ -1692,7 +1692,7 @@ blankPage('report','Student Report');
 (function(){
 
 /* ---------------- state ---------------- */
-var DEFAULT_SHEET_URL='https://docs.google.com/spreadsheets/d/1syaplgH15dbRIsIEvaqWmzWWj02LRITHUCUtfzdSOmQ/edit';
+var DEFAULT_SHEET_URL='https://docs.google.com/spreadsheets/d/1WxaGFsZKock7WirGpBdfoy3RSOc_oesc4UBhRXOBmeM/edit';
 var MAIN={
   url : store.get('vrd_main_url',''),
   cfg : store.get('vrd_main_cfg',null)      /* cached config from main sheet */
@@ -2129,6 +2129,15 @@ function buildSetForm(body){
             'અને એક વાર Deploy કરેલું છે?');
     });
   };
+
+  var whichSheet=document.createElement('div'); whichSheet.className='setCard';
+  whichSheet.innerHTML='<h4>અત્યારે કઈ શીટ સાથે જોડાયેલું છે</h4>'+
+    '<div style="font-family:var(--guj);font-size:14px">'+
+    '🏫 <b>'+esc(((MAIN.cfg&&MAIN.cfg.school)||'—'))+'</b></div>'+
+    '<div style="font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:4px;word-break:break-all">'+
+    esc(store.get('vrd_main_sheet','')||DEFAULT_SHEET_URL)+'</div>'+
+    '<div class="note">એનિમેશન/PDF ન દેખાય તો પહેલાં આ તપાસો — સ્કૅન બીજી શીટમાં તો નથી કર્યું ને?</div>';
+  body.appendChild(whichSheet);
 
   var c2=document.createElement('div'); c2.className='setCard';
   c2.innerHTML='<h4>CONNECTION STATUS</h4>'+
@@ -2978,7 +2987,22 @@ function makeContentPage(key,label,icon){
 
       if(!MAIN.url){ w.appendChild(bigMsg('પહેલાં ⚙ Settings માં મુખ્ય શીટ જોડો')); body.appendChild(w); return }
       if(!contentUrl()){ w.appendChild(bigMsg('શાળા શીટ → SETTINGS માં<br><b>ANIMATION FOLDER</b> / <b>SIMULATION FOLDER</b> ની લિંક ભરો,<br>પછી મેનુ → 🎬 Drive સ્કૅન કરો')); body.appendChild(w); return }
-      if(!((CONTENT&&CONTENT[key])||[]).length){ w.appendChild(bigMsg('યાદી ખાલી છે — ઉપર SYNC દબાવો<br>(Content શીટમાં SCAN NOW પણ ચલાવો)')); body.appendChild(w); return }
+      var allN=((CONTENT&&CONTENT[key])||[]).length;
+      if(!allN){
+        w.appendChild(bigMsg(
+          '<span style="font-size:12.5px;color:#fbbf24">જોડાયેલી શીટ: '+
+          esc(((MAIN.cfg&&MAIN.cfg.school)||'—'))+' · '+esc(sheetIdOf(store.get('vrd_main_sheet',''))||'—')+
+          '</span><br><br>યાદી ખાલી છે.<br><br>'+
+          '1) શાળા શીટ → SETTINGS માં <b>'+(key==='animations'?'ANIMATION':'SIMULATION')+' FOLDER</b> ની લિંક ભરો<br>'+
+          '2) મેનુ → <b>🎬 Drive સ્કૅન કરો</b><br>'+
+          '3) અહીં ઉપર <b>↻ SYNC</b> દબાવો'));
+        body.appendChild(w); return;
+      }
+      if(boardClass() && !items().length){
+        w.appendChild(bigMsg('ધોરણ '+boardClass()+' માટે કંઈ નથી —<br>કુલ '+allN+' ફાઇલ છે પણ બીજા વર્ગની.<br><br>'+
+          '⚙ Settings → વર્ગ પસંદગી "બધા" કરો,<br>અથવા Drive ફોલ્ડરનું નામ <b>CLASS '+boardClass()+' …</b> રાખો.'));
+        body.appendChild(w); return;
+      }
 
       var pc=boardClass();
       if(pc){
@@ -3144,10 +3168,16 @@ definePage('cview','સામગ્રી',function(body,pg){
     list.appendChild(sb);
 
     if(!MAIN.url){ msg('પહેલાં ⚙ Settings માં મુખ્ય શીટ જોડો'); return }
-    if(!contentUrl()){ msg('શાળા શીટ → SETTINGS માં<br><b>PDF FOLDER</b> ની લિંક ભરો,<br>પછી ↻ SYNC દબાવો'); return }
+    if(!contentUrl()){ msg('પહેલાં ⚙ Settings માં શાળા શીટ જોડો'); return }
 
     if(!st.folder){
-      if(!st.cache.length){ msg('ફોલ્ડર યાદી ખાલી — ઉપર SYNC દબાવો<br>(Content શીટ → PDF FOLDERS ટૅબ ભરેલી છે?)'); return }
+      if(!st.cache.length){
+        msg('ફોલ્ડર યાદી ખાલી.<br><br>'+
+            '1) શાળા શીટ → SETTINGS માં <b>PDF FOLDER</b> ની Drive લિંક ભરો<br>'+
+            '2) એ ફોલ્ડરની અંદર દરેક વર્ગ/વિષયનું પેટા-ફોલ્ડર રાખો<br>'+
+            '3) અહીં ઉપર <b>↻ SYNC</b> દબાવો');
+        return;
+      }
       st.cache.forEach(function(fo){
         item('📁', fo.name, '', function(){ st.folder=fo; loadFiles(fo) });
       });
@@ -7941,7 +7971,7 @@ setTimeout(function(){ pendPaint(); pendFlush() },4000);   /* send anything left
 applySixCam();
 /* ---- one sheet only: forget any older sheet a panel may have saved ---- */
 (function forceOneSheet(){
-  var STAMP='vrd_sheet_lock_v4';
+  var STAMP='vrd_sheet_lock_v5';
   if(store.get(STAMP,'')===DEFAULT_SHEET_URL) return;
   var saved=store.get('vrd_main_sheet','');
   if(saved && saved!==DEFAULT_SHEET_URL){
@@ -7953,6 +7983,7 @@ applySixCam();
   store.set('vrd_bp_h',null);
   store.set('vrd_sp_h',null);
   store.set('vrd_content',null);
+  store.set('vrd_pdffolders',null);
   try{ CONTENT=null }catch(e){}
   store.set('vrd_main_sheet',DEFAULT_SHEET_URL);
   store.set(STAMP,DEFAULT_SHEET_URL);
@@ -7962,6 +7993,7 @@ function ensureConnection(){
     loadConfig(function(){
       if(!guestMode) startStocks();
       loadContent();                       /* animations/simulations refresh too */
+      pendFlush();                         /* push anything saved while offline */
     });
   }
   function useSheet(sheet,then,fail){
@@ -7982,8 +8014,20 @@ function ensureConnection(){
     },function(){ tryResolve() });
   } else tryResolve();
 }
-setInterval(ensureConnection, 15*60*1000);   /* every 15 minutes */
-ensureConnection();                          /* and at board start */
+/* if the board starts with no connection, try again soon rather than
+   waiting the full 5 minutes (10s, 30s, 60s) */
+[10000,30000,60000].forEach(function(ms){
+  setTimeout(function(){ if(!MAIN.cfg) ensureConnection() },ms);
+});
+/* connect the moment the board opens, then keep it fresh every 5 minutes */
+setInterval(ensureConnection, 5*60*1000);
+ensureConnection();
+/* reconnect the instant the panel regains internet or the board is
+   brought back to the front after being idle */
+window.addEventListener('online',function(){ ensureConnection() });
+document.addEventListener('visibilitychange',function(){
+  if(!document.hidden) ensureConnection();
+});
 
 /* bridge for the FLN workshop test strip (outside this module) */
 window.__flnWS={
