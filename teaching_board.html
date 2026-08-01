@@ -1692,7 +1692,7 @@ blankPage('report','Student Report');
 (function(){
 
 /* ---------------- state ---------------- */
-var DEFAULT_SHEET_URL='https://docs.google.com/spreadsheets/d/1m-AHk1R_B-r-_zey-Vti3UJ7leJ8_g-tzKqfQLVsxPc/edit';
+var DEFAULT_SHEET_URL='https://docs.google.com/spreadsheets/d/1syaplgH15dbRIsIEvaqWmzWWj02LRITHUCUtfzdSOmQ/edit';
 var MAIN={
   url : store.get('vrd_main_url',''),
   cfg : store.get('vrd_main_cfg',null)      /* cached config from main sheet */
@@ -1746,17 +1746,31 @@ function gvizJsonp(sheetId,tabName,ok,err){
 function resolveWebApp(sheetUrl,ok,err){
   var id=sheetIdOf(sheetUrl);
   if(!id){ err('bad-sheet-url'); return }
-  gvizJsonp(id,'LINKS',function(d){
-    try{
-      var rows=(d&&d.table&&d.table.rows)||[], found='';
-      rows.forEach(function(r){
-        var k=r.c&&r.c[0]&&r.c[0].v, v=r.c&&r.c[1]&&r.c[1].v;
-        if(String(k||'').trim()==='MAIN_WEBAPP_URL' && v) found=String(v).trim();
-      });
-      if(/^https:\/\/script\.google/.test(found)) ok(found);
-      else err('LINKS માં MAIN_WEBAPP_URL ખાલી છે');
-    }catch(e){ err('parse') }
-  },err);
+  function scan(d,keys){
+    var rows=(d&&d.table&&d.table.rows)||[], found='';
+    rows.forEach(function(r){
+      var k=String((r.c&&r.c[0]&&r.c[0].v)||'').trim().toUpperCase();
+      var v=String((r.c&&r.c[1]&&r.c[1].v)||'').trim();
+      if(keys.indexOf(k)>-1 && v) found=v;
+    });
+    return /^https:\/\/script\.google/.test(found) ? found : '';
+  }
+  /* new one-sheet design: SETTINGS → WEBAPP URL */
+  gvizJsonp(id,'SETTINGS',function(d){
+    var u=scan(d,['WEBAPP URL','WEBAPP_URL','MAIN_WEBAPP_URL']);
+    if(u){ ok(u); return }
+    /* older multi-sheet design: LINKS → MAIN_WEBAPP_URL */
+    gvizJsonp(id,'LINKS',function(d2){
+      var u2=scan(d2,['MAIN_WEBAPP_URL']);
+      if(u2) ok(u2);
+      else err('શીટમાં WEBAPP URL મળ્યું નહીં — એક વાર Deploy કરો');
+    },function(){ err('શીટમાં SETTINGS ટૅબ નથી') });
+  },function(){
+    gvizJsonp(id,'LINKS',function(d2){
+      var u2=scan(d2,['MAIN_WEBAPP_URL']);
+      if(u2) ok(u2); else err('WEBAPP URL મળ્યું નહીં');
+    },err);
+  });
 }
 
 /* ---------------- sounds (controlled from SOUNDS sheet) ---------------- */
