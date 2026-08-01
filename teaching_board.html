@@ -1867,8 +1867,14 @@ function verify(which,pass,cb){
   var key = which==='SETTINGS'?'vrd_sp_h':'vrd_bp_h';
   if(!MAIN.url){ cb(localCheck(which,pass), true); return }
   api('verify',{which:which,pass:pass},function(d){
-    var ok=!!(d&&d.ok);
-    if(ok) store.set(key,h32(pass));
+    /* new script: {ok:true, valid:true/false} · old script: {ok:true/false}
+       {open:true} = no password set in the sheet */
+    var ok;
+    if(!d) ok=false;
+    else if(d.open===true) ok=true;
+    else if(typeof d.valid!=='undefined') ok=(d.valid===true);
+    else ok=(d.ok===true);
+    if(ok) store.set(key,h32(pass)); else store.set(key,null);
     cb(ok,false);
   },function(){
     cb(localCheck(which,pass), true);   /* offline → cached / default */
@@ -2889,7 +2895,8 @@ function stopStocks(){
 var CONTENT=store.get('vrd_content',null), pendingView=null;
 
 function contentUrl(){
-  return (MAIN.cfg&&MAIN.cfg.links&&MAIN.cfg.links.CONTENT_WEBAPP_URL)||'';
+  var u=(MAIN.cfg&&MAIN.cfg.links&&MAIN.cfg.links.CONTENT_WEBAPP_URL)||'';
+  return isSelf(u) ? (MAIN.url||'') : u;
 }
 function contentApi(action,params,ok,err){
   var u=contentUrl();
@@ -2963,7 +2970,7 @@ function makeContentPage(key,label,icon){
       }));
 
       if(!MAIN.url){ w.appendChild(bigMsg('પહેલાં ⚙ Settings માં મુખ્ય શીટ જોડો')); body.appendChild(w); return }
-      if(!contentUrl()){ w.appendChild(bigMsg('મુખ્ય શીટ → LINKS માં<br><b>CONTENT_WEBAPP_URL</b> ભરો,<br>પછી Settings → Refresh config')); body.appendChild(w); return }
+      if(!contentUrl()){ w.appendChild(bigMsg('શાળા શીટ → SETTINGS માં<br><b>ANIMATION FOLDER</b> / <b>SIMULATION FOLDER</b> ની લિંક ભરો,<br>પછી મેનુ → 🎬 Drive સ્કૅન કરો')); body.appendChild(w); return }
       if(!((CONTENT&&CONTENT[key])||[]).length){ w.appendChild(bigMsg('યાદી ખાલી છે — ઉપર SYNC દબાવો<br>(Content શીટમાં SCAN NOW પણ ચલાવો)')); body.appendChild(w); return }
 
       var pc=boardClass();
@@ -3130,7 +3137,7 @@ definePage('cview','સામગ્રી',function(body,pg){
     list.appendChild(sb);
 
     if(!MAIN.url){ msg('પહેલાં ⚙ Settings માં મુખ્ય શીટ જોડો'); return }
-    if(!contentUrl()){ msg('મુખ્ય શીટ → LINKS માં<br><b>CONTENT_WEBAPP_URL</b> ભરો,<br>પછી Settings → Refresh config'); return }
+    if(!contentUrl()){ msg('શાળા શીટ → SETTINGS માં<br><b>PDF FOLDER</b> ની લિંક ભરો,<br>પછી ↻ SYNC દબાવો'); return }
 
     if(!st.folder){
       if(!st.cache.length){ msg('ફોલ્ડર યાદી ખાલી — ઉપર SYNC દબાવો<br>(Content શીટ → PDF FOLDERS ટૅબ ભરેલી છે?)'); return }
@@ -7935,6 +7942,11 @@ applySixCam();
     store.set('vrd_main_cfg',null);
     MAIN.url=''; MAIN.cfg=null;
   }
+  /* passwords and content belong to the sheet — never carry old ones over */
+  store.set('vrd_bp_h',null);
+  store.set('vrd_sp_h',null);
+  store.set('vrd_content',null);
+  try{ CONTENT=null }catch(e){}
   store.set('vrd_main_sheet',DEFAULT_SHEET_URL);
   store.set(STAMP,DEFAULT_SHEET_URL);
 })();
