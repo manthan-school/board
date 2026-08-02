@@ -265,6 +265,19 @@ body.pageOpen #pnlDot, body.pageOpen #pnlPanel{display:none !important}
 .setCard{max-width:640px;margin-inline:auto;background:#0d1320;border:1px solid var(--line);
   border-radius:16px;padding:20px;margin-bottom:16px}
 .setCard h4{font-family:var(--head);font-size:13px;letter-spacing:1px;color:var(--dim);margin-bottom:12px}
+/* ---- sliding on/off switch ---- */
+.swRow{display:flex;align-items:center;gap:14px;width:100%;padding:6px 2px;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;user-select:none}
+.swRow .swTxt{flex:1;font-family:var(--guj);font-size:15px;color:var(--ink)}
+.swRow .swSt{font-family:var(--guj);font-size:12.5px;color:var(--dim);margin-top:2px;display:block}
+.sw{position:relative;flex:0 0 auto;width:62px;height:34px;border-radius:999px;
+  background:#1f2937;border:1px solid #334155;transition:background .22s,border-color .22s}
+.sw::after{content:'';position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;
+  background:#94a3b8;transition:transform .22s,background .22s;
+  box-shadow:0 2px 6px rgba(0,0,0,.5)}
+.sw.on{background:#14532d;border-color:#22c55e}
+.sw.on::after{transform:translateX(28px);background:#22c55e}
+.swRow:active .sw::after{width:30px}
 .setCard input{width:100%;padding:11px;border-radius:10px;background:#070b12;
   border:1px solid var(--line);color:var(--ink);font-size:13px}
 .setCard .btn{margin-top:10px}
@@ -1446,6 +1459,7 @@ var NAV=(function(){
 
   function definePage(id,title,build){ REG[id]={title:title,build:build} }
   window.__REG=REG;   /* test hook */
+/* one sliding switch row: label + state text + slider */
 
   /* every page gets the same shell: Back top-left, title, Back top-right */
   function shell(def){
@@ -1957,6 +1971,38 @@ function buildSetLock(body){
   $('spIn').addEventListener('keydown',function(e){ if(e.key==='Enter') go() });
   setTimeout(function(){ $('spIn').focus() },120);
 }
+/* a settings card that holds one sliding switch */
+function switchCard(body, heading, label, sub, isOn, onChange, note){
+  var c=document.createElement('div'); c.className='setCard';
+  var h4=document.createElement('h4'); h4.textContent=heading; c.appendChild(h4);
+  var sw=switchRow(c, label, sub, isOn, onChange);
+  if(note){
+    var n=document.createElement('div'); n.className='note'; n.innerHTML=note;
+    c.appendChild(n);
+  }
+  body.appendChild(c);
+  return {card:c, sw:sw};
+}
+function switchRow(host, label, sub, isOn, onChange){
+  var r=document.createElement('div'); r.className='swRow';
+  var txt=document.createElement('div'); txt.className='swTxt';
+  txt.appendChild(document.createTextNode(label));
+  var st=document.createElement('span'); st.className='swSt';
+  txt.appendChild(st);
+  var sw=document.createElement('div'); sw.className='sw';
+  r.appendChild(txt); r.appendChild(sw);
+  function paint(){
+    var on=!!isOn();
+    sw.className = on ? 'sw on' : 'sw';
+    st.textContent = on ? ((sub&&sub[0])||'ચાલુ') : ((sub&&sub[1])||'બંધ');
+    st.style.color = on ? '#22c55e' : 'var(--dim)';
+  }
+  r.onclick=function(){ onChange(!isOn()); paint() };
+  host.appendChild(r);
+  paint();
+  return {paint:paint, el:r, sw:sw};
+}
+
 function buildSetForm(body){
   /* her main sheet URL sits in the box by default — just tap SAVE */
   var c=document.createElement('div'); c.className='setCard';
@@ -2002,26 +2048,28 @@ function buildSetForm(body){
 
   /* ---- PnL dot show / hide ---- */
   var cd=document.createElement('div'); cd.className='setCard';
-  cd.innerHTML='<h4>STOCK PnL DOT</h4>'+
-    '<button class="btn" id="dotTgl" style="width:100%"></button>'+
-    '<button class="btn" id="dotMode" style="width:100%;margin-top:8px"></button>'+
-    '<div class="note">બંધ કરવાથી ડાબા-નીચેનો ડોટ અને stock કિંમત/PnL ક્યાંય નહીં દેખાય. '+
-    'ચાલુ કરવાથી પાસવર્ડથી ખોલેલા બોર્ડ પર તરત દેખાશે (guest માં ક્યારેય નહીં).</div>';
+  var cdH=document.createElement('h4'); cdH.textContent='STOCK PnL DOT'; cd.appendChild(cdH);
   body.appendChild(cd);
+  var dotSw=switchRow(cd,'💰 PnL ડોટ',['ડોટ દેખાય છે','ડોટ છુપાયેલો છે'],
+    dotAllowed, function(on){
+      store.set('vrd_dot_hide', on?0:1);
+      if(dotAllowed()){ if(!guestMode) startStocks() } else stopStocks();
+      dotLbl();
+    });
+  var dotModeBtn=document.createElement('button');
+  dotModeBtn.className='btn'; dotModeBtn.id='dotMode';
+  dotModeBtn.style.cssText='width:100%;margin-top:8px';
+  cd.appendChild(dotModeBtn);
+  var dotNote=document.createElement('div'); dotNote.className='note';
+  dotNote.textContent='બંધ કરવાથી ડાબા-નીચેનો ડોટ અને stock કિંમત/PnL ક્યાંય નહીં દેખાય.';
+  cd.appendChild(dotNote);
   function dotLbl(){
-    $('dotTgl').textContent = dotAllowed()
-      ? '🟢 ડોટ ચાલુ છે — બંધ કરવા દબાવો'
-      : '⚪ ડોટ બંધ છે — ચાલુ કરવા દબાવો';
-    $('dotMode').textContent = (store.get('vrd_dot_mode','pnl')==='full')
+    dotSw.paint();
+    dotModeBtn.textContent = (store.get('vrd_dot_mode','pnl')==='full')
       ? '📋 બતાવે છે: આખી યાદી + ભાવ + PnL — બદલવા દબાવો'
       : '💰 બતાવે છે: ફક્ત કુલ PnL — બદલવા દબાવો';
   }
-  $('dotTgl').onclick=function(){
-    store.set('vrd_dot_hide', dotAllowed()?1:0);
-    if(dotAllowed()){ if(!guestMode) startStocks() } else stopStocks();
-    dotLbl();
-  };
-  $('dotMode').onclick=function(){
+  dotModeBtn.onclick=function(){
     store.set('vrd_dot_mode', store.get('vrd_dot_mode','pnl')==='full'?'pnl':'full');
     dotLbl();
   };
@@ -2029,56 +2077,33 @@ function buildSetForm(body){
 
   /* --- all-classes screen toggle --- */
   var av=document.createElement('div'); av.className='setCard';
-  av.innerHTML='<h4>ત્રણેય વર્ગ સ્ક્રીન · ALL CLASSES</h4>'+
-    '<button class="btn" id="avTgl" style="width:100%"></button>'+
-    '<div class="note">જમણી પટ્ટીમાં "ત્રણેય વર્ગ" બટન — એક જ સ્ક્રીન પર ત્રણેય વર્ગના '+
-    'લાઇવ વિડિયો. બંધ કરવાથી બટન છુપાઈ જશે.</div>';
+  var avH=document.createElement('h4'); avH.textContent='ત્રણેય વર્ગ સ્ક્રીન · ALL CLASSES'; av.appendChild(avH);
   body.appendChild(av);
-  function avLbl(){
-    $('avTgl').textContent = allViewAllowed()
-      ? '🟢 સ્ક્રીન ચાલુ છે — બંધ કરવા દબાવો'
-      : '⚪ સ્ક્રીન બંધ છે — ચાલુ કરવા દબાવો';
-  }
-  $('avTgl').onclick=function(){
-    store.set('vrd_allview_on', allViewAllowed()?0:1);
-    applyAllView(); avLbl();
-  };
-  avLbl();
+  var avSw=switchRow(av,'▥ ત્રણેય વર્ગ',['બટન દેખાય છે','બટન છુપાયેલું છે'],
+    allViewAllowed, function(on){ store.set('vrd_allview_on', on?1:0); applyAllView() });
+  var avN=document.createElement('div'); avN.className='note';
+  avN.textContent='જમણી પટ્ટીમાં ત્રણેય વર્ગનું બટન. મૂળભૂત રીતે બંધ.';
+  av.appendChild(avN);
 
   /* --- six-camera screen toggle --- */
   var sv=document.createElement('div'); sv.className='setCard';
-  sv.innerHTML='<h4>6 કૅમેરા સ્ક્રીન · DUAL CAM</h4>'+
-    '<button class="btn" id="svTgl" style="width:100%"></button>'+
-    '<div class="note">જમણી પટ્ટીમાં "6 કૅમેરા" બટન — દરેક વર્ગના બંને કૅમેરા (📷📷 સેશન) '+
-    'એક સ્ક્રીન પર. બંધ કરવાથી બટન છુપાઈ જશે.</div>';
+  var svH=document.createElement('h4'); svH.textContent='6 કૅમેરા સ્ક્રીન · DUAL CAM'; sv.appendChild(svH);
   body.appendChild(sv);
-  function svLbl(){
-    $('svTgl').textContent = sixCamAllowed()
-      ? '🟢 સ્ક્રીન ચાલુ છે — બંધ કરવા દબાવો'
-      : '⚪ સ્ક્રીન બંધ છે — ચાલુ કરવા દબાવો';
-  }
-  $('svTgl').onclick=function(){
-    store.set('vrd_sixcam_on', sixCamAllowed()?0:1);
-    applySixCam(); svLbl();
-  };
-  svLbl();
+  var svSw=switchRow(sv,'⊞ 6 કૅમેરા',['બટન દેખાય છે','બટન છુપાયેલું છે'],
+    sixCamAllowed, function(on){ store.set('vrd_sixcam_on', on?1:0); applySixCam() });
+  var svN=document.createElement('div'); svN.className='note';
+  svN.textContent='દરેક વર્ગના બંને કૅમેરા એક સ્ક્રીન પર. મૂળભૂત રીતે બંધ.';
+  sv.appendChild(svN);
 
   /* --- teacher view toggle --- */
   var tv=document.createElement('div'); tv.className='setCard';
-  tv.innerHTML='<h4>શિક્ષક દૃષ્ટિ · TEACHER VIEW</h4>'+
-    '<button class="btn" id="tvTgl" style="width:100%"></button>'+
-    '<div class="note">જમણી પટ્ટીમાં "શિક્ષક દૃષ્ટિ" બટન — વર્ગના મજબૂત અને નબળા વિદ્યાર્થી, '+
-    'નબળાં પ્રકરણ અને મહેનતનો સારાંશ. મૂળભૂત રીતે બંધ.</div>';
+  var tvH=document.createElement('h4'); tvH.textContent='શિક્ષક દૃષ્ટિ · TEACHER VIEW'; tv.appendChild(tvH);
   body.appendChild(tv);
-  function tvLbl(){
-    $('tvTgl').textContent = tViewAllowed()
-      ? '🟢 ચાલુ છે — બંધ કરવા દબાવો' : '⚪ બંધ છે — ચાલુ કરવા દબાવો';
-  }
-  $('tvTgl').onclick=function(){
-    store.set('vrd_tview_on', tViewAllowed()?0:1);
-    applyTView(); tvLbl();
-  };
-  tvLbl();
+  var tvSw=switchRow(tv,'📊 શિક્ષક દૃષ્ટિ',['બટન દેખાય છે','બટન છુપાયેલું છે'],
+    tViewAllowed, function(on){ store.set('vrd_tview_on', on?1:0); applyTView() });
+  var tvN=document.createElement('div'); tvN.className='note';
+  tvN.textContent='વર્ગના મજબૂત અને નબળા વિદ્યાર્થીનો સારાંશ. મૂળભૂત રીતે બંધ.';
+  tv.appendChild(tvN);
 
   /* --- offline queue --- */
   var pq=document.createElement('div'); pq.className='setCard';
@@ -2098,6 +2123,59 @@ function buildSetForm(body){
     });
   };
   pendPaint();
+
+  /* --- which camera is which --- */
+  var camC=document.createElement('div'); camC.className='setCard';
+  var camH=document.createElement('h4'); camH.textContent='કૅમેરા પસંદગી · CAMERAS';
+  camC.appendChild(camH);
+  var camMsg=document.createElement('div');
+  camMsg.style.cssText='font-family:var(--guj);font-size:13px;color:var(--dim);margin-bottom:8px';
+  camMsg.textContent='કૅમેરાની યાદી જોવા નીચે દબાવો (એક વાર પરવાનગી માંગશે).';
+  camC.appendChild(camMsg);
+  var camSel1=document.createElement('select'); camSel1.className='evSel';
+  var camSel2=document.createElement('select'); camSel2.className='evSel';
+  camSel1.style.display=camSel2.style.display='none';
+  camC.appendChild(camSel1); camC.appendChild(camSel2);
+  var camBtn=document.createElement('button');
+  camBtn.className='btn'; camBtn.style.cssText='width:100%';
+  camBtn.textContent='🎥 કૅમેરા શોધો';
+  camC.appendChild(camBtn);
+  var camNote=document.createElement('div'); camNote.className='note';
+  camNote.innerHTML='કૅમેરા 1 = રેકોર્ડિંગ · કૅમેરા 2 = બીજું દૃશ્ય. '+
+    'USB પોર્ટ બદલાય તો પણ પસંદ કરેલો કૅમેરો યાદ રહેશે.';
+  camC.appendChild(camNote);
+  body.appendChild(camC);
+  camBtn.onclick=function(){
+    camBtn.textContent='🎥 શોધાય છે…';
+    navigator.mediaDevices.getUserMedia({video:true}).then(function(s){
+      s.getTracks().forEach(function(t){ t.stop() });
+      return navigator.mediaDevices.enumerateDevices();
+    }).then(function(devs){
+      var cams=devs.filter(function(d){ return d.kind==='videoinput' });
+      if(!cams.length){ camMsg.textContent='કોઈ કૅમેરો મળ્યો નથી'; camBtn.textContent='🎥 ફરી શોધો'; return }
+      [[camSel1,1],[camSel2,2]].forEach(function(p){
+        var sel=p[0], n=p[1];
+        sel.innerHTML='';
+        cams.forEach(function(d,i){
+          var o2=document.createElement('option');
+          o2.value=d.deviceId;
+          o2.textContent='કૅમેરા '+n+': '+(d.label||('device '+(i+1)));
+          sel.appendChild(o2);
+        });
+        var saved=store.get('vrd_cam'+n,'');
+        if(saved) sel.value=saved;
+        else if(cams[n-1]) sel.value=cams[n-1].deviceId;
+        sel.style.display='';
+        sel.onchange=function(){ store.set('vrd_cam'+n, sel.value); camMsg.textContent='✅ સેવ થયું' };
+        store.set('vrd_cam'+n, sel.value);
+      });
+      camMsg.textContent=cams.length+' કૅમેરા મળ્યા — કયો ક્યાં વાપરવો તે પસંદ કરો';
+      camBtn.textContent='🎥 ફરી શોધો';
+    })['catch'](function(e){
+      camMsg.textContent='કૅમેરો ખૂલ્યો નહીં: '+((e&&e.name)||e);
+      camBtn.textContent='🎥 ફરી શોધો';
+    });
+  };
 
   /* --- reset to the sheet built into this board --- */
   var rs=document.createElement('div'); rs.className='setCard';
@@ -2425,6 +2503,23 @@ function csStatus(t,col){
   if(m) m.textContent=t;
 }
 /* ---------- start a class session ---------- */
+function camPref(n){ return store.get('vrd_cam'+n,'') }
+function camSetPref(n,id){ store.set('vrd_cam'+n, id||'') }
+/* pick the saved camera if it is still plugged in, else fall back by order */
+function pickDevices(list,want){
+  var ids=list.map(function(d){ return d.deviceId });
+  var out=[];
+  var p1=camPref(1);
+  out.push(ids.indexOf(p1)>=0 ? p1 : (ids[0]||''));
+  if(want===2){
+    var p2=camPref(2);
+    if(ids.indexOf(p2)>=0 && p2!==out[0]) out.push(p2);
+    else{
+      for(var i=0;i<ids.length;i++) if(ids[i]!==out[0]){ out.push(ids[i]); break }
+    }
+  }
+  return out;
+}
 function classSession(cls,cams){
   if(CS.on){ csToast('સેશન પહેલેથી ચાલુ છે — પહેલાં ✕ દબાવો','#2a2010'); return }
   if(csInsecure()){
@@ -2440,13 +2535,12 @@ function classSession(cls,cams){
     return navigator.mediaDevices.enumerateDevices().then(function(devs){
       var cams2=devs.filter(function(d){ return d.kind==='videoinput' });
       first.getTracks().forEach(function(t){ t.stop() });
-      var want=[cams2[0]&&cams2[0].deviceId];
-      if(CS.cams===2){
-        if(cams2.length<2){
-          csStatus('બીજો કૅમેરો મળ્યો નથી — એક કૅમેરાથી ચાલુ','#fbbf24');
-          CS.cams=1;
-        }else want.push(cams2[1].deviceId);
+      CS.devices=cams2;
+      if(CS.cams===2 && cams2.length<2){
+        csStatus('બીજો કૅમેરો મળ્યો નથી — એક કૅમેરાથી ચાલુ','#fbbf24');
+        CS.cams=1;
       }
+      var want=pickDevices(cams2, CS.cams);
       return Promise.all(want.map(function(id,ix){
         return navigator.mediaDevices.getUserMedia({
           video: id?{deviceId:{exact:id},width:1280,height:720}:{width:1280,height:720},
@@ -2498,9 +2592,15 @@ function csStart(streams){
     CS.raf=requestAnimationFrame(draw);
   }
   draw();
-  var prev=document.getElementById('csPrev');
-  if(prev){ prev.srcObject=c.captureStream(15); prev.play&&prev.play() }
+  /* browsers pause requestAnimationFrame in a background tab — this
+     keeps the recording moving at ~15fps even then */
+  clearInterval(CS.tick);
+  CS.tick=setInterval(function(){
+    if(CS.on && document.hidden) draw();
+  },66);
   CS.out=c.captureStream(20);
+  var prev=document.getElementById('csPrev');
+  if(prev){ prev.srcObject=CS.out; prev.play&&prev.play() }
   var at=streams[0].getAudioTracks();
   if(at.length) CS.out.addTrack(at[0]);
   try{ CS.mr=new MediaRecorder(CS.out,{mimeType:'video/webm;codecs=vp8,opus'}) }
@@ -2529,7 +2629,7 @@ function csStart(streams){
 function csStop(){
   if(!CS.on) return;
   CS.on=false;
-  clearInterval(CS.tm); cancelAnimationFrame(CS.raf);
+  clearInterval(CS.tm); clearInterval(CS.tick); cancelAnimationFrame(CS.raf);
   try{ if(CS.mr && CS.mr.state!=='inactive') CS.mr.stop() }catch(e){}
   CS.streams.forEach(function(s){ try{ s.getTracks().forEach(function(t){t.stop()}) }catch(e){} });
   CS.streams=[];
@@ -2543,7 +2643,8 @@ function csFloat(){
   var old=document.getElementById('csFloat'); if(old) old.remove();
   var pfx=store.get('vrd_jitsi_prefix','pvv-vaghaldhara');
   var jUrl='https://meet.jit.si/'+pfx+'-dhoran-'+CS.cls+
-    '#userInfo.displayName=%22Dhoran-'+CS.cls+'%22&config.prejoinPageEnabled=false';
+    '#userInfo.displayName=%22Dhoran-'+CS.cls+'%22&config.prejoinPageEnabled=false'+
+    '&config.startWithAudioMuted=true';   /* the recorder already has the mic */
   var f=document.createElement('div'); f.id='csFloat';
   f.style.cssText='position:fixed;right:16px;bottom:70px;width:420px;z-index:98;'+
     'background:#0d1320;border:1px solid #7f1d1d;border-radius:14px;overflow:hidden;'+
@@ -2580,7 +2681,15 @@ function csFloat(){
     document.getElementById('csTabJ').style.background=showJ?'#132441':'#0d1626';
   }
   f.querySelector('#csTabV').onclick=function(){ showJ=false; paintTabs() };
-  f.querySelector('#csTabJ').onclick=function(){ showJ=true;  paintTabs() };
+  f.querySelector('#csTabJ').onclick=function(){
+    showJ=true; paintTabs();
+    /* one camera cannot always serve both the recorder and Jitsi */
+    if(CS.cams<2 && !f.dataset.warned){
+      f.dataset.warned='1';
+      csStatus('📡 Jitsi ચાલુ — એક જ કૅમેરો હોવાથી ત્યાં વિડિયો ન દેખાય તો '+
+               '📷📷 2 કૅમેરા વાપરો','#fbbf24');
+    }
+  };
   f.querySelector('#csBig').onclick=function(){
     big=!big;
     f.style.width=big?'70vw':'420px';
@@ -2605,8 +2714,20 @@ function csFloat(){
 /* small pill — recording and Jitsi keep running */
 function csMini(on){
   var f=document.getElementById('csFloat');
-  if(!on){ var p=document.getElementById('csMini'); if(p) p.remove(); if(f) f.style.display='flex'; return }
-  if(f) f.style.display='none';
+  if(!on){
+    var p=document.getElementById('csMini'); if(p) p.remove();
+    if(f){ f.style.visibility='visible'; f.style.pointerEvents='auto';
+           f.style.left=f.dataset.oldLeft||''; f.style.top=f.dataset.oldTop||'';
+           if(!f.dataset.oldLeft){ f.style.right='16px'; f.style.bottom='70px' } }
+    return;
+  }
+  if(f){
+    /* park it off-screen instead of display:none — a hidden iframe would
+       stop the Jitsi video, an off-screen one keeps playing */
+    f.dataset.oldLeft=f.style.left; f.dataset.oldTop=f.style.top;
+    f.style.visibility='hidden'; f.style.pointerEvents='none';
+    f.style.left='-9999px'; f.style.top='0';
+  }
   if(document.getElementById('csMini')) return;
   var p=document.createElement('div'); p.id='csMini';
   p.style.cssText='position:fixed;right:14px;bottom:60px;z-index:99;display:flex;gap:8px;'+
@@ -2752,6 +2873,12 @@ function jitsiFloat(cls, cam){
    3b. ALL CLASSES — one in-board screen, three live class videos.
    Rail button can be enabled/disabled from Settings (vrd_allview).
    ================================================================ */
+
+/* test buttons can be switched off from the school sheet */
+window.__setAllow=function(e,f){ MAIN.cfg=MAIN.cfg||{}; MAIN.cfg.allow={evalTest:e,flnTest:f} };  /* test hook */
+/* one sliding switch row: label + state text + slider */
+function evalTestOn(){ var a=MAIN.cfg&&MAIN.cfg.allow; return !a || a.evalTest!==false }
+function flnTestOn(){  var a=MAIN.cfg&&MAIN.cfg.allow; return !a || a.flnTest!==false }
 
 /* optional screens — OFF by default, switched on in ⚙ Settings */
 function tViewAllowed(){ return !!store.get('vrd_tview_on',0) }
@@ -3394,7 +3521,8 @@ function evalPage(id, playFn){
         if(!guestMode)
           g.appendChild(tile(ICON.play,'📘 શિક્ષક મોડ','પુનરાવર્તન — સાચો જવાબ + સમજ · રોલ નં નહીં',function(){ st.mode='T'; render() }));
         g.appendChild(tile(ICON.play,'✍ પ્રેક્ટિસ મોડ','રોલ નં + ટકોર — મહેનત તરીકે નોંધાય',function(){ st.mode='P'; render() }));
-        g.appendChild(tile(ICON.play,'📝 ટેસ્ટ મોડ','રોલ નં — ટેસ્ટ પરિણામ સેવ થશે',function(){ st.mode='S'; render() }));
+        if(evalTestOn())
+          g.appendChild(tile(ICON.play,'📝 ટેસ્ટ મોડ','રોલ નં — ટેસ્ટ પરિણામ સેવ થશે',function(){ st.mode='S'; render() }));
       }
       else if(st.mode==='T') teacherFlow(w);
       else studentFlow(w);
@@ -4212,7 +4340,7 @@ definePage('evaluation','મૂલ્યાંકન · Evaluation',function(bod
   var h1=cell(headCss); h1.textContent='પ્રકાર · TYPE'; h1.style.textAlign='left';
   var h2=cell(headCss); h2.textContent='📘 શિક્ષક';
   var h3=cell(headCss); h3.textContent='✍ પ્રેક્ટિસ';
-  var h4=cell(headCss); h4.textContent='📝 ટેસ્ટ';
+  var h4=cell(headCss); h4.textContent=evalTestOn()?'📝 ટેસ્ટ':'📝 ટેસ્ટ (બંધ)';
   head.appendChild(h1); head.appendChild(h2); head.appendChild(h3); head.appendChild(h4);
   w.appendChild(head);
   defs.forEach(function(d){
@@ -4232,7 +4360,15 @@ definePage('evaluation','મૂલ્યાંકન · Evaluation',function(bod
     row.appendChild(lab);
     row.appendChild(mkBtn('📘 પુનરાવર્તન','T','#132441','#1d4ed8'));
     row.appendChild(mkBtn('✍ પ્રેક્ટિસ','P','#2a2010','#b45309'));
-    row.appendChild(mkBtn('📝 ટેસ્ટ','S','#0d1f16','#166534'));
+    if(evalTestOn()) row.appendChild(mkBtn('📝 ટેસ્ટ','S','#0d1f16','#166534'));
+    else{
+      var offC=document.createElement('div');
+      offC.style.cssText='display:flex;align-items:center;justify-content:center;'+
+        'font-family:var(--guj);font-size:12px;color:var(--dim);border:1px dashed var(--line);'+
+        'border-radius:12px';
+      offC.textContent='ટેસ્ટ બંધ';
+      row.appendChild(offC);
+    }
     w.appendChild(row);
   });
   /* 👥 two students at once */
@@ -5248,7 +5384,7 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
     }
     if(!guestMode) mb('📘 શિક્ષક','L','#1d4ed8','#132441');
     mb('✍ પ્રેક્ટિસ','P','#b45309','#2a2010');
-    mb('📝 ટેસ્ટ','T','#166534','#0d1f16');
+    if(flnTestOn()) mb('📝 ટેસ્ટ','T','#166534','#0d1f16');
     w2.appendChild(r);
     return r;
   }
@@ -5299,9 +5435,9 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
         '<div style="font-size:11.5px;color:var(--dim);margin-top:3px">'+
         (isR?'અક્ષર · માત્રા · શબ્દ · જોડાક્ષર · ફકરો વાંચન (WPM) · સમજ'
            :'અક્ષર લેખન · માત્રા · વાક્ય · જોડણી · સમાનાર્થી-વિરુદ્ધાર્થી · વિરામચિહ્ન')+
-        ' — દરેક સાધન 📘 શિક્ષક · ✍ પ્રેક્ટિસ · 📝 ટેસ્ટ માં</div>';
+        ' — દરેક સાધન 📘 શિક્ષક · ✍ પ્રેક્ટિસ'+(flnTestOn()?' · 📝 ટેસ્ટ':'')+' માં</div>';
       w.appendChild(hd);
-      wideBtn(w,'🌱 વ્યક્તિગત પ્રગતિ — '+(isR?'વાંચન':'લેખન')+
+      if(flnTestOn()) wideBtn(w,'🌱 વ્યક્તિગત પ્રગતિ — '+(isR?'વાંચન':'લેખન')+
         ' <span style="font-weight:400;font-size:11.5px;color:var(--dim)">'+
         'રોલ નં આપો → નબળી કુશળતા શોધી, પ્રેક્ટિસ કરાવી, ટેસ્ટ લઈ આગળ લઈ જશે</span>',
         '#22c55e','#0d2818',function(){ GROWTH_SCOPE=st.sec; NAV.go('growth') });
@@ -5350,7 +5486,7 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
       }
     }
 
-    wideBtn(w,'🌱 વ્યક્તિગત પ્રગતિ — ગણન '+
+    if(flnTestOn()) wideBtn(w,'🌱 વ્યક્તિગત પ્રગતિ — ગણન '+
       '<span style="font-weight:400;font-size:11.5px;color:var(--dim)">'+
       'રોલ નં આપો → નબળી કુશળતા શોધી, પ્રેક્ટિસ કરાવી, ટેસ્ટ લઈ આગળ લઈ જશે</span>',
       '#22c55e','#0d2818',function(){ GROWTH_SCOPE='ganan'; NAV.go('growth') });
@@ -5431,7 +5567,7 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
       }
       if(!guestMode) mb('📘 શિક્ષક','L','#1d4ed8','#132441');
       mb('✍ પ્રેક્ટિસ','P','#b45309','#2a2010');
-      mb('📝 ટેસ્ટ','T','#166534','#0d1f16');
+      if(flnTestOn()) mb('📝 ટેસ્ટ','T','#166534','#0d1f16');
       w.appendChild(r);
     });
   }
@@ -5461,7 +5597,7 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
       }
       if(!guestMode) mb('📘 શિક્ષક','L','#1d4ed8','#132441');
       mb('✍ પ્રેક્ટિસ','P','#b45309','#2a2010');
-      mb('📝 ટેસ્ટ','T','#166534','#0d1f16');
+      if(flnTestOn()) mb('📝 ટેસ્ટ','T','#166534','#0d1f16');
       w.appendChild(r);
     });
   }
@@ -7252,7 +7388,9 @@ definePage('eval2','👥 મૂલ્યાંકન · બે વિદ્ય�
   }
   function stMode(sd){
     var s=P[sd], c=card(sd);
-    chips(c,'મોડ પસંદ કરો',[['✍ પ્રેક્ટિસ','P'],['📝 ટેસ્ટ','S']],function(m){
+    var modesB=[['✍ પ્રેક્ટિસ','P']];
+    if(evalTestOn()) modesB.push(['📝 ટેસ્ટ','S']);
+    chips(c,'મોડ પસંદ કરો',modesB,function(m){
       s.mode=m; s.stage='setup'; draw(sd);
     });
   }
