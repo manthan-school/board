@@ -1506,6 +1506,8 @@ var NAV=(function(){
     render(id);
     paintRail();
   }
+  function reload(){ var id=stack[stack.length-1]; if(id) render(id) }
+  function current(){ return stack[stack.length-1]||'' }
   /* every page change invalidates timers/speech started by the old page */
   window.PAGE_GEN=(window.PAGE_GEN||0);
 
@@ -1536,6 +1538,7 @@ var NAV=(function(){
   }
 
   return { definePage:definePage, go:go, back:back, home:home,
+           reload:reload, current:current,
            esc:esc, depth:function(){ return stack.length } };
 })();
 
@@ -1824,8 +1827,49 @@ function loadConfig(cb){
   },function(e){ cb&&cb(null,e) });
 }
 /* ---- remote control from the SETTINGS tab (works from your phone) ---- */
+/* ---- read the test switches directly from the sheet ----------------
+   This does not depend on the deployed script version, so an old
+   deployment can never leave the test buttons stuck ON. ------------- */
+function loadAllowFromSheet(cb){
+  var sheet=store.get('vrd_main_sheet','')||DEFAULT_SHEET_URL;
+  var id=sheetIdOf(sheet);
+  if(!id){ cb&&cb(null); return }
+  gvizJsonp(id,'SETTINGS',function(d){
+    try{
+      var rows=(d&&d.table&&d.table.rows)||[], got={};
+      rows.forEach(function(r){
+        var k=String((r.c&&r.c[0]&&r.c[0].v)||'').trim().toUpperCase();
+        var v=String((r.c&&r.c[1]&&r.c[1].v)||'').trim().toUpperCase();
+        if(k==='ALLOW EVALUATION TEST') got.evalTest=!(v==='NO'||v==='FALSE'||v==='0');
+        if(k==='ALLOW FLN TEST')        got.flnTest =!(v==='NO'||v==='FALSE'||v==='0');
+      });
+      if(got.evalTest!==undefined || got.flnTest!==undefined){
+        MAIN.cfg=MAIN.cfg||{};
+        var a=MAIN.cfg.allow||{};
+        if(got.evalTest!==undefined) a.evalTest=got.evalTest;
+        if(got.flnTest !==undefined) a.flnTest =got.flnTest;
+        MAIN.cfg.allow=a;
+        MAIN.cfg.allowFrom='sheet';
+        store.set('vrd_main_cfg',MAIN.cfg);
+        applyRemote(MAIN.cfg);
+      }
+      cb&&cb(MAIN.cfg&&MAIN.cfg.allow);
+    }catch(e){ cb&&cb(null) }
+  },function(){ cb&&cb(null) });
+}
+var LAST_ALLOW='';
 function applyRemote(cfg){
   cfg=cfg||MAIN.cfg||{};
+  /* the sheet switched test buttons on/off → redraw the open page */
+  try{
+    var a=cfg.allow||{};
+    var sig=(a.evalTest===false?'0':'1')+(a.flnTest===false?'0':'1');
+    if(LAST_ALLOW && LAST_ALLOW!==sig && NAV && NAV.current){
+      var cur=NAV.current();
+      if(cur==='fin'||cur==='evaluation'||cur==='fin2'||cur==='eval2'||cur==='growth') NAV.reload();
+    }
+    LAST_ALLOW=sig;
+  }catch(e){}
   /* 1. notice line for every board */
   var n=$('noticeBar');
   var msg=String(cfg.notice||'').trim();
@@ -1983,6 +2027,23 @@ function switchCard(body, heading, label, sub, isOn, onChange, note){
   body.appendChild(c);
   return {card:c, sw:sw};
 }
+/* one line that says exactly which modes are available and why */
+function modeLegend(w, which){
+  var testOn = which==='eval' ? evalTestOn() : flnTestOn();
+  var d=document.createElement('div');
+  d.style.cssText='max-width:900px;margin:0 auto 10px;width:100%;padding:8px 12px;'+
+    'border-radius:10px;background:#0d1626;border:1px solid var(--line);'+
+    'font-family:var(--guj);font-size:12px;color:var(--dim);display:flex;gap:14px;flex-wrap:wrap';
+  d.innerHTML=
+    (guestMode
+      ? '<span style="opacity:.5">📘 શિક્ષક — પાસવર્ડથી ખોલો</span>'
+      : '<span style="color:#93c5fd">📘 શિક્ષક — ચાલુ</span>')+
+    '<span style="color:#fbbf24">✍ પ્રેક્ટિસ — હંમેશા ચાલુ</span>'+
+    (testOn
+      ? '<span style="color:#22c55e">📝 ટેસ્ટ — ચાલુ (શીટમાંથી)</span>'
+      : '<span style="color:#f87171">📝 ટેસ્ટ — શીટમાંથી બંધ</span>');
+  w.appendChild(d);
+}
 function switchRow(host, label, sub, isOn, onChange){
   var r=document.createElement('div'); r.className='swRow';
   var txt=document.createElement('div'); txt.className='swTxt';
@@ -2123,6 +2184,65 @@ function buildSetForm(body){
     });
   };
   pendPaint();
+
+  /* --- what the school sheet is telling this board --- */
+  var verC=document.createElement('div'); verC.className='setCard';
+  var verH=document.createElement('h4'); verH.textContent='બોર્ડ વર્ઝન'; verC.appendChild(verH);
+  var verT=document.createElement('div');
+  verT.style.cssText='font-family:var(--mono);font-size:13px;color:#22c55e';
+  verT.textContent=BOARD_BUILD;
+  verC.appendChild(verT);
+  var verN=document.createElement('div'); verN.className='note';
+  verN.textContent='પેનલ પર આ જ લખાણ દેખાય તો નવું બોર્ડ ચાલે છે. ન દેખાય તો જૂની ફાઇલ છે.';
+  verC.appendChild(verN);
+  body.appendChild(verC);
+
+  var tsC=document.createElement('div'); tsC.className='setCard';
+  var tsH=document.createElement('h4'); tsH.textContent='ટેસ્ટ બટન · શીટમાંથી કંટ્રોલ';
+  tsC.appendChild(tsH);
+  var tsMsg=document.createElement('div');
+  tsMsg.style.cssText='font-family:var(--guj);font-size:14px;line-height:1.9';
+  tsC.appendChild(tsMsg);
+  var tsBtn=document.createElement('button');
+  tsBtn.className='btn'; tsBtn.style.cssText='width:100%;margin-top:8px';
+  tsBtn.textContent='↻ શીટમાંથી ફરી વાંચો';
+  tsC.appendChild(tsBtn);
+  var tsNote=document.createElement('div'); tsNote.className='note';
+  tsC.appendChild(tsNote);
+  body.appendChild(tsC);
+  function tsPaint(){
+    var a=MAIN.cfg&&MAIN.cfg.allow;
+    if(!a){
+      tsMsg.innerHTML='<span style="color:#f87171">⚠ શીટમાંથી આ સેટિંગ મળી નથી</span>';
+      tsNote.innerHTML='આનો અર્થ: શીટની સ્ક્રિપ્ટ જૂની છે.<br>'+
+        '<b>Extensions → Apps Script</b> માં નવી સ્ક્રિપ્ટ પેસ્ટ કરો → '+
+        '<b>Deploy → Manage deployments → ✏️ → New version → Deploy</b> → '+
+        'પછી અહીં ↻ દબાવો. (સેટિંગ ન મળે ત્યાં સુધી ટેસ્ટ બટન ચાલુ રહે છે.)';
+      return;
+    }
+    tsMsg.innerHTML=
+      '📊 મૂલ્યાંકન ટેસ્ટ: <b style="color:'+(a.evalTest?'#22c55e':'#f87171')+'">'+
+        (a.evalTest?'ચાલુ':'બંધ')+'</b><br>'+
+      '🔢 FLN ટેસ્ટ: <b style="color:'+(a.flnTest?'#22c55e':'#f87171')+'">'+
+        (a.flnTest?'ચાલુ':'બંધ')+'</b>';
+    tsNote.innerHTML=(MAIN.cfg&&MAIN.cfg.allowFrom==='sheet'
+        ? '<span style="color:#22c55e">✔ સીધું શીટમાંથી વંચાયું</span><br>' : '')+
+      'શાળા શીટ → <b>SETTINGS</b> ટૅબમાં <b>ALLOW EVALUATION TEST</b> અને '+
+      '<b>ALLOW FLN TEST</b> માં YES/NO લખો. બદલ્યા પછી અહીં ↻ દબાવો (કે 5 મિનિટ રાહ જુઓ).';
+  }
+  tsBtn.onclick=function(){
+    tsBtn.textContent='↻ વાંચે છે…';
+    loadAllowFromSheet(function(a){
+      loadConfig(function(){
+        tsBtn.textContent='↻ શીટમાંથી ફરી વાંચો';
+        tsPaint();
+        if(!a && !(MAIN.cfg&&MAIN.cfg.allow))
+          tsMsg.innerHTML='<span style="color:#f87171">શીટ વંચાઈ નહીં — શીટ '+
+            '"Anyone with the link" તરીકે શેર કરેલી છે?</span>';
+      });
+    });
+  };
+  tsPaint();
 
   /* --- which camera is which --- */
   var camC=document.createElement('div'); camC.className='setCard';
@@ -3497,10 +3617,12 @@ function endStudent(w,st,againFn,backFn){
 function isStu(st){ return st.mode==='S' || st.mode==='P' }
 function modeWord(m){ return m==='P'?'પ્રેક્ટિસ':(m==='S'?'ટેસ્ટ':'શિક્ષક') }
 var EVAL_PRESET=null;   /* set by the Evaluation matrix — opens a game directly in that mode */
+function safeEvalMode(m){ return (m==='S' && !evalTestOn()) ? 'P' : m }
 var EVAL_PLAY={};        /* id → play(w, st, back, rerender) — reused by the 2-student page */
 function evalPage(id, playFn){
   var C=EVAL_CFG[id];
   EVAL_PLAY[id]=playFn;
+  /* a test can never start if the school sheet switched it off */
   definePage(id, C.title, function(body){
     body.classList.add('mid');
     var st={id:id, mode:EVAL_PRESET||null}; EVAL_PRESET=null;
@@ -3523,6 +3645,7 @@ function evalPage(id, playFn){
         g.appendChild(tile(ICON.play,'✍ પ્રેક્ટિસ મોડ','રોલ નં + ટકોર — મહેનત તરીકે નોંધાય',function(){ st.mode='P'; render() }));
         if(evalTestOn())
           g.appendChild(tile(ICON.play,'📝 ટેસ્ટ મોડ','રોલ નં — ટેસ્ટ પરિણામ સેવ થશે',function(){ st.mode='S'; render() }));
+
       }
       else if(st.mode==='T') teacherFlow(w);
       else studentFlow(w);
@@ -4335,13 +4458,16 @@ definePage('evaluation','મૂલ્યાંકન · Evaluation',function(bod
   function cell(css){ var d=document.createElement('div'); d.style.cssText=css; return d }
   var headCss='font-family:var(--guj);font-size:12.5px;color:var(--dim);text-align:center;'+
     'letter-spacing:.4px;padding:4px 0';
-  var rowCss='display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:9px;margin-bottom:10px';
+  var nModes=(guestMode?0:1)+1+(evalTestOn()?1:0);        /* teacher? + practice + test? */
+  var rowCss='display:grid;grid-template-columns:1.5fr'+
+    Array(nModes+1).join(' 1fr')+';gap:9px;margin-bottom:10px';
   var head=cell(rowCss);
+  modeLegend(w,'eval');
   var h1=cell(headCss); h1.textContent='પ્રકાર · TYPE'; h1.style.textAlign='left';
-  var h2=cell(headCss); h2.textContent='📘 શિક્ષક';
-  var h3=cell(headCss); h3.textContent='✍ પ્રેક્ટિસ';
-  var h4=cell(headCss); h4.textContent=evalTestOn()?'📝 ટેસ્ટ':'📝 ટેસ્ટ (બંધ)';
-  head.appendChild(h1); head.appendChild(h2); head.appendChild(h3); head.appendChild(h4);
+  head.appendChild(h1);
+  if(!guestMode){ var h2=cell(headCss); h2.textContent='📘 શિક્ષક'; head.appendChild(h2) }
+  var h3=cell(headCss); h3.textContent='✍ પ્રેક્ટિસ'; head.appendChild(h3);
+  if(evalTestOn()){ var h4=cell(headCss); h4.textContent='📝 ટેસ્ટ'; head.appendChild(h4) }
   w.appendChild(head);
   defs.forEach(function(d){
     var row=cell(rowCss);
@@ -4358,17 +4484,9 @@ definePage('evaluation','મૂલ્યાંકન · Evaluation',function(bod
       return b;
     }
     row.appendChild(lab);
-    row.appendChild(mkBtn('📘 પુનરાવર્તન','T','#132441','#1d4ed8'));
+    if(!guestMode) row.appendChild(mkBtn('📘 પુનરાવર્તન','T','#132441','#1d4ed8'));
     row.appendChild(mkBtn('✍ પ્રેક્ટિસ','P','#2a2010','#b45309'));
     if(evalTestOn()) row.appendChild(mkBtn('📝 ટેસ્ટ','S','#0d1f16','#166534'));
-    else{
-      var offC=document.createElement('div');
-      offC.style.cssText='display:flex;align-items:center;justify-content:center;'+
-        'font-family:var(--guj);font-size:12px;color:var(--dim);border:1px dashed var(--line);'+
-        'border-radius:12px';
-      offC.textContent='ટેસ્ટ બંધ';
-      row.appendChild(offC);
-    }
     w.appendChild(row);
   });
   /* 👥 two students at once */
@@ -4895,6 +5013,7 @@ var EMO=['🍎','⭐','🌸','🐟','🥭','🦋','🎈','🍬'];
    Options include the mistakes students really make, so a wrong tap
    is a teaching moment.
    ================================================================== */
+var BOARD_BUILD='2026-08-02 · test-switch build';
 var GEN_TYPE='whole';     /* number type દાખલા બનાવો builds for */
 var DUAL_SCOPE='whole';   /* tools the 2-student page offers */
 window.__setScope=function(g,d){ if(g) GEN_TYPE=g; if(d) DUAL_SCOPE=d };
@@ -5425,6 +5544,7 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
     });
     w.appendChild(bar);
 
+    modeLegend(w,'fln');
     if(st.sec==='vanchan' || st.sec==='lekhan'){
       var isR=(st.sec==='vanchan');
       var hd=document.createElement('div');
@@ -6140,6 +6260,14 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
     if(!st.cfg && !isBesik(st.tool) && !isNum(st.tool)
        && !isRead(st.tool) && !isWrite(st.tool)){ cfgScreen(w); return }
     if((isRead(st.tool)||isWrite(st.tool)) && !st.cfg) st.cfg={lab:vlName(st.tool)};
+    if(st.mode==='T' && !flnTestOn()){          /* sheet switched tests off */
+      st.mode='P';
+      var warn=document.createElement('div');
+      warn.className='note';
+      warn.style.cssText+=';max-width:900px;margin:0 auto 10px;border:1px solid #b45309;background:#2a2010';
+      warn.textContent='📝 ટેસ્ટ શાળા શીટમાંથી બંધ કરેલો છે — પ્રેક્ટિસ મોડમાં ચાલુ છે.';
+      w.appendChild(warn);
+    }
     if(isBesik(st.tool) && !st.cfg) st.cfg={lab:'બેઝિક'};
     if(isNum(st.tool) && !st.cfg) st.cfg={lab:numName(st.tool)};
     /* roll no for P/T */
@@ -8096,7 +8224,9 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
   }
   function stMode(sd){
     var s=S[sd], c=card(sd);
-    chips(c,'મોડ પસંદ કરો',[['✍ પ્રેક્ટિસ','P'],['📝 કસોટી','T']],function(m){
+    var modesC=[['✍ પ્રેક્ટિસ','P']];
+    if(flnTestOn()) modesC.push(['📝 કસોટી','T']);
+    chips(c,'મોડ પસંદ કરો',modesC,function(m){
       s.mode=m; s.stage='roll'; draw(sd);
     });
   }
@@ -9286,6 +9416,7 @@ function ensureConnection(){
       if(!guestMode) startStocks();
       loadContent();                       /* animations/simulations refresh too */
       loadGujarati();                      /* teacher's own વાંચન/લેખન words */
+      loadAllowFromSheet();                /* test on/off, straight from the sheet */
       pendFlush();                         /* push anything saved while offline */
     });
   }
