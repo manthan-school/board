@@ -2192,8 +2192,34 @@ function buildSetForm(body){
   verT.style.cssText='font-family:var(--mono);font-size:13px;color:#22c55e';
   verT.textContent=BOARD_BUILD;
   verC.appendChild(verT);
+  var upBtn=document.createElement('button');
+  upBtn.className='btn'; upBtn.style.cssText='width:100%;margin-top:8px';
+  upBtn.textContent='🔄 નવું બોર્ડ લાવો (કૅશ સાફ કરો)';
+  upBtn.onclick=function(){
+    upBtn.textContent='🔄 સાફ થાય છે…';
+    var done=function(){
+      try{ location.reload(true) }catch(e){ location.reload() }
+    };
+    try{
+      if(navigator.serviceWorker){
+        navigator.serviceWorker.getRegistrations().then(function(rs){
+          return Promise.all(rs.map(function(r){ return r.unregister() }));
+        }).then(function(){
+          if(window.caches) return caches.keys().then(function(ks){
+            return Promise.all(ks.map(function(k){ return caches['delete'](k) }));
+          });
+        }).then(done)['catch'](done);
+      }else if(window.caches){
+        caches.keys().then(function(ks){
+          return Promise.all(ks.map(function(k){ return caches['delete'](k) }));
+        }).then(done)['catch'](done);
+      }else done();
+    }catch(e){ done() }
+  };
+  verC.appendChild(upBtn);
   var verN=document.createElement('div'); verN.className='note';
-  verN.textContent='પેનલ પર આ જ લખાણ દેખાય તો નવું બોર્ડ ચાલે છે. ન દેખાય તો જૂની ફાઇલ છે.';
+  verN.innerHTML='પેનલ પર આ જ લખાણ દેખાય તો નવું બોર્ડ ચાલે છે.<br>'+
+    'GitHub પર નવી ફાઇલ ચઢાવ્યા પછી જૂનું જ દેખાય તો ઉપરનું બટન દબાવો.';
   verC.appendChild(verN);
   body.appendChild(verC);
 
