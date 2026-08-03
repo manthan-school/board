@@ -266,6 +266,15 @@ body.pageOpen #pnlDot, body.pageOpen #pnlPanel{display:none !important}
   border-radius:16px;padding:20px;margin-bottom:16px}
 .setCard h4{font-family:var(--head);font-size:13px;letter-spacing:1px;color:var(--dim);margin-bottom:12px}
 /* ---- sliding on/off switch ---- */
+/* ---- handwriting course visuals ---- */
+@media (max-width:900px){
+  .hwGrid{grid-template-columns:1fr !important}
+}
+.stage{background:#0a0f1a;border:1px solid var(--line);border-radius:14px;padding:10px;margin:10px 0}
+.stage svg{display:block;width:100%;height:auto}
+.stageBar{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+.stage .cap{font-family:var(--guj);font-size:12.5px;color:var(--dim)}
+.tip{font-family:var(--guj);font-size:13px;color:var(--dim);margin-top:6px}
 .swRow{display:flex;align-items:center;gap:14px;width:100%;padding:6px 2px;cursor:pointer;
   -webkit-tap-highlight-color:transparent;user-select:none}
 .swRow .swTxt{flex:1;font-family:var(--guj);font-size:15px;color:var(--ink)}
@@ -381,6 +390,34 @@ body.pageOpen #pnlDot, body.pageOpen #pnlPanel{display:none !important}
 .evGroupBox.flash{border-color:#ef4444;background:#2a1214}
 .evGroupBox .got{display:inline-block;margin:3px;padding:6px 10px;border-radius:9px;background:#0d2818;
   border:1px solid #166534;font-family:var(--guj);font-size:13px}
+
+/* ================= 📹 CAMERA / JITSI FLOATING WINDOWS ================= */
+.jtFB{min-width:36px;height:36px;padding:0 8px;border-radius:10px;
+  border:1px solid var(--line);background:#0d1626;color:#e5e7eb;
+  font-family:var(--head);font-size:15px;line-height:1;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.jtFB:active{background:#1e3a8a;border-color:#3b82f6}
+.jtFB.on{background:#132441;border-color:#1d4ed8}
+.csWin{position:fixed;z-index:98;display:flex;flex-direction:column;overflow:hidden;
+  border-radius:15px;background:#0d1320;box-shadow:0 16px 44px rgba(0,0,0,.75);
+  touch-action:none;-webkit-user-select:none;user-select:none}
+.csHd{display:flex;align-items:center;gap:5px;padding:7px 8px;background:#111827;
+  cursor:move;flex-wrap:nowrap;overflow:hidden;touch-action:none}
+.csTtl{font-family:var(--guj);font-size:14px;font-weight:600;white-space:nowrap}
+.csStg{padding:7px 11px;font-family:var(--guj);font-size:12.5px;line-height:1.6;
+  min-height:20px;word-break:break-word}
+.csBig{min-width:100%;padding:11px 10px;border-radius:12px;border:1px solid #1d4ed8;
+  background:#132441;color:#e5e7eb;font-family:var(--guj);font-size:14px;font-weight:600;
+  cursor:pointer;margin-top:6px}
+.camRowBtn{flex:1;min-width:150px;padding:14px 10px;border-radius:13px;cursor:pointer;
+  color:var(--ink);font-family:var(--guj);font-size:14.5px;font-weight:600;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.camRowBtn:active{filter:brightness(1.45)}
+@media(max-width:760px){
+  .jtFB{min-width:36px;height:36px;padding:0 8px;font-size:14px}
+  .csTtl{font-size:13px}
+}
 </style>
 </head>
 <body>
@@ -1857,6 +1894,11 @@ function loadAllowFromSheet(cb){
     }catch(e){ cb&&cb(null) }
   },function(){ cb&&cb(null) });
 }
+/* while a student is answering, the page must never be redrawn from
+   under them — that would throw the class back to the menu */
+var BUSY=0;
+function setBusy(on){ BUSY = on ? 1 : 0 }
+var PENDING_RELOAD=false;
 var LAST_ALLOW='';
 function applyRemote(cfg){
   cfg=cfg||MAIN.cfg||{};
@@ -1866,7 +1908,11 @@ function applyRemote(cfg){
     var sig=(a.evalTest===false?'0':'1')+(a.flnTest===false?'0':'1');
     if(LAST_ALLOW && LAST_ALLOW!==sig && NAV && NAV.current){
       var cur=NAV.current();
-      if(cur==='fin'||cur==='evaluation'||cur==='fin2'||cur==='eval2'||cur==='growth') NAV.reload();
+      var onPage=(cur==='fin'||cur==='evaluation'||cur==='fin2'||cur==='eval2'||cur==='growth');
+      if(onPage){
+        if(BUSY) PENDING_RELOAD=true;      /* apply it when the activity ends */
+        else NAV.reload();
+      }
     }
     LAST_ALLOW=sig;
   }catch(e){}
@@ -2459,33 +2505,83 @@ function buildMonitor(body){
   }
   var jCls = pc ? [pc] : ['6','7','8'];
 
+  /* ---------- environment banner: says up-front what this panel can do ---------- */
+  var env=csEnv();
+  var eb=document.createElement('div');
+  var ebCol = env.file ? ['#b45309','#2a2010','#fbbf24']
+            : (!env.gum ? ['#7f1d1d','#2a1214','#fca5a5']
+            : (!env.mrec ? ['#b45309','#2a2010','#fbbf24'] : ['#166534','#0d1f16','#86efac']));
+  eb.style.cssText='max-width:660px;margin:0 auto 10px;border-radius:12px;padding:10px 12px;'+
+    'font-family:var(--guj);font-size:13px;line-height:1.8;border:1px solid '+ebCol[0]+
+    ';background:'+ebCol[1]+';color:'+ebCol[2];
+  if(env.file){
+    eb.innerHTML='ℹ આ બોર્ડ <b>file://</b> થી ખૂલ્યું છે. Firefox માં કૅમેરો ચાલે છે, '+
+      'Chrome/Android માં ઘણી વાર નથી ચાલતો.<br>'+
+      'ચોક્કસ જવાબ માટે નીચે <b>🔍 કૅમેરા તપાસ</b> દબાવો. ન ચાલે તો બોર્ડ '+
+      '<b>https</b> લિંક (GitHub Pages) થી ખોલો.';
+  }else if(!env.gum){
+    eb.innerHTML='⚠ આ બ્રાઉઝર કૅમેરો આપતું નથી. પેનલમાં <b>Chrome</b> થી બોર્ડ ખોલો.';
+  }else if(!env.mrec){
+    eb.innerHTML='⚠ કૅમેરો ચાલશે પણ <b>રેકોર્ડિંગ</b> આ બ્રાઉઝરમાં શક્ય નથી — 📡 ફક્ત Jitsi વાપરો.';
+  }else{
+    eb.innerHTML='✔ આ પેનલ તૈયાર છે — કૅમેરો અને રેકોર્ડિંગ બંને ચાલશે.'+
+      (env.android?' (Android)':'');
+  }
+  box.appendChild(eb);
+
+  /* ---------- camera test ---------- */
+  var dgb=document.createElement('button');
+  dgb.className='btn';
+  dgb.style.cssText='max-width:660px;width:100%;margin:0 auto 12px;display:block;'+
+    'padding:12px;border-radius:12px;font-family:var(--guj);font-size:14px';
+  dgb.textContent='🔍 કૅમેરા તપાસ · CAMERA TEST';
+  dgb.onclick=function(){ camDiag() };
+  box.appendChild(dgb);
+
   var h1=document.createElement('div');
   h1.style.cssText='max-width:660px;margin:0 auto 8px;width:100%;font-family:var(--head);'+
     'font-size:12px;letter-spacing:2px;color:#93c5fd';
   h1.textContent='વર્ગની પેનલ પર દબાવો — CLASS PANEL';
   box.appendChild(h1);
+  var note=document.createElement('div');
+  note.className='note';
+  note.style.cssText+=';max-width:660px;margin:0 auto 10px';
+  note.innerHTML='બધું <b>ફ્લોટિંગ વિન્ડો</b>માં ચાલે — — દબાવીને નાની કરો, બોર્ડ ચાલુ રહે.<br>'+
+    '📷 <b>1 કૅમેરો</b> = એક દૃશ્ય · 📷📷 <b>2 કૅમેરા</b> = બે દૃશ્ય '+
+    '(રેકોર્ડિંગમાં બાજુ-બાજુ, Jitsi માં બીજી ટૅબ ખૂલે).';
+  box.appendChild(note);
+
   jCls.forEach(function(c){
-    var r=document.createElement('div');
-    r.style.cssText='display:flex;gap:8px;max-width:660px;margin:0 auto 9px;width:100%';
-    var b1=document.createElement('button');
-    b1.className='monBtn'; b1.style.cssText+=';flex:1;margin:0;border-color:#22c55e;background:#0d2818';
-    b1.innerHTML='<span style="font-size:20px">▶</span><span>ધોરણ '+c+' શરૂ કરો · 1 કૅમેરો'+
-      '<small>🔴 રેકોર્ડિંગ + 📡 Jitsi એક જ નાની વિન્ડોમાં</small></span>';
-    b1.onclick=function(){ classSession(c,1) };
-    var b2=document.createElement('button');
-    b2.className='btn';
-    b2.style.cssText+=';flex:0 0 auto;padding:0 16px;border-radius:15px;border-color:#7c3aed;background:#1c1030';
-    b2.innerHTML='📷📷 2 કૅમેરા';
-    b2.title='બંને કૅમેરા સાથે — એક જ ફાઇલમાં રેકોર્ડ';
-    b2.onclick=function(){ classSession(c,2) };
-    var b3=document.createElement('button');
-    b3.className='btn';
-    b3.style.cssText+=';flex:0 0 auto;padding:0 14px;border-radius:15px';
-    b3.textContent='📡';
-    b3.title='ફક્ત Jitsi — રેકોર્ડિંગ વગર (ટૅબમાં)';
-    b3.onclick=function(){ openTab(jClassUrl(c,1)) };
-    r.appendChild(b1); r.appendChild(b2); r.appendChild(b3);
-    box.appendChild(r);
+    var card=document.createElement('div');
+    card.style.cssText='max-width:660px;margin:0 auto 12px;width:100%;border:1px solid var(--line);'+
+      'border-radius:14px;padding:10px 12px;background:#0d1320';
+    var ttl=document.createElement('div');
+    ttl.style.cssText='font-family:var(--guj);font-size:15.5px;font-weight:700;margin-bottom:8px';
+    ttl.textContent='ધોરણ '+c;
+    card.appendChild(ttl);
+    function line(label,cams){
+      var row=document.createElement('div');
+      row.style.cssText='display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap';
+      var tg=document.createElement('div');
+      tg.style.cssText='flex:0 0 96px;font-family:var(--guj);font-size:13.5px;color:var(--dim)';
+      tg.textContent=label;
+      row.appendChild(tg);
+      function mk(txt,col,bg,rec){
+        var x=document.createElement('button');
+        x.className='camRowBtn';
+        x.style.cssText+=';border:1px solid '+col+';background:'+bg;
+        x.innerHTML=txt;
+        if(rec && !csCanRecord()) x.style.opacity='.55';
+        x.onclick=function(){ classSession(c,cams,rec) };
+        row.appendChild(x);
+      }
+      mk('📡 ફક્ત Jitsi','#166534','#0d2818',false);
+      mk('🔴 Jitsi + રેકોર્ડિંગ','#7f1d1d','#2a1214',true);
+      card.appendChild(row);
+    }
+    line('📷 1 કૅમેરો',1);
+    line('📷📷 2 કૅમેરા',2);
+    box.appendChild(card);
   });
 
   var h2=document.createElement('div');
@@ -2498,7 +2594,7 @@ function buildMonitor(body){
     r.style.cssText='display:flex;gap:8px;max-width:660px;margin:0 auto 9px;width:100%';
     var jn=document.createElement('button');
     jn.className='monBtn'; jn.style.cssText+=';flex:1;margin:0';
-    jn.innerHTML=CAM+'<span>ધોરણ '+c+' જુઓ<small>'+esc('meet.jit.si/'+jRoomCam(c,1))+'</small></span>';
+    jn.innerHTML=CAM+'<span>ધોરણ '+c+' જુઓ<small>'+esc(jHost()+'/'+jRoomCam(c,1))+'</small></span>';
     jn.onclick=function(){ jitsiFloat(c,1) };
     var p2=document.createElement('button');
     p2.className='btn';
@@ -2515,7 +2611,7 @@ function buildMonitor(body){
     cp.textContent='🔗';
     cp.title='લિંક કૉપી કરો';
     cp.onclick=function(){
-      var link='https://meet.jit.si/'+jRoomCam(c,1);
+      var link=jPlainUrl(c,1);
       function done(){ cp.textContent='✅'; setTimeout(function(){ cp.textContent='🔗' },1200) }
       if(navigator.clipboard&&navigator.clipboard.writeText)
         navigator.clipboard.writeText(link).then(done,function(){ prompt('લિંક:',link) });
@@ -2525,18 +2621,53 @@ function buildMonitor(body){
     box.appendChild(r);
   });
 
+  /* ---------- which Jitsi server ---------- */
+  var sv=document.createElement('div');
+  sv.style.cssText='max-width:660px;margin:16px auto 0;border-top:1px solid var(--line);padding-top:12px';
+  sv.innerHTML='<div class="evLbl">Jitsi સર્વર</div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+    '<input class="evSel" id="jtHost" style="flex:1;min-width:190px;margin-bottom:0" '+
+      'autocomplete="off" spellcheck="false">'+
+    '<button class="btn" id="jtHSave" style="padding:0 16px">સેવ</button>'+
+    '<button class="btn" id="jtHKey" style="padding:0 16px;border-color:#b45309;'+
+      'background:#2a2010">🔑 Log-in</button></div>'+
+    '<div class="note" id="jtHNote"></div>';
+  box.appendChild(sv);
+  function hostPaint(){
+    sv.querySelector('#jtHost').value=jHost();
+    sv.querySelector('#jtHNote').innerHTML = jNeedsLogin()
+      ? '<b style="color:#fbbf24">meet.jit.si પર 2023 થી નિયમ છે:</b> રૂમ ચાલુ કરવા '+
+        'એક જણે <b>Log-in</b> કરવું ફરજિયાત છે. ઉપર 🔑 દબાવીને Google થી એક વાર લોગ-ઇન કરો — '+
+        'એ પેનલમાં પછી યાદ રહે છે.<br>'+
+        '<b>લોગ-ઇન વગર જોઈતું હોય તો</b> અહીં પોતાનું કે ખુલ્લું Jitsi સર્વર લખો '+
+        '(દા.ત. શાળાનું <span style="font-family:var(--mono)">jitsi.mysite.in</span>).<br>'+
+        '<b>🔴 રેકોર્ડિંગને લોગ-ઇનની જરૂર નથી</b> — ફાઇલ પેનલમાં જ સેવ થાય છે.'
+      : '<b style="color:#22c55e">✔ '+esc(jHost())+'</b> વપરાય છે. '+
+        'આ સર્વર લોગ-ઇન ન માંગે તો રૂમ સીધો ખૂલશે. પાછું જવું હોય તો '+
+        '<span style="font-family:var(--mono)">meet.jit.si</span> લખો.';
+  }
+  hostPaint();
+  sv.querySelector('#jtHSave').onclick=function(){
+    jSetHost(sv.querySelector('#jtHost').value);
+    hostPaint();
+    csToast('✅ સર્વર સેવ થયું: '+jHost());
+  };
+  sv.querySelector('#jtHKey').onclick=function(){
+    openTab(jPlainUrl(jCls[0],1));
+    csToast('નવી ટૅબમાં Log-in → Google. પછી આ ટૅબમાં પાછા આવો.','#2a2010');
+  };
+
   var jd=document.createElement('div');
   jd.style.cssText='max-width:660px;margin:16px auto 0;border-top:1px solid var(--line);padding-top:12px';
   jd.innerHTML='<div class="evLbl">રૂમનું નામ (શાળાનું ટૂંકું નામ)</div>'+
     '<div style="display:flex;gap:8px">'+
     '<input class="evSel" id="jtPfx" style="flex:1;margin-bottom:0" autocomplete="off">'+
     '<button class="btn" id="jtSave" style="padding:0 16px">સેવ</button></div>'+
-    '<div class="note">▶ દબાવતાં એક જ ફ્લોટિંગ વિન્ડોમાં <b>રેકોર્ડિંગ + Jitsi</b> ચાલુ થાય છે — '+
-    '📹/📡 થી બદલો, — થી નાની કરો (રેકોર્ડિંગ ચાલુ રહે), ✕ થી બંધ કરતાં ફાઇલ સેવ થાય.<br>'+
-    'દરેક વર્ગના બે રૂમ: <b>…-dhoran-6</b> (કૅમેરા 1) અને <b>…-dhoran-6-b</b> (કૅમેરા 2).<br>'+
-    '<b>પહેલી વાર દરેક પેનલ પર:</b> 1) બટન દબાવતાં નવી ટૅબ ન ખૂલે તો સરનામાં પટ્ટીમાં '+
-    'pop-up blocked નિશાન દબાવી <b>Always allow</b> કરો · 2) Jitsi માં કૅમેરા/માઇકનું '+
-    '<b>Allow</b> દબાવો · 3) "moderator" માંગે તો એક વાર Google થી Log-in કરો. પછી રોજ ફક્ત એક ટૅપ.</div>';
+    '<div class="note">દરેક વર્ગના બે રૂમ: <b>…-dhoran-6</b> (કૅમેરા 1) અને '+
+    '<b>…-dhoran-6-b</b> (કૅમેરા 2).<br>'+
+    '<b>પહેલી વાર દરેક પેનલ પર:</b> 1) બોર્ડ <b>https</b> લિંકથી ખોલો · '+
+    '2) કૅમેરા/માઇકનું <b>Allow</b> દબાવો (એક જ વાર) · 3) નવી ટૅબ ન ખૂલે તો સરનામાં પટ્ટીમાં '+
+    'pop-up નિશાન દબાવી <b>Always allow</b> કરો. પછી રોજ ફક્ત એક ટૅપ.</div>';
   box.appendChild(jd);
   jd.querySelector('#jtPfx').value=jPrefix();
   jd.querySelector('#jtSave').onclick=function(){
@@ -2568,21 +2699,100 @@ function syncBtn(label,onDone){
   return b;
 }
 /* ==================================================================
-   📹 CLASS SESSION — one floating window that holds BOTH:
-     • our own camera recording (1 or 2 webcams, saved on the panel)
-     • the class's Jitsi room (so you can watch from your board)
-   Minimising keeps everything running — the board stays usable.
-   Camera capture is not affected by the window being small or hidden.
-   ================================================================== */
-var CS={on:false,cls:'',cams:1,streams:[],canvas:null,raf:0,mr:null,chunks:[],
-        t0:0,tm:null,wake:null,out:null,jitsi:true};
+   📹 વર્ગ સેશન · CLASS SESSION — v3, Android પેનલ આવૃત્તિ
+   ------------------------------------------------------------------
+   દરેક વર્ગ માટે ચાર ટૅપ:
+        📷 1 કૅમેરો   → 📡 ફક્ત Jitsi   |  🔴 Jitsi + રેકોર્ડિંગ
+        📷📷 2 કૅમેરા → 📡 ફક્ત Jitsi   |  🔴 Jitsi + રેકોર્ડિંગ
+   બધું એક જ ફ્લોટિંગ વિન્ડોમાં — ખસેડી શકાય, નાની કરી શકાય,
+   નાની હોય ત્યારે પણ રેકોર્ડિંગ અને Jitsi ચાલુ રહે છે.
 
-function csSupported(){
-  return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+   Android પર જે ત્રણ વસ્તુ કૅમેરો બંધ પાડતી હતી અને હવે ઠીક છે:
+     1. meet.jit.si મોબાઇલ પર "ઍપ ખોલો" પાનું બતાવતું હતું
+        → config.disableDeepLinking + MOBILE_APP_PROMO=false
+     2. iframe ને કૅમેરાની પરવાનગી મળતી ન હતી
+        → પહેલાં બોર્ડ પોતે પરવાનગી લે છે, પછી છોડી દે છે (pre-warm)
+        → allow="camera *; microphone *"
+     3. deviceId {exact:…} Android પર ઘણી વાર નિષ્ફળ જાય છે
+        → ધીમે ધીમે ઢીલી થતી constraint સીડી (1280 → facingMode → true)
+   ================================================================== */
+
+/* ---------- room names ---------- */
+function jPrefix(){ return store.get('vrd_jitsi_prefix','pvv-vaghaldhara') }
+function jRoomCam(cls,cam){ return jPrefix()+'-dhoran-'+cls+(Number(cam)===2?'-b':'') }
+/* which Jitsi server. meet.jit.si needs one Google/GitHub log-in per room
+   (8x8 made that compulsory in Aug 2023). A school server or an open
+   community server can be typed in ⚙ instead — no log-in needed there. */
+function jHost(){ return store.get('vrd_jitsi_host','meet.jit.si') }
+function jSetHost(h){
+  h=String(h||'').trim().replace(/^https?:\/\//i,'').replace(/\/.*$/,'').toLowerCase();
+  store.set('vrd_jitsi_host', h||'meet.jit.si');
 }
-function csInsecure(){
-  return location.protocol==='content:' || location.protocol==='file:';
+function jNeedsLogin(){ return jHost()==='meet.jit.si' }
+/* the plain room link — used for the one-time moderator log-in */
+function jPlainUrl(cls,cam){ return 'https://'+jHost()+'/'+jRoomCam(cls,cam) }
+/* open a link reliably — a real <a> click survives the pop-up blocker */
+function openTab(url){
+  var a=document.createElement('a');
+  a.href=url; a.target='_blank'; a.rel='noopener';
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ a.remove() },600);
 }
+/* ---------- the one place every Jitsi link is built ---------- */
+function csJitsiUrl(cls,cam,videoOn,audioOn,who){
+  var nm=who||('Dhoran-'+cls+(Number(cam)===2?'-2':''));
+  var p=['userInfo.displayName=%22'+encodeURIComponent(nm)+'%22',
+    'config.prejoinPageEnabled=false',
+    'config.disableDeepLinking=true',          /* Android: રહો બ્રાઉઝરમાં જ */
+    'config.startWithVideoMuted='+(videoOn?'false':'true'),
+    'config.startWithAudioMuted='+(audioOn?'false':'true'),
+    'config.disableInviteFunctions=true',
+    'interfaceConfig.MOBILE_APP_PROMO=false',  /* Android: "ઍપ ડાઉનલોડ" ન બતાવ */
+    'interfaceConfig.SHOW_JITSI_WATERMARK=false',
+    'interfaceConfig.SHOW_CHROME_EXTENSION_BANNER=false'];
+  return 'https://'+jHost()+'/'+jRoomCam(cls,cam)+'#'+p.join('&');
+}
+function jClassUrl(cls,cam){ return csJitsiUrl(cls,cam,true,true) }
+function jWatchUrl(cls,cam){ return csJitsiUrl(cls,cam,false,false,'Teacher') }
+var JIT_ALLOW='camera *; microphone *; autoplay; fullscreen; display-capture; speaker-selection';
+
+/* ---------- session state ---------- */
+var CS={on:false,cls:'',cams:1,rec:false,streams:[],canvas:null,raf:0,tick:0,
+        mr:null,chunks:[],t0:0,tm:null,wake:null,out:null,mime:'',
+        jvid:false,jcam:1,view:'jitsi'};
+
+/* ---------- what can this panel actually do? ---------- */
+function csEnv(){
+  var ua=navigator.userAgent||'';
+  var file=(location.protocol==='file:'||location.protocol==='content:');
+  return {
+    proto   : location.protocol,
+    file    : file,
+    secure  : (window.isSecureContext!==false) && !file,
+    gum     : !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
+    mrec    : !!window.MediaRecorder,
+    android : /Android/i.test(ua),
+    webview : /;\s*wv\)/.test(ua),
+    ua      : ua
+  };
+}
+function csCanRecord(){ var e=csEnv(); return e.gum && e.mrec && !e.file }
+function csErrMsg(err){
+  var n=(err&&err.name)||String(err||'');
+  if(n==='NotAllowedError'||n==='PermissionDeniedError')
+    return 'પરવાનગી મળી નથી — Chrome ⋮ → Settings → Site settings → Camera → Allow';
+  if(n==='NotReadableError'||n==='TrackStartError')
+    return 'કૅમેરો બીજી ઍપ કે ટૅબ વાપરે છે — તે બંધ કરીને ફરી દબાવો';
+  if(n==='NotFoundError'||n==='DevicesNotFoundError')
+    return 'કૅમેરો મળ્યો નથી — USB કૅમેરાનો પ્લગ તપાસો';
+  if(n==='OverconstrainedError')
+    return 'આ કૅમેરો માંગેલી સેટિંગમાં ચાલતો નથી';
+  if(n==='SecurityError'||n==='no-gum')
+    return 'સુરક્ષાના કારણે બંધ — બોર્ડ https લિંકથી ખોલો';
+  if(n==='timeout') return 'પરવાનગીનો જવાબ મળ્યો નહીં — ફરી પ્રયત્ન કરો';
+  return 'કૅમેરો ખૂલ્યો નહીં ('+(n||'error')+')';
+}
+
 /* ---- webm duration patch so the saved file can be scrubbed ---- */
 function csFixWebm(blob,ms,cb){
   var HEAD=Math.min(blob.size,262144), fr=new FileReader();
@@ -2628,274 +2838,469 @@ function csToast(t,col){
   var p=document.createElement('div');
   p.style.cssText='position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:150;'+
     'background:'+(col||'#0d1f16')+';border:1px solid '+(col?'#b45309':'#22c55e')+';border-radius:12px;'+
-    'padding:10px 18px;font-family:var(--guj);font-size:13.5px;max-width:92vw;'+
+    'padding:11px 18px;font-family:var(--guj);font-size:13.5px;max-width:92vw;line-height:1.7;'+
     'box-shadow:0 8px 24px rgba(0,0,0,.6)';
   p.textContent=t;
   document.body.appendChild(p);
-  setTimeout(function(){ p.remove() },4500);
+  setTimeout(function(){ p.remove() },5000);
 }
 function csSave(blob,name){
   var url=URL.createObjectURL(blob);
-  var a=document.createElement('a');
-  a.href=url; a.download=name;
-  document.body.appendChild(a); a.click();
-  setTimeout(function(){ URL.revokeObjectURL(url); a.remove() },1500);
-  csToast('✅ સેવ થયું: '+name);
+  try{
+    var a=document.createElement('a');
+    a.href=url; a.download=name; a.rel='noopener';
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ a.remove() },1200);
+    csToast('✅ સેવ થયું: '+name+' (Downloads ફોલ્ડરમાં)');
+  }catch(e){
+    openTab(url);
+    csToast('વિડિયો નવી ટૅબમાં ખૂલ્યો — ત્યાંથી Download દબાવો','#2a2010');
+  }
+  setTimeout(function(){ try{ URL.revokeObjectURL(url) }catch(e){} },120000);
 }
 function csStatus(t,col){
   var e=document.getElementById('csSt');
   if(e){ e.textContent=t; e.style.color=col||'#9ca3af' }
   var m=document.getElementById('csMLbl');
-  if(m) m.textContent=t;
+  if(m && CS.rec!==true) m.textContent=t.length>22?t.slice(0,22)+'…':t;
 }
-/* ---------- start a class session ---------- */
+function csFail(msg){
+  csStatus('⚠ '+msg,'#f87171');
+  var b=document.getElementById('csTabBrowser');
+  if(b) b.style.display='';
+  try{ console.warn('[class session]',msg) }catch(e){}
+}
+
+/* ---------- camera preferences ---------- */
 function camPref(n){ return store.get('vrd_cam'+n,'') }
 function camSetPref(n,id){ store.set('vrd_cam'+n, id||'') }
-/* pick the saved camera if it is still plugged in, else fall back by order */
-function pickDevices(list,want){
-  var ids=list.map(function(d){ return d.deviceId });
-  var out=[];
-  var p1=camPref(1);
-  out.push(ids.indexOf(p1)>=0 ? p1 : (ids[0]||''));
-  if(want===2){
-    var p2=camPref(2);
-    if(ids.indexOf(p2)>=0 && p2!==out[0]) out.push(p2);
-    else{
-      for(var i=0;i<ids.length;i++) if(ids[i]!==out[0]){ out.push(ids[i]); break }
-    }
-  }
-  return out;
+function csUsedId(stream){
+  try{
+    var t=stream.getVideoTracks()[0];
+    return (t && t.getSettings) ? (t.getSettings().deviceId||'') : '';
+  }catch(e){ return '' }
 }
-function classSession(cls,cams){
-  if(CS.on){ csToast('સેશન પહેલેથી ચાલુ છે — પહેલાં ✕ દબાવો','#2a2010'); return }
-  if(csInsecure()){
-    alert('આ રીતે ખોલેલા બોર્ડમાં કૅમેરો ચાલતો નથી.\n\n'+
-          'બોર્ડ https લિંક (GitHub Pages) થી ખોલો — પછી રેકોર્ડિંગ ચાલશે.');
-    return;
+/* Android-safe constraint ladder — each rung is looser than the last */
+function csVList(prefId){
+  var L=[];
+  if(prefId){
+    L.push({deviceId:{exact:prefId},width:{ideal:1280},height:{ideal:720}});
+    L.push({deviceId:{exact:prefId}});
+    L.push({deviceId:prefId});
   }
-  if(!csSupported()){ alert('આ બ્રાઉઝરમાં રેકોર્ડિંગ શક્ય નથી'); return }
-  CS.on=true; CS.cls=cls; CS.cams=cams||1; CS.chunks=[]; CS.streams=[];
-  csFloat();
-  csStatus('કૅમેરો ખૂલે છે…','#fbbf24');
-  navigator.mediaDevices.getUserMedia({video:true,audio:true}).then(function(first){
-    return navigator.mediaDevices.enumerateDevices().then(function(devs){
-      var cams2=devs.filter(function(d){ return d.kind==='videoinput' });
-      first.getTracks().forEach(function(t){ t.stop() });
-      CS.devices=cams2;
-      if(CS.cams===2 && cams2.length<2){
-        csStatus('બીજો કૅમેરો મળ્યો નથી — એક કૅમેરાથી ચાલુ','#fbbf24');
-        CS.cams=1;
-      }
-      var want=pickDevices(cams2, CS.cams);
-      return Promise.all(want.map(function(id,ix){
-        return navigator.mediaDevices.getUserMedia({
-          video: id?{deviceId:{exact:id},width:1280,height:720}:{width:1280,height:720},
-          audio: ix===0
-        });
-      }));
+  L.push({width:{ideal:1280},height:{ideal:720}});
+  L.push({facingMode:{ideal:'environment'}});
+  L.push({facingMode:{ideal:'user'}});
+  L.push({width:{ideal:640},height:{ideal:480}});
+  L.push(true);
+  return L;
+}
+/* walk the ladder; for every rung try with mic, then without */
+function csOpen(vlist,wantAudio){
+  var i=0, last=null;
+  function one(v,withAudio){
+    return navigator.mediaDevices.getUserMedia({video:v, audio:withAudio});
+  }
+  function step(){
+    if(i>=vlist.length) return Promise.reject(last||new Error('no-camera'));
+    var v=vlist[i++];
+    return one(v,!!wantAudio)['catch'](function(e){
+      last=e;
+      if(!wantAudio) return step();
+      return one(v,false)['catch'](function(e2){ last=e2; return step() });
     });
-  }).then(function(streams){
-    CS.streams=streams;
-    csStart(streams);
+  }
+  return step();
+}
+/* Ask for permission on the board's own origin FIRST, then let go of the
+   camera. Jitsi inside the iframe then inherits the grant — this is the
+   single biggest reason the camera used to stay black on Android. */
+function csPrewarm(cb){
+  var e=csEnv();
+  if(!e.gum){ cb(false,'no-gum'); return }
+  var done=false;
+  var t=setTimeout(function(){ if(!done){ done=true; cb(false,'timeout') } },25000);
+  csOpen(csVList(camPref(1)),true).then(function(s){
+    try{ s.getTracks().forEach(function(tr){ tr.stop() }) }catch(x){}
+    if(done) return;
+    done=true; clearTimeout(t);
+    /* Android needs a breath to release the device before Jitsi grabs it */
+    setTimeout(function(){ cb(true,'') },500);
   })['catch'](function(err){
-    var n=(err&&err.name)||'';
-    csStatus(n==='NotAllowedError' ? 'પરવાનગી ના પડાઈ — Chrome માં Allow કરો'
-           : n==='NotReadableError'? 'કૅમેરો બીજી ઍપ વાપરે છે — તે બંધ કરો'
-           : n==='NotFoundError'   ? 'કૅમેરો મળ્યો નથી — USB તપાસો'
-           : 'કૅમેરો ખૂલ્યો નહીં','#f87171');
+    if(done) return;
+    done=true; clearTimeout(t);
+    cb(false,(err&&err.name)||'error');
   });
 }
-function csStart(streams){
-  var vids=streams.map(function(s){
-    var v=document.createElement('video');
-    v.autoplay=true; v.muted=true; v.playsInline=true;
-    v.srcObject=s;
-    v.style.cssText='position:fixed;left:-9999px;top:0;width:320px';
-    document.body.appendChild(v);
-    return v;
-  });
-  var two=streams.length>1;
-  var c=document.createElement('canvas');
-  c.width=two?1280:960; c.height=two?480:540;
-  CS.canvas=c;
-  var x=c.getContext('2d');
-  function draw(){
-    if(!CS.on) return;
-    x.fillStyle='#000'; x.fillRect(0,0,c.width,c.height);
-    vids.forEach(function(v,ix){
-      var w=two?640:c.width, h=two?480:c.height, ox=two?ix*640:0;
-      if(v.videoWidth){
-        var vr=v.videoWidth/v.videoHeight, cr=w/h, dw=w, dh=h;
-        if(vr>cr) dh=w/vr; else dw=h*vr;
-        x.drawImage(v, ox+(w-dw)/2, (h-dh)/2, dw, dh);
-      }
-      if(two){
-        x.fillStyle='rgba(0,0,0,.55)'; x.fillRect(ox,0,110,26);
-        x.fillStyle='#fff'; x.font='15px sans-serif';
-        x.fillText('CAM '+(ix+1), ox+10, 18);
-      }
-    });
-    CS.raf=requestAnimationFrame(draw);
-  }
-  draw();
-  /* browsers pause requestAnimationFrame in a background tab — this
-     keeps the recording moving at ~15fps even then */
-  clearInterval(CS.tick);
-  CS.tick=setInterval(function(){
-    if(CS.on && document.hidden) draw();
-  },66);
-  CS.out=c.captureStream(20);
-  var prev=document.getElementById('csPrev');
-  if(prev){ prev.srcObject=CS.out; prev.play&&prev.play() }
-  var at=streams[0].getAudioTracks();
-  if(at.length) CS.out.addTrack(at[0]);
-  try{ CS.mr=new MediaRecorder(CS.out,{mimeType:'video/webm;codecs=vp8,opus'}) }
-  catch(e){ CS.mr=new MediaRecorder(CS.out) }
-  CS.mr.ondataavailable=function(ev){ if(ev.data&&ev.data.size) CS.chunks.push(ev.data) };
-  CS.mr.onstop=function(){
-    var blob=new Blob(CS.chunks,{type:'video/webm'});
-    var dur=Date.now()-CS.t0, d=new Date();
-    var name='class_dhoran'+CS.cls+(CS.cams>1?'_2cam':'')+'_'+
-      d.getFullYear()+('0'+(d.getMonth()+1)).slice(-2)+('0'+d.getDate()).slice(-2)+'_'+
-      ('0'+d.getHours()).slice(-2)+('0'+d.getMinutes()).slice(-2)+'.webm';
-    csFixWebm(blob,dur,function(fx){ csSave(fx,name) });
-  };
-  CS.mr.start(2000);
-  CS.t0=Date.now();
-  try{ navigator.wakeLock&&navigator.wakeLock.request('screen').then(function(w){ CS.wake=w }) }catch(e){}
-  clearInterval(CS.tm);
-  CS.tm=setInterval(function(){
-    var s=Math.floor((Date.now()-CS.t0)/1000);
-    csStatus('🔴 રેકોર્ડિંગ · '+(CS.cams>1?'2 કૅમેરા · ':'')+
-      Math.floor(s/60)+':'+('0'+s%60).slice(-2),'#f87171');
-  },1000);
-  /* shrink to the corner so the board is usable */
-  setTimeout(function(){ if(CS.on) csMini(true) },2500);
-}
-function csStop(){
-  if(!CS.on) return;
-  CS.on=false;
-  clearInterval(CS.tm); clearInterval(CS.tick); cancelAnimationFrame(CS.raf);
-  try{ if(CS.mr && CS.mr.state!=='inactive') CS.mr.stop() }catch(e){}
-  CS.streams.forEach(function(s){ try{ s.getTracks().forEach(function(t){t.stop()}) }catch(e){} });
-  CS.streams=[];
-  try{ CS.wake&&CS.wake.release() }catch(e){}
-  var f=document.getElementById('csFloat'); if(f) f.remove();
-  var p=document.getElementById('csMini'); if(p) p.remove();
-  document.querySelectorAll('video[data-csrc]').forEach(function(v){ v.remove() });
-}
+
 /* ---------- the floating window ---------- */
+function csWinBox(big){
+  var W=window.innerWidth, H=window.innerHeight;
+  return big
+    ? {w:Math.min(W-16, 1040), h:Math.round(Math.min(H*0.60, 620))}
+    : {w:Math.min(W-16, 440),  h:Math.round(Math.min(H*0.34, 250))};
+}
+function csDrag(win,handle){
+  handle.addEventListener('pointerdown',function(e){
+    if(e.target.closest('button')) return;
+    e.preventDefault();
+    var r0=win.getBoundingClientRect(), sx=e.clientX, sy=e.clientY;
+    win.style.left=r0.left+'px'; win.style.top=r0.top+'px';
+    win.style.right='auto'; win.style.bottom='auto';
+    function mv(ev){
+      var nx=r0.left+ev.clientX-sx, ny=r0.top+ev.clientY-sy;
+      nx=Math.max(6-r0.width*0.6, Math.min(window.innerWidth-60, nx));
+      ny=Math.max(0, Math.min(window.innerHeight-46, ny));
+      win.style.left=nx+'px'; win.style.top=ny+'px';
+    }
+    function up(){
+      document.removeEventListener('pointermove',mv);
+      document.removeEventListener('pointerup',up);
+      document.removeEventListener('pointercancel',up);
+    }
+    document.addEventListener('pointermove',mv);
+    document.addEventListener('pointerup',up);
+    document.addEventListener('pointercancel',up);
+  });
+}
 function csFloat(){
   var old=document.getElementById('csFloat'); if(old) old.remove();
-  var pfx=store.get('vrd_jitsi_prefix','pvv-vaghaldhara');
-  var jUrl='https://meet.jit.si/'+pfx+'-dhoran-'+CS.cls+
-    '#userInfo.displayName=%22Dhoran-'+CS.cls+'%22&config.prejoinPageEnabled=false'+
-    '&config.startWithAudioMuted=true';   /* the recorder already has the mic */
-  var f=document.createElement('div'); f.id='csFloat';
-  f.style.cssText='position:fixed;right:16px;bottom:70px;width:420px;z-index:98;'+
-    'background:#0d1320;border:1px solid #7f1d1d;border-radius:14px;overflow:hidden;'+
-    'box-shadow:0 14px 40px rgba(0,0,0,.7);display:flex;flex-direction:column;touch-action:none';
+  var sz=csWinBox(false);
+  var f=document.createElement('div'); f.id='csFloat'; f.className='csWin';
+  f.style.right='12px'; f.style.bottom='74px';
+  f.style.width=sz.w+'px';
+  f.style.border='1px solid '+(CS.rec?'#7f1d1d':'#166534');
   f.innerHTML=
-    '<div id="csHead" style="display:flex;align-items:center;gap:6px;padding:7px 9px;'+
-      'background:#111827;cursor:move;flex-wrap:wrap">'+
-      '<span style="width:9px;height:9px;border-radius:50%;background:#ef4444;'+
-        'animation:pnlBlink 1.2s infinite alternate"></span>'+
-      '<span style="font-family:var(--guj);font-size:13px">ધોરણ '+CS.cls+'</span>'+
+    '<div id="csHead" class="csHd">'+
+      (CS.rec?'<span style="width:10px;height:10px;border-radius:50%;background:#ef4444;'+
+        'animation:pnlBlink 1.2s infinite alternate"></span>':'<span>📡</span>')+
+      '<span class="csTtl">ધો. '+CS.cls+' · '+(CS.cams>1?'2':'1')+'📷</span>'+
       '<span style="flex:1"></span>'+
-      '<button class="jtFB" id="csTabV" title="કૅમેરો">📹</button>'+
-      '<button class="jtFB" id="csTabJ" title="Jitsi લાઇવ">📡</button>'+
-      '<button class="jtFB" id="csBig" title="મોટું/નાનું">⤢</button>'+
-      '<button class="jtFB" id="csMin" title="નાનું">—</button>'+
+      (CS.rec?'<button class="jtFB" id="csTabV" title="કૅમેરો">📹</button>':'')+
+      (CS.rec?'<button class="jtFB" id="csTabJ" title="Jitsi">📡</button>':
+              '<span id="csTabJ" style="display:none"></span>')+
+      '<button class="jtFB" id="csB1" title="કૅમેરા 1 નો રૂમ">1</button>'+
+      '<button class="jtFB" id="csB2" title="કૅમેરા 2 નો રૂમ">2</button>'+
+      '<button class="jtFB" id="csVid" title="Jitsi માં વિડિયો ચાલુ/બંધ">🎥</button>'+
+      '<button class="jtFB" id="csBig" title="મોટું · નાનું">⤢</button>'+
+      '<button class="jtFB" id="csMin" title="નાનું કરો">—</button>'+
       '<button class="jtFB" id="csX" title="બંધ · સેવ">✕</button>'+
     '</div>'+
     '<div style="position:relative;background:#000">'+
-      '<video id="csPrev" autoplay muted playsinline '+
-        'style="display:block;width:100%;height:236px;object-fit:contain;background:#000"></video>'+
-      '<iframe id="csJit" allow="camera; microphone; fullscreen; autoplay" '+
-        'style="display:none;width:100%;height:236px;border:0;background:#000"></iframe>'+
+      '<video id="csPrev" autoplay muted playsinline webkit-playsinline '+
+        'style="display:none;width:100%;height:'+sz.h+'px;object-fit:contain;background:#000"></video>'+
+      '<iframe id="csJit" allow="'+JIT_ALLOW+'" allowfullscreen '+
+        'style="display:none;width:100%;height:'+sz.h+'px;border:0;background:#000"></iframe>'+
     '</div>'+
-    '<div id="csSt" style="padding:5px 10px;background:#1c0f10;color:#fca5a5;'+
-      'font-family:var(--mono);font-size:11.5px"></div>';
+    '<div id="csSt" class="csStg" style="background:'+(CS.rec?'#1c0f10':'#0d1f16')+';'+
+      'color:'+(CS.rec?'#fca5a5':'#86efac')+'"></div>'+
+    '<div style="padding:0 10px 10px">'+
+      '<button class="csBig" id="csLogin" style="display:none;border-color:#b45309;'+
+        'background:#2a2010">🔑 Jitsi માં એક વાર Log-in કરો (Google)</button>'+
+      '<button class="csBig" id="csTabBrowser" style="display:none">'+
+        '↗ Jitsi નવી ટૅબમાં ખોલો (કૅમેરો ત્યાં ચાલશે)</button>'+
+      (CS.cams>1&&!CS.rec?'<button class="csBig" id="csCam2Tab">'+
+        '↗ કૅમેરા 2 નવી ટૅબમાં ચાલુ કરો</button>':'')+
+    '</div>';
   document.body.appendChild(f);
-  var big=false, showJ=false;
-  function paintTabs(){
-    var v=document.getElementById('csPrev'), j=document.getElementById('csJit');
-    v.style.display=showJ?'none':'block';
-    j.style.display=showJ?'block':'none';
-    if(showJ && !j.src) j.src=jUrl;
-    document.getElementById('csTabV').style.background=showJ?'#0d1626':'#132441';
-    document.getElementById('csTabJ').style.background=showJ?'#132441':'#0d1626';
+
+  var big=false;
+  function fit(){
+    var s=csWinBox(big);
+    f.style.width=s.w+'px';
+    f.querySelector('#csPrev').style.height=s.h+'px';
+    f.querySelector('#csJit').style.height=s.h+'px';
   }
-  f.querySelector('#csTabV').onclick=function(){ showJ=false; paintTabs() };
-  f.querySelector('#csTabJ').onclick=function(){
-    showJ=true; paintTabs();
-    /* one camera cannot always serve both the recorder and Jitsi */
-    if(CS.cams<2 && !f.dataset.warned){
-      f.dataset.warned='1';
-      csStatus('📡 Jitsi ચાલુ — એક જ કૅમેરો હોવાથી ત્યાં વિડિયો ન દેખાય તો '+
-               '📷📷 2 કૅમેરા વાપરો','#fbbf24');
-    }
+  window.addEventListener('resize',fit);
+
+  var tv=f.querySelector('#csTabV'), tj=f.querySelector('#csTabJ');
+  if(tv) tv.onclick=function(){ csShowView('cam') };
+  if(tj && tj.tagName==='BUTTON') tj.onclick=function(){ csShowView('jitsi') };
+  f.querySelector('#csB1').onclick=function(){ csLoadJitsi(1,true); csShowView('jitsi') };
+  f.querySelector('#csB2').onclick=function(){ csLoadJitsi(2,true); csShowView('jitsi') };
+  f.querySelector('#csVid').onclick=function(){
+    CS.jvid=!CS.jvid;
+    csLoadJitsi(CS.jcam,true);
+    csShowView('jitsi');
+    csStatus(CS.jvid
+      ? 'Jitsi માં વિડિયો ચાલુ કર્યો' + (CS.rec?' — રેકોર્ડિંગવાળો કૅમેરો કદાચ ન મળે':'')
+      : 'Jitsi માં વિડિયો બંધ કર્યો', '#fbbf24');
   };
-  f.querySelector('#csBig').onclick=function(){
-    big=!big;
-    f.style.width=big?'70vw':'420px';
-    var h=big?'62vh':'236px';
-    f.querySelector('#csPrev').style.height=h;
-    f.querySelector('#csJit').style.height=h;
-  };
+  f.querySelector('#csBig').onclick=function(){ big=!big; fit() };
   f.querySelector('#csMin').onclick=function(){ csMini(true) };
   f.querySelector('#csX').onclick=function(){ csStop() };
-  f.querySelector('#csHead').addEventListener('pointerdown',function(e){
-    if(e.target.closest('button')) return;
-    e.preventDefault();
-    var r0=f.getBoundingClientRect(), sx=e.clientX, sy=e.clientY;
-    f.style.left=r0.left+'px'; f.style.top=r0.top+'px';
-    f.style.right='auto'; f.style.bottom='auto';
-    function mv(ev){ f.style.left=(r0.left+ev.clientX-sx)+'px'; f.style.top=(r0.top+ev.clientY-sy)+'px' }
-    function up(){ document.removeEventListener('pointermove',mv); document.removeEventListener('pointerup',up) }
-    document.addEventListener('pointermove',mv); document.addEventListener('pointerup',up);
-  });
-  paintTabs();
+  f.querySelector('#csTabBrowser').onclick=function(){
+    openTab(csJitsiUrl(CS.cls,CS.jcam,true,true));
+  };
+  f.querySelector('#csLogin').onclick=function(){
+    openTab(jPlainUrl(CS.cls,CS.jcam));
+    csStatus('નવી ટૅબમાં Log-in → Google → પછી અહીં 📡 ફરી દબાવો','#fbbf24');
+  };
+  var c2=f.querySelector('#csCam2Tab');
+  if(c2) c2.onclick=function(){ openTab(csJitsiUrl(CS.cls,2,true,true)) };
+  csDrag(f, f.querySelector('#csHead'));
 }
-/* small pill — recording and Jitsi keep running */
+/* meet.jit.si will not open a room until one moderator has logged in —
+   show the one-tap log-in button whenever that server is in use */
+function csLoginHint(){
+  var b=document.getElementById('csLogin');
+  if(b) b.style.display=jNeedsLogin()?'':'none';
+}
+function csShowView(which){
+  CS.view=which;
+  var f=document.getElementById('csFloat'); if(!f) return;
+  var v=f.querySelector('#csPrev'), j=f.querySelector('#csJit');
+  var tv=f.querySelector('#csTabV'), tj=f.querySelector('#csTabJ');
+  if(!v||!j) return;
+  var jon=(which!=='cam');
+  v.style.display=jon?'none':'block';
+  j.style.display=jon?'block':'none';
+  if(jon && !j.src) csLoadJitsi(CS.jcam||1,false);
+  if(tv) tv.classList.toggle('on',!jon);
+  if(tj && tj.classList) tj.classList.toggle('on',jon);
+}
+function csLoadJitsi(cam,force){
+  var f=document.getElementById('csFloat'); if(!f) return;
+  var j=f.querySelector('#csJit'); if(!j) return;
+  CS.jcam=Number(cam)||1;
+  var url=csJitsiUrl(CS.cls, CS.jcam, CS.jvid, !CS.rec);
+  var key=CS.cls+':'+CS.jcam+':'+(CS.jvid?1:0);
+  if(force || j.getAttribute('data-key')!==key){
+    j.setAttribute('data-key',key);
+    j.src=url;
+  }
+  var b1=f.querySelector('#csB1'), b2=f.querySelector('#csB2');
+  if(b1) b1.classList.toggle('on',CS.jcam===1);
+  if(b2) b2.classList.toggle('on',CS.jcam===2);
+  var vb=f.querySelector('#csVid');
+  if(vb) vb.classList.toggle('on',CS.jvid);
+}
+
+/* ---------- start a session ---------- */
+function classSession(cls, cams, record){
+  if(CS.on){ csToast('સેશન પહેલેથી ચાલુ છે — પહેલાં ✕ દબાવો','#2a2010'); return }
+  var env=csEnv();
+  CS.on=true; CS.cls=String(cls); CS.cams=(Number(cams)===2?2:1); CS.rec=!!record;
+  CS.chunks=[]; CS.streams=[]; CS.jcam=1;
+  CS.jvid=!record;                 /* recording keeps the camera → Jitsi starts video-off */
+  csFloat();
+
+  /* ---------- 📡 Jitsi only ---------- */
+  if(!record){
+    csStatus('કૅમેરાની પરવાનગી લેવાય છે… (Allow દબાવો)','#fbbf24');
+    csPrewarm(function(ok,why){
+      if(!CS.on) return;
+      csLoadJitsi(1,true);
+      csShowView('jitsi');
+      if(ok){
+        csStatus(jNeedsLogin()
+          ? '📡 Jitsi ચાલુ — "Log-in" દેખાય તો નીચે 🔑 દબાવો (એક જ વાર)'
+          : '📡 Jitsi ચાલુ — ધોરણ '+CS.cls, '#22c55e');
+      }else if(env.file){
+        csStatus('⚠ કૅમેરો બોર્ડને ન મળ્યો (file://) — Jitsi પોતે અંદર Allow માંગશે','#fbbf24');
+      }else{
+        csFail(csErrMsg({name:why})+' — Jitsi અંદર પણ Allow માંગશે');
+      }
+      csLoginHint();
+      setTimeout(function(){ if(CS.on) csMini(true) },4500);
+    });
+    return;
+  }
+
+  /* ---------- 🔴 Jitsi + recording ----------
+     No account is needed for this half: the file is written by the panel
+     itself. Even if Jitsi sits on its log-in screen, the recording runs. */
+  if(!env.gum || !env.mrec){
+    csFail('આ બ્રાઉઝરમાં રેકોર્ડિંગ શક્ય નથી — 📡 ફક્ત Jitsi વાપરો');
+    csShowView('jitsi'); csLoadJitsi(1,true);
+    return;
+  }
+  csShowView('cam');
+  csStatus('કૅમેરો ખૂલે છે… (Allow દબાવો)','#fbbf24');
+  csOpen(csVList(camPref(1)),true).then(function(first){
+    if(!CS.on){ try{ first.getTracks().forEach(function(t){t.stop()}) }catch(e){} return null }
+    CS.streams=[first];
+    if(CS.cams<2){ csStart(); return null }
+    /* second camera is a bonus — one camera still records fine */
+    return navigator.mediaDevices.enumerateDevices().then(function(devs){
+      if(!CS.on) return null;
+      var used=csUsedId(first), other='', p2=camPref(2), ids=[];
+      devs.forEach(function(d){ if(d.kind==='videoinput'&&d.deviceId) ids.push(d.deviceId) });
+      if(p2 && p2!==used && ids.indexOf(p2)>=0) other=p2;
+      else{ for(var i=0;i<ids.length;i++) if(ids[i]!==used){ other=ids[i]; break } }
+      if(!other){
+        CS.cams=1;
+        csToast('બીજો કૅમેરો મળ્યો નથી — એક કૅમેરાથી ચાલુ','#2a2010');
+        csStart(); return null;
+      }
+      return csOpen([{deviceId:{exact:other}},{deviceId:other}],false).then(function(sec){
+        if(!CS.on){ try{ sec.getTracks().forEach(function(t){t.stop()}) }catch(e){} return null }
+        CS.streams=[first,sec]; csStart(); return null;
+      })['catch'](function(){
+        CS.cams=1;
+        csToast('આ પેનલ એકસાથે 2 કૅમેરા ખોલી શકતું નથી — એકથી ચાલુ','#2a2010');
+        csStart(); return null;
+      });
+    })['catch'](function(){ CS.cams=1; csStart(); return null });
+  })['catch'](function(err){
+    csFail(csErrMsg(err));
+    csShowView('jitsi'); csLoadJitsi(1,true);
+  });
+}
+
+/* ---------- recording ---------- */
+function csStart(){
+  var streams=CS.streams, out;
+  if(streams.length>1 && document.createElement('canvas').captureStream){
+    /* two cameras → draw side by side into one video */
+    var vids=streams.map(function(s){
+      var v=document.createElement('video');
+      v.autoplay=true; v.muted=true; v.playsInline=true;
+      v.setAttribute('playsinline',''); v.setAttribute('webkit-playsinline','');
+      v.srcObject=s;
+      v.style.cssText='position:fixed;left:-9999px;top:0;width:320px';
+      v.setAttribute('data-csrc','1');
+      document.body.appendChild(v);
+      try{ v.play() }catch(e){}
+      return v;
+    });
+    var c=document.createElement('canvas');
+    c.width=1280; c.height=480;
+    CS.canvas=c;
+    var x=c.getContext('2d');
+    function draw(){
+      if(!CS.on) return;
+      x.fillStyle='#000'; x.fillRect(0,0,c.width,c.height);
+      vids.forEach(function(v,ix){
+        if(v.videoWidth){
+          var w=640,h=480,ox=ix*640;
+          var vr=v.videoWidth/v.videoHeight, cr=w/h, dw=w, dh=h;
+          if(vr>cr) dh=w/vr; else dw=h*vr;
+          x.drawImage(v, ox+(w-dw)/2, (h-dh)/2, dw, dh);
+        }
+        x.fillStyle='rgba(0,0,0,.55)'; x.fillRect(ix*640,0,110,26);
+        x.fillStyle='#fff'; x.font='15px sans-serif';
+        x.fillText('CAM '+(ix+1), ix*640+10, 18);
+      });
+      CS.raf=requestAnimationFrame(draw);
+    }
+    draw();
+    clearInterval(CS.tick);
+    /* rAF stops when the panel screen sleeps — this keeps the mix alive */
+    CS.tick=setInterval(function(){ if(CS.on && document.hidden) draw() },66);
+    out=c.captureStream(20);
+    var at=streams[0].getAudioTracks();
+    if(at.length) out.addTrack(at[0]);
+  }else{
+    /* one camera → record it straight: simplest and most compatible */
+    out=streams[0];
+    CS.cams=1;
+  }
+  CS.out=out;
+  var prev=document.getElementById('csPrev');
+  if(prev){
+    prev.srcObject=out; prev.muted=true;
+    prev.setAttribute('playsinline','');
+    try{ prev.play() }catch(e){}
+  }
+  var mimes=['video/webm;codecs=vp8,opus','video/webm;codecs=vp8','video/webm',
+             'video/mp4;codecs=h264,aac','video/mp4'];
+  var chosen='';
+  for(var i=0;i<mimes.length;i++){
+    try{ if(window.MediaRecorder && MediaRecorder.isTypeSupported(mimes[i])){ chosen=mimes[i]; break } }catch(e){}
+  }
+  try{ CS.mr = chosen ? new MediaRecorder(out,{mimeType:chosen}) : new MediaRecorder(out) }
+  catch(e){ csFail('રેકોર્ડર શરૂ ન થયો — 📡 ફક્ત Jitsi વાપરો'); return }
+  CS.mime=chosen||'video/webm';
+  CS.mr.ondataavailable=function(ev){ if(ev.data&&ev.data.size) CS.chunks.push(ev.data) };
+  CS.mr.onerror=function(){ csFail('રેકોર્ડિંગમાં ભૂલ — ✕ દબાવીને જેટલું થયું તે સેવ કરો') };
+  CS.mr.onstop=function(){
+    if(!CS.chunks.length){ csToast('રેકોર્ડિંગ ખાલી રહ્યું','#2a2010'); return }
+    var blob=new Blob(CS.chunks,{type:CS.mime});
+    var dur=Date.now()-CS.t0, d=new Date();
+    var ext=(CS.mime.indexOf('mp4')>-1)?'.mp4':'.webm';
+    var name='class_dhoran'+CS.cls+(CS.cams>1?'_2cam':'')+'_'+
+      d.getFullYear()+('0'+(d.getMonth()+1)).slice(-2)+('0'+d.getDate()).slice(-2)+'_'+
+      ('0'+d.getHours()).slice(-2)+('0'+d.getMinutes()).slice(-2)+ext;
+    if(ext==='.webm') csFixWebm(blob,dur,function(fx){ csSave(fx,name) });
+    else csSave(blob,name);
+  };
+  try{ CS.mr.start(2000) }
+  catch(e){ try{ CS.mr.start() }catch(e2){ csFail('રેકોર્ડિંગ શરૂ ન થયું'); return } }
+  CS.t0=Date.now();
+  try{ navigator.wakeLock && navigator.wakeLock.request('screen').then(function(w){ CS.wake=w }) }catch(e){}
+  clearInterval(CS.tm);
+  function csTickNow(){
+    var s=Math.floor((Date.now()-CS.t0)/1000);
+    csStatus('🔴 રેકોર્ડિંગ · '+(CS.cams>1?'2 કૅમેરા · ':'1 કૅમેરો · ')+
+      Math.floor(s/60)+':'+('0'+s%60).slice(-2),'#f87171');
+    var m=document.getElementById('csMLbl');
+    if(m) m.textContent='REC '+Math.floor(s/60)+':'+('0'+s%60).slice(-2);
+  }
+  csTickNow();                       /* show 🔴 at once, not after a second */
+  CS.tm=setInterval(csTickNow,1000);
+  /* Jitsi joins with video off so it does not fight for the same camera */
+  csLoadJitsi(1,true);
+  csLoginHint();
+  setTimeout(function(){ if(CS.on) csMini(true) },3000);
+}
+
+/* ---- stop everything cleanly ---- */
+function csStop(){
+  if(!CS.on) return;
+  CS.on=false;
+  clearInterval(CS.tm); clearInterval(CS.tick);
+  try{ cancelAnimationFrame(CS.raf) }catch(e){}
+  /* stop the recorder first so its onstop can save the file */
+  try{ if(CS.mr && CS.mr.state==='recording') CS.mr.stop() }catch(e){}
+  (CS.streams||[]).forEach(function(s){
+    try{ s.getTracks().forEach(function(t){ t.stop() }) }catch(e){}
+  });
+  CS.streams=[];
+  try{ if(CS.wake && CS.wake.release) CS.wake.release() }catch(e){}
+  CS.wake=null;
+  var vs=document.querySelectorAll('video[data-csrc]');
+  for(var i=0;i<vs.length;i++){ try{ vs[i].srcObject=null; vs[i].remove() }catch(e){} }
+  var f=document.getElementById('csFloat'); if(f) f.remove();
+  var p=document.getElementById('csMini'); if(p) p.remove();
+  CS.mr=null; CS.out=null; CS.canvas=null;
+}
+
+/* ---- small pill — recording and Jitsi keep running behind it ---- */
 function csMini(on){
   var f=document.getElementById('csFloat');
   if(!on){
-    var p=document.getElementById('csMini'); if(p) p.remove();
-    if(f){ f.style.visibility='visible'; f.style.pointerEvents='auto';
-           f.style.left=f.dataset.oldLeft||''; f.style.top=f.dataset.oldTop||'';
-           if(!f.dataset.oldLeft){ f.style.right='16px'; f.style.bottom='70px' } }
+    var q=document.getElementById('csMini'); if(q) q.remove();
+    if(f){
+      f.style.visibility='visible'; f.style.pointerEvents='auto';
+      f.style.left=f.dataset.oldLeft||''; f.style.top=f.dataset.oldTop||'';
+      if(!f.dataset.oldLeft){ f.style.right='12px'; f.style.bottom='74px' }
+    }
     return;
   }
   if(f){
     /* park it off-screen instead of display:none — a hidden iframe would
-       stop the Jitsi video, an off-screen one keeps playing */
+       freeze the Jitsi video, an off-screen one keeps playing */
     f.dataset.oldLeft=f.style.left; f.dataset.oldTop=f.style.top;
     f.style.visibility='hidden'; f.style.pointerEvents='none';
     f.style.left='-9999px'; f.style.top='0';
   }
   if(document.getElementById('csMini')) return;
   var p=document.createElement('div'); p.id='csMini';
-  p.style.cssText='position:fixed;right:14px;bottom:60px;z-index:99;display:flex;gap:8px;'+
-    'align-items:center;background:#1c0f10;border:1px solid #ef4444;border-radius:999px;'+
-    'padding:8px 12px;box-shadow:0 8px 24px rgba(0,0,0,.6);touch-action:none;cursor:move';
-  p.innerHTML='<span style="width:10px;height:10px;border-radius:50%;background:#ef4444;'+
-    'animation:pnlBlink 1.2s infinite alternate"></span>'+
-    '<span id="csMLbl" style="font-family:var(--mono);font-size:12px;color:#fca5a5">REC</span>'+
-    '<button id="csMR" style="width:30px;height:30px;border-radius:50%;border:1px solid var(--line);'+
-      'background:#111827;color:#fff;cursor:pointer" title="મોટું">▢</button>'+
-    '<button id="csMS" style="width:30px;height:30px;border-radius:50%;border:1px solid #7f1d1d;'+
-      'background:#450a0a;color:#fff;cursor:pointer" title="બંધ · સેવ">⏹</button>';
+  p.style.cssText='position:fixed;right:14px;bottom:64px;z-index:99;display:flex;gap:8px;'+
+    'align-items:center;border-radius:999px;padding:9px 13px;touch-action:none;cursor:move;'+
+    'box-shadow:0 8px 24px rgba(0,0,0,.65);'+
+    'border:1px solid '+(CS.rec?'#ef4444':'#22c55e')+';'+
+    'background:'+(CS.rec?'#1c0f10':'#0d1f16');
+  p.innerHTML=(CS.rec?'<span style="width:11px;height:11px;border-radius:50%;background:#ef4444;'+
+    'animation:pnlBlink 1.2s infinite alternate"></span>':'<span>📡</span>')+
+    '<span id="csMLbl" style="font-family:var(--mono);font-size:12px;color:'+
+      (CS.rec?'#fca5a5':'#86efac')+'">'+(CS.rec?'REC':'LIVE')+'</span>'+
+    '<button class="jtFB" id="csMR" title="મોટું કરો">▢</button>'+
+    '<button class="jtFB" id="csMS" style="border-color:#7f1d1d;background:#450a0a" '+
+      'title="બંધ · સેવ">⏹</button>';
   document.body.appendChild(p);
-  p.addEventListener('pointerdown',function(e){
-    if(e.target.closest('button')) return;
-    e.preventDefault();
-    var r0=p.getBoundingClientRect(), sx=e.clientX, sy=e.clientY;
-    p.style.left=r0.left+'px'; p.style.top=r0.top+'px'; p.style.right='auto'; p.style.bottom='auto';
-    function mv(ev){ p.style.left=(r0.left+ev.clientX-sx)+'px'; p.style.top=(r0.top+ev.clientY-sy)+'px' }
-    function up(){ document.removeEventListener('pointermove',mv); document.removeEventListener('pointerup',up) }
-    document.addEventListener('pointermove',mv); document.addEventListener('pointerup',up);
-  });
+  csDrag(p,p);
   p.querySelector('#csMR').onclick=function(){ p.remove(); csMini(false) };
   p.querySelector('#csMS').onclick=function(){ csStop() };
 }
@@ -2903,63 +3308,122 @@ window.addEventListener('beforeunload',function(){
   try{ if(CS.mr && CS.mr.state!=='inactive') CS.mr.stop() }catch(e){}
 });
 
-/* ---------- ▶ START CLASS — the class panel joins its Jitsi room(s).
-   Opened in a real browser tab so the camera works with no extra setup. ---------- */
-function jPrefix(){ return store.get('vrd_jitsi_prefix','pvv-vaghaldhara') }
-function jRoomCam(cls,cam){
-  return jPrefix()+'-dhoran-'+cls+(cam===2?'-b':'');
-}
-function jClassUrl(cls,cam){
-  return 'https://meet.jit.si/'+jRoomCam(cls,cam)+
-    '#userInfo.displayName=%22Dhoran-'+cls+(cam===2?'-2':'')+'%22'+
-    '&config.prejoinPageEnabled=false';
-}
-/* open a link reliably — a real <a> click works even where
-   window.open is blocked by the pop-up blocker */
-function openTab(url){
-  var a=document.createElement('a');
-  a.href=url; a.target='_blank'; a.rel='noopener';
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(function(){ a.remove() },500);
-}
-/* one tap = camera 1 (and camera 2 when asked) */
-function classSessionStart(cls,two){
-  if(two){
-    /* second camera first, so the first one ends up in front */
-    openTab(jClassUrl(cls,2));
-    setTimeout(function(){ openTab(jClassUrl(cls,1)) },500);
-  }else{
-    openTab(jClassUrl(cls,1));
-  }
+/* ==================================================================
+   🔍 કૅમેરા તપાસ — says exactly why the camera is not working
+   ================================================================== */
+function camDiag(){
+  var old=document.getElementById('csDiag'); if(old) old.remove();
+  var env=csEnv();
+  var w=Math.min(window.innerWidth-16, 460);
+  var f=document.createElement('div'); f.id='csDiag'; f.className='csWin';
+  f.style.cssText+=';right:12px;bottom:74px;width:'+w+'px;border:1px solid #1d4ed8;max-height:82vh';
+  function ok(b){ return b?'<b style="color:#22c55e">✔</b>':'<b style="color:#f87171">✘</b>' }
+  f.innerHTML=
+    '<div id="dgHead" class="csHd">'+
+      '<span class="csTtl">🔍 કૅમેરા તપાસ</span><span style="flex:1"></span>'+
+      '<button class="jtFB" id="dgX">✕</button></div>'+
+    '<div style="padding:10px 12px;overflow:auto;font-family:var(--guj);font-size:13px;line-height:1.9">'+
+      '<div>'+ok(!env.file)+' સરનામું: <b style="font-family:var(--mono)">'+esc(env.proto)+'</b>'+
+        (env.file?' — <span style="color:#f87171">file:// માં કૅમેરો નહીં ચાલે</span>':'')+'</div>'+
+      '<div>'+ok(env.secure)+' સુરક્ષિત જોડાણ (https)</div>'+
+      '<div>'+ok(env.gum)+' બ્રાઉઝર કૅમેરો આપે છે</div>'+
+      '<div>'+ok(env.mrec)+' રેકોર્ડિંગ શક્ય છે</div>'+
+      '<div id="dgPerm">⏳ પરવાનગીની સ્થિતિ…</div>'+
+      '<div>'+(jNeedsLogin()?'<b style="color:#fbbf24">!</b>':'<b style="color:#22c55e">✔</b>')+
+        ' સર્વર: <b style="font-family:var(--mono)">'+esc(jHost())+'</b>'+
+        (jNeedsLogin()?' — <span style="color:#fbbf24">રૂમ ચાલુ કરવા એક વાર Log-in જોઈશે</span>':'')+'</div>'+
+      '<div id="dgList" style="margin-top:6px;color:var(--dim)"></div>'+
+      '<video id="dgV" autoplay muted playsinline '+
+        'style="display:none;width:100%;height:160px;background:#000;border-radius:10px;margin-top:8px"></video>'+
+      '<button class="csBig" id="dgGo">🎥 કૅમેરો ચાલુ કરીને જુઓ</button>'+
+      '<button class="csBig" id="dgJ">📡 Jitsi ટેસ્ટ · Log-in (નવી ટૅબ)</button>'+
+      '<div id="dgMsg" style="margin-top:8px;color:#fbbf24"></div>'+
+    '</div>';
+  document.body.appendChild(f);
+  csDrag(f, f.querySelector('#dgHead'));
+  f.querySelector('#dgX').onclick=function(){
+    var v=f.querySelector('#dgV');
+    try{ if(v.srcObject) v.srcObject.getTracks().forEach(function(t){t.stop()}) }catch(e){}
+    f.remove();
+  };
+  /* permission state */
+  (function(){
+    var el=f.querySelector('#dgPerm');
+    if(!navigator.permissions || !navigator.permissions.query){
+      el.innerHTML='• પરવાનગીની સ્થિતિ આ બ્રાઉઝર કહેતું નથી'; return;
+    }
+    navigator.permissions.query({name:'camera'}).then(function(p){
+      var m={granted:'<b style="color:#22c55e">✔ મળેલી છે</b>',
+             denied:'<b style="color:#f87171">✘ ના પાડેલી છે — Chrome ⋮ → Site settings → Camera → Allow</b>',
+             prompt:'<b style="color:#fbbf24">? હજી માંગી નથી</b>'};
+      el.innerHTML='• કૅમેરાની પરવાનગી: '+(m[p.state]||p.state);
+    })['catch'](function(){ el.innerHTML='• પરવાનગીની સ્થિતિ મળી નથી' });
+  })();
+  f.querySelector('#dgJ').onclick=function(){
+    openTab(jPlainUrl(boardClass()||'6',1));
+  };
+  f.querySelector('#dgGo').onclick=function(){
+    var msg=f.querySelector('#dgMsg'), v=f.querySelector('#dgV'), ls=f.querySelector('#dgList');
+    msg.textContent='⏳ કૅમેરો ખૂલે છે…';
+    if(!env.gum){ msg.textContent='આ બ્રાઉઝર કૅમેરો આપતું નથી'; return }
+    csOpen(csVList(camPref(1)),false).then(function(s){
+      v.srcObject=s; v.style.display='block';
+      try{ v.play() }catch(e){}
+      msg.innerHTML='<span style="color:#22c55e">✔ કૅમેરો ચાલે છે — નીચે દેખાય તો બધું બરાબર છે</span>';
+      return navigator.mediaDevices.enumerateDevices();
+    }).then(function(devs){
+      if(!devs) return;
+      var cams=devs.filter(function(d){ return d.kind==='videoinput' });
+      var h='મળેલા કૅમેરા: '+cams.length+'<br>';
+      cams.forEach(function(d,i){ h+='&nbsp;&nbsp;'+(i+1)+'. '+esc(d.label||('device '+(i+1)))+'<br>' });
+      if(cams.length<2) h+='<span style="color:#fbbf24">2 કૅમેરા મોડ માટે બીજો USB કૅમેરો જોડો</span>';
+      ls.innerHTML=h;
+    })['catch'](function(e){
+      msg.innerHTML='<span style="color:#f87171">✘ '+esc(csErrMsg(e))+'</span>';
+    });
+  };
 }
 
-/* ---- floating Jitsi monitor: keeps playing while you use FLN,
-   Evaluation, drawing — draggable, per class, cam 1 / cam 2. ---- */
+/* these are used by pages defined outside this module */
+window.jRoomCam=jRoomCam;
+window.jPrefix=jPrefix;
+window.jHost=jHost;
+window.jSetHost=jSetHost;
+window.jNeedsLogin=jNeedsLogin;
+window.jPlainUrl=jPlainUrl;
+window.csJitsiUrl=csJitsiUrl;
+window.jWatchUrl=jWatchUrl;
+window.jClassUrl=jClassUrl;
+window.openTab=openTab;
+window.JIT_ALLOW=JIT_ALLOW;
+window.camDiag=camDiag;
+window.classSession=classSession;
+window.csStop=csStop;      /* test hook + rail access */
+window.csMini=csMini;      /* test hook */
+window.CS=CS;              /* test hook */
+
+/* ---- floating Jitsi monitor for the teacher's own board: keeps playing
+   while you use FLN, Evaluation or drawing — draggable, per class,
+   camera 1 / camera 2, minimisable. Teacher joins muted (watch only). ---- */
 function jitsiFloat(cls, cam){
-  cam=cam||1;
-  function jUrl(c,k){
-    return 'https://meet.jit.si/'+jRoomCam(c,k)+
-      '#userInfo.displayName=%22Teacher%22&config.prejoinPageEnabled=false'+
-      '&config.startWithAudioMuted=true&config.startWithVideoMuted=true';
-  }
+  cam=Number(cam)||1;
   var old=$('jtFloat'); if(old) old.remove();
-  var f=document.createElement('div'); f.id='jtFloat';
-  f.style.cssText='position:fixed;right:16px;bottom:70px;width:390px;height:266px;z-index:98;'+
-    'background:#0d1320;border:1px solid var(--line);border-radius:14px;overflow:hidden;'+
-    'box-shadow:0 14px 40px rgba(0,0,0,.65);display:flex;flex-direction:column;touch-action:none';
-  f.innerHTML='<div id="jtFH" style="display:flex;align-items:center;gap:6px;padding:6px 8px;'+
-    'background:#111827;cursor:move;flex-wrap:wrap">'+
-    '<span style="font-family:var(--guj);font-size:13px">📹 ધોરણ <b id="jtFT"></b></span>'+
+  var f=document.createElement('div'); f.id='jtFloat'; f.className='csWin';
+  var w=Math.min(window.innerWidth-16, 400);
+  var h=Math.round(Math.min(window.innerHeight*0.36, 268));
+  f.style.cssText+=';right:12px;bottom:74px;border:1px solid var(--line);'+
+    'width:'+w+'px;height:'+h+'px';
+  f.innerHTML='<div id="jtFH" class="csHd">'+
+    '<span class="csTtl">📹 ધોરણ <b id="jtFT"></b></span>'+
     '<span style="flex:1"></span>'+
     (boardClass()?'':'<button class="jtFB" data-c="6">6</button>'+
       '<button class="jtFB" data-c="7">7</button><button class="jtFB" data-c="8">8</button>')+
     '<button class="jtFB" data-k="1" title="કૅમેરા 1">📷1</button>'+
     '<button class="jtFB" data-k="2" title="કૅમેરા 2">📷2</button>'+
-    '<button class="jtFB" id="jtFS" title="મોટું/નાનું">⤢</button>'+
-    '<button class="jtFB" id="jtFM" title="નાનું">—</button>'+
+    '<button class="jtFB" id="jtFS" title="મોટું · નાનું">⤢</button>'+
+    '<button class="jtFB" id="jtFM" title="નાનું કરો">—</button>'+
     '<button class="jtFB" id="jtFX" title="બંધ">✕</button></div>'+
-    '<iframe id="jtFI" allow="camera; microphone; fullscreen; autoplay" '+
+    '<iframe id="jtFI" allow="'+JIT_ALLOW+'" allowfullscreen '+
     'style="flex:1;border:0;background:#000;min-height:0"></iframe>';
   document.body.appendChild(f);
   var curC=boardClass()||cls||'6', curK=cam;
@@ -2967,13 +3431,11 @@ function jitsiFloat(cls, cam){
     f.querySelector('#jtFT').textContent=curC+(curK===2?' · કૅમેરા 2':' · કૅમેરા 1');
     var fr=f.querySelector('#jtFI');
     var key=curC+':'+curK;
-    if(fr.getAttribute('data-c')!==key){ fr.setAttribute('data-c',key); fr.src=jUrl(curC,curK) }
+    if(fr.getAttribute('data-c')!==key){ fr.setAttribute('data-c',key); fr.src=jWatchUrl(curC,curK) }
     var bs=f.querySelectorAll('.jtFB[data-k]');
-    for(var i=0;i<bs.length;i++){
-      var on=String(curK)===bs[i].getAttribute('data-k');
-      bs[i].style.background=on?'#132441':'#0d1626';
-      bs[i].style.borderColor=on?'#1d4ed8':'';
-    }
+    for(var i=0;i<bs.length;i++) bs[i].classList.toggle('on', String(curK)===bs[i].getAttribute('data-k'));
+    var cs=f.querySelectorAll('.jtFB[data-c]');
+    for(var j=0;j<cs.length;j++) cs[j].classList.toggle('on', String(curC)===cs[j].getAttribute('data-c'));
   }
   var cb=f.querySelectorAll('.jtFB[data-c]');
   for(var i=0;i<cb.length;i++)(function(b){
@@ -2983,37 +3445,28 @@ function jitsiFloat(cls, cam){
   for(var j=0;j<kb.length;j++)(function(b){
     b.onclick=function(){ curK=Number(b.getAttribute('data-k')); setSrc() };
   })(kb[j]);
-  var big=false;
-  f.querySelector('#jtFS').onclick=function(){
-    big=!big;
-    f.style.width=big?'78vw':'390px';
-    f.style.height=big?'72vh':'266px';
-  };
-  var mini=false;
+  var big=false, mini=false;
+  function fit(){
+    if(mini){ f.style.width='190px'; f.style.height='128px'; return }
+    f.style.width =(big?Math.min(window.innerWidth-16,1040):Math.min(window.innerWidth-16,400))+'px';
+    f.style.height=Math.round(big?Math.min(window.innerHeight*0.68,700)
+                                 :Math.min(window.innerHeight*0.36,268))+'px';
+  }
+  window.addEventListener('resize',fit);
+  f.querySelector('#jtFS').onclick=function(){ big=!big; fit() };
   f.querySelector('#jtFM').onclick=function(){
     mini=!mini;
-    var hide=['jtFS'];
-    hide.forEach(function(id){ var e=f.querySelector('#'+id); if(e) e.style.display=mini?'none':'' });
+    var e=f.querySelector('#jtFS'); if(e) e.style.display=mini?'none':'';
     var cs=f.querySelectorAll('.jtFB[data-c],.jtFB[data-k]');
     for(var q=0;q<cs.length;q++) cs[q].style.display=mini?'none':'';
-    if(mini){ f.style.width='210px'; f.style.height='150px' }
-    else{ f.style.width=big?'78vw':'390px'; f.style.height=big?'72vh':'266px' }
     this.textContent=mini?'▢':'—';
+    fit();
   };
   f.querySelector('#jtFX').onclick=function(){ f.remove() };
-  /* drag */
-  f.querySelector('#jtFH').addEventListener('pointerdown',function(e){
-    if(e.target.closest('button')) return;
-    e.preventDefault();
-    var r0=f.getBoundingClientRect(), sx=e.clientX, sy=e.clientY;
-    f.style.left=r0.left+'px'; f.style.top=r0.top+'px';
-    f.style.right='auto'; f.style.bottom='auto';
-    function mv(ev){ f.style.left=(r0.left+ev.clientX-sx)+'px'; f.style.top=(r0.top+ev.clientY-sy)+'px' }
-    function up(){ document.removeEventListener('pointermove',mv); document.removeEventListener('pointerup',up) }
-    document.addEventListener('pointermove',mv); document.addEventListener('pointerup',up);
-  });
+  csDrag(f, f.querySelector('#jtFH'));
   setSrc();
 }
+window.jitsiFloat=jitsiFloat;
 
 /* ================================================================
    3b. ALL CLASSES — one in-board screen, three live class videos.
@@ -3036,6 +3489,10 @@ function applyAllView(){
   var b=$('allViewBtn'); if(b) b.style.display=allViewAllowed()?'':'none';
 }
 function sixCamAllowed(){ return !!store.get('vrd_sixcam_on',0) }
+window.sixCamAllowed=sixCamAllowed;
+window.allViewAllowed=allViewAllowed;
+window.tViewAllowed=tViewAllowed;
+window.boardClass=boardClass;
 function applySixCam(){
   var b=$('sixCamBtn'); if(b) b.style.display=sixCamAllowed()?'':'none';
 }
@@ -3043,11 +3500,7 @@ definePage('allview','ત્રણેય વર્ગ · All Classes',function(b
   body.classList.add('mid');
   var w=document.createElement('div'); w.style.cssText='width:100%;max-width:1500px;margin:0 auto';
   if(!allViewAllowed()){ w.appendChild(bigMsg('આ સ્ક્રીન Settings માંથી બંધ છે')); body.appendChild(w); return }
-  function jUrl(c){
-    return 'https://meet.jit.si/'+jRoomCam(c,1)+
-      '#userInfo.displayName=%22Teacher%22&config.prejoinPageEnabled=false'+
-      '&config.startWithAudioMuted=true&config.startWithVideoMuted=true';
-  }
+  function jUrl(c){ return jWatchUrl(c,1) }
   var g=document.createElement('div');
   g.style.cssText='display:grid;grid-template-columns:repeat(3,1fr);gap:8px;'+
     'height:calc(100vh - 170px);min-height:320px';
@@ -3057,7 +3510,7 @@ definePage('allview','ત્રણેય વર્ગ · All Classes',function(b
       'border-radius:12px;overflow:hidden;min-width:0;background:#0d1320';
     p.innerHTML='<div style="padding:7px 12px;background:#111827;font-family:var(--guj);font-size:14px">'+
       'ધોરણ '+c+' · કૅમેરા 1</div>'+
-      '<iframe src="'+jUrl(c)+'" allow="camera; microphone; fullscreen; autoplay" '+
+      '<iframe src="'+jUrl(c)+'" allow="'+JIT_ALLOW+'" allowfullscreen '+
       'style="flex:1;border:0;background:#000;min-height:0"></iframe>';
     g.appendChild(p);
   });
@@ -4578,7 +5031,9 @@ definePage('evaluation','મૂલ્યાંકન · Evaluation',function(bod
    📖 વાંચન ટેસ્ટ — Gujarati literacy + English-digit numeracy.
    Test results save to RESULT tabs (subject FLN) with GR NO.
    ================================================================ */
-function say(t){ sayGu(t) }
+/* audio is not reliable on the class panels — every prompt is written
+   on screen instead, so this is deliberately silent */
+function say(t){ /* no audio in FLN */ }
 var GU_NUM=['શૂન્ય','એક','બે','ત્રણ','ચાર','પાંચ','છ','સાત','આઠ','નવ','દસ','અગિયાર','બાર','તેર','ચૌદ','પંદર','સોળ','સત્તર','અઢાર','ઓગણીસ','વીસ','એકવીસ','બાવીસ','ત્રેવીસ','ચોવીસ','પચીસ','છવ્વીસ','સત્તાવીસ','અઠ્ઠાવીસ','ઓગણત્રીસ','ત્રીસ','એકત્રીસ','બત્રીસ','તેત્રીસ','ચોત્રીસ','પાંત્રીસ','છત્રીસ','સાડત્રીસ','આડત્રીસ','ઓગણચાલીસ','ચાલીસ','એકતાલીસ','બેતાલીસ','તેતાલીસ','ચુંમાલીસ','પિસ્તાલીસ','છેતાલીસ','સુડતાલીસ','અડતાલીસ','ઓગણપચાસ','પચાસ','એકાવન','બાવન','ત્રેપન','ચોપન','પંચાવન','છપ્પન','સત્તાવન','અઠ્ઠાવન','ઓગણસાઠ','સાઠ','એકસઠ','બાસઠ','ત્રેસઠ','ચોસઠ','પાંસઠ','છાસઠ','સડસઠ','અડસઠ','અગણોસિત્તેર','સિત્તેર','એકોતેર','બોતેર','તોતેર','ચુમોતેર','પંચોતેર','છોતેર','સિત્યોતેર','ઇઠ્યોતેર','ઓગણાએંસી','એંસી','એક્યાસી','બ્યાસી','ત્યાસી','ચોર્યાસી','પંચ્યાસી','છ્યાસી','સિત્યાસી','ઈઠ્યાસી','નેવ્યાસી','નેવું','એકાણું','બાણું','ત્રાણું','ચોરાણું','પંચાણું','છન્નું','સત્તાણું','અઠ્ઠાણું','નવ્વાણું','સો'];
 var FLN_PASSAGES=[
  {name:'સ્તર 1 · શબ્દો', text:'ઘર વન નળ જળ ફળ કમળ મગર ગરમ નરમ સરળ પવન ગગન રમત શરમ કલમ સડક બપોર કબાટ મકાન વતન'},
@@ -4700,6 +5155,7 @@ var LESSON_T=[];
 function lessonTimeout(fn,ms){ var id=setTimeout(fn,ms); LESSON_T.push(id); return id }
 function lessonInterval(fn,ms){ var id=setInterval(fn,ms); LESSON_T.push(['i',id]); return id }
 function lessonStopAll(){
+  BUSY=0;
   LESSON_T.forEach(function(t){
     if(t && t[0]==='i') clearInterval(t[1]); else clearTimeout(t);
   });
@@ -4732,8 +5188,28 @@ function genQuiz(cfg){
       exp:fmtIN(ans)+' '+(big?'મોટી':'નાની')+' છે' };
   }
   var n=R2(lo,hi), ds=digits(n);
-  var pos=R2(0,ds.length-1), dg=ds[pos];
-  while(dg===0 && ds.length>1){ pos=R2(0,ds.length-1); dg=ds[pos] }
+  /* the digit we ask about must appear ONLY ONCE, otherwise
+     "2325 માં 2 ની સ્થાનકિંમત?" has two right answers */
+  function countOf(d){ var c=0; for(var q=0;q<ds.length;q++) if(ds[q]===d) c++; return c }
+  var uniq=[];
+  for(var q2=0;q2<ds.length;q2++) if(ds[q2]!==0 && countOf(ds[q2])===1) uniq.push(q2);
+  var pos, dg;
+  if(uniq.length){
+    pos=uniq[R2(0,uniq.length-1)]; dg=ds[pos];
+  }else{
+    /* every digit repeats (e.g. 2222) — make a fresh number that has a unique one */
+    var guard=0;
+    do{
+      n=R2(cfg.lo,cfg.hi); ds=digits(n);
+      uniq=[];
+      for(var q3=0;q3<ds.length;q3++){
+        var c3=0; for(var q4=0;q4<ds.length;q4++) if(ds[q4]===ds[q3]) c3++;
+        if(ds[q3]!==0 && c3===1) uniq.push(q3);
+      }
+    }while(!uniq.length && guard++<40);
+    if(uniq.length){ pos=uniq[R2(0,uniq.length-1)]; dg=ds[pos] }
+    else{ pos=0; dg=ds[0] }
+  }
   var pIdx=ds.length-1-pos;       /* 0=એકમ */
   var pv=dg*Math.pow(10,pIdx);
   if(t===2){                      /* value of digit */
@@ -5052,13 +5528,12 @@ function genDiv(cfg){
 
 var BESIK=[
   ['bcount','1. ગણો અને દબાવો','વસ્તુ ગણો → આંકડો દબાવો'],
-  ['bhear','2. સાંભળો → આંકડો','બોલાયેલી સંખ્યા ઓળખો'],
-  ['bword','3. આંકડો → નામ','7 એટલે "સાત"'],
-  ['bmake','4. જેટલા ટપકાં તેટલા','+ દબાવીને એટલા ટપકાં બનાવો'],
-  ['bmore','5. વધારે-ઓછું','કયા જૂથમાં વધારે?'],
-  ['border','6. ક્રમ · ખૂટતું','આગળ-પાછળ · 3,4,__,6'],
-  ['badd','7. ચિત્ર સરવાળો','🍎🍎 + 🍎 = ? (10 સુધી)'],
-  ['bsub','8. ચિત્ર બાદબાકી','✖ કરેલાં કાઢીને ગણો']
+  ['bword','2. આંકડો → નામ','7 એટલે "સાત"'],
+  ['bmake','3. જેટલા ટપકાં તેટલા','+ દબાવીને એટલા ટપકાં બનાવો'],
+  ['bmore','4. વધારે-ઓછું','કયા જૂથમાં વધારે?'],
+  ['border','5. ક્રમ · ખૂટતું','આગળ-પાછળ · 3,4,__,6'],
+  ['badd','6. ચિત્ર સરવાળો','🍎🍎 + 🍎 = ? (10 સુધી)'],
+  ['bsub','7. ચિત્ર બાદબાકી','✖ કરેલાં કાઢીને ગણો']
 ];
 var EMO=['🍎','⭐','🌸','🐟','🥭','🦋','🎈','🍬'];
 
@@ -5067,7 +5542,7 @@ var EMO=['🍎','⭐','🌸','🐟','🥭','🦋','🎈','🍬'];
    Options include the mistakes students really make, so a wrong tap
    is a teaching moment.
    ================================================================== */
-var BOARD_BUILD='2026-08-02 · test-switch build';
+var BOARD_BUILD='2026-08-03 · camera v4 · server + log-in build';
 var GEN_TYPE='whole';     /* number type દાખલા બનાવો builds for */
 var DUAL_SCOPE='whole';   /* tools the 2-student page offers */
 window.__setScope=function(g,d){ if(g) GEN_TYPE=g; if(d) DUAL_SCOPE=d };
@@ -5529,6 +6004,7 @@ function genWrite(id){
           📝 ટેસ્ટ (roll no; answers accepted; saved: chapter 'ટેસ્ટ')
    ================================================================== */
 definePage('fin','FLN · પાયાનું શિક્ષણ',function(body){
+  setBusy(false);
   body.classList.add('mid');
   lessonStopAll();
   var st={sec:store.get('vrd_fln_sec','ganan'), tool:null, mode:null, cfg:null,
@@ -5823,7 +6299,6 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
           if(g.first) g.score++;
           sndOK();
           hint.style.color='#22c55e'; hint.textContent='✅ '+r.exp;
-          if(st.mode!=='T') say('શાબાશ!');
           next();
         }else{
           sndNO();
@@ -5837,7 +6312,6 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
             g.first=false; b.classList.add('bad');
             lessonTimeout(function(){ b.classList.remove('bad') },600);
             hint.style.color='#fbbf24'; hint.textContent='💡 '+r.exp;
-            if(st.mode==='P') say('ફરી પ્રયત્ન કરો');
           }
         }
       };
@@ -5851,8 +6325,7 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
           if(gr.children[i3].textContent===r.ans) gr.children[i3].classList.add('ok');
         gr.style.pointerEvents='none';
         hint.style.color='#22c55e'; hint.textContent='📘 '+r.exp;
-        say(r.exp);
-        g.score++; next(2200);
+          g.score++; next(2200);
       },1800);
     }
     w.appendChild(c);
@@ -6333,7 +6806,7 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
       flnStu(w,true,function(stu,cls){ st.stu=stu; st.cls=cls; render() });
       return;
     }
-    st.playing=true;
+    st.playing=true; setBusy(true);
     if(st.tool==='r_wpm') playWpm(w);
     else if(st.tool==='w_trace') playTrace(w);
     else if(st.tool==='w_sentence') playSentence(w);
@@ -6486,7 +6959,9 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
     pic.style.cssText='margin:10px 0';
     if(r.build==='make'){
       pic.id='bkArea';
-      pic.innerHTML=dotsRow(g.made||0,'#22c55e');
+      pic.innerHTML=dotsRow(g.made||0,'#22c55e')+
+        '<div id="bkCount" style="text-align:center;font-family:var(--mono);font-size:26px;'+
+        'color:#22c55e;margin-top:6px">'+(g.made||0)+'  ('+GU_NUM[g.made||0]+')</div>';
     }else if(r.two){
       pic.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
         '<div style="border:1px solid var(--line);border-radius:14px;padding:8px">'+
@@ -6502,18 +6977,10 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
     q.style.cssText+=';text-align:center;font-size:19px';
     q.textContent=r.q;
     c.appendChild(q);
-    /* 🔊 repeat button — always available */
-    var sp=document.createElement('button');
-    sp.className='btn';
-    sp.style.cssText+=';display:block;margin:0 auto 8px;padding:9px 20px';
-    sp.textContent='🔊 ફરી સાંભળો';
-    sp.onclick=function(){ say(r.repeat||r.say||r.q) };
-    c.appendChild(sp);
     var hint=document.createElement('div');
     hint.style.cssText='text-align:center;font-family:var(--guj);font-size:14px;'+
       'color:#fbbf24;min-height:20px';
     c.appendChild(hint);
-    lessonTimeout(function(){ if(alive()) say(r.say||r.q) },250);
 
     var myGen=window.PAGE_GEN;
     function alive(){ return window.PAGE_GEN===myGen && st.playing }
@@ -6524,7 +6991,7 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
       },delay||900);
     }
     function correct(){
-      sndOK(); say('શાબાશ!');
+      sndOK();
       if(g.first) g.score++;
       hint.style.color='#22c55e'; hint.textContent='✅ '+(r.exp||'સાચું!');
       next();
@@ -6540,7 +7007,6 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
         if(btn){ btn.classList.add('bad');
           lessonTimeout(function(){ btn.classList.remove('bad') },600) }
         hint.style.color='#fbbf24'; hint.textContent='💡 ફરી ગણો — ' + (r.exp||'');
-        say('ફરી ગણો');
       }
     }
     if(r.build==='make'){
@@ -6557,11 +7023,18 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
         if(el) el.innerHTML=dotsRow(g.made||0,'#22c55e');
       }
       mk('➕',function(){
-        if((g.made||0)<10){ g.made=(g.made||0)+1; paintDots();
-          sndOK(); say(String(GU_NUM[g.made])); }
+        if((g.made||0)<10){
+          g.made=(g.made||0)+1; paintDots(); sndOK();
+          var cnt=document.getElementById('bkCount');
+          if(cnt) cnt.textContent=g.made+'  ('+GU_NUM[g.made]+')';
+        }
       },'#166534');
       mk('➖',function(){
-        if((g.made||0)>0){ g.made--; paintDots() }
+        if((g.made||0)>0){
+          g.made--; paintDots();
+          var cnt=document.getElementById('bkCount');
+          if(cnt) cnt.textContent=g.made+'  ('+GU_NUM[g.made]+')';
+        }
       },'#7f1d1d');
       mk('✔ થઈ ગયું',function(){
         if((g.made||0)===r.target) correct();
@@ -6572,7 +7045,7 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
         lessonTimeout(function(){
           if(!alive()) return;
           g.made=r.target; paintDots();
-          say(r.exp); hint.style.color='#22c55e'; hint.textContent='📘 '+r.exp;
+          hint.style.color='#22c55e'; hint.textContent='📘 '+r.exp;
           g.score++; next(1600);
         },1500);
       }
@@ -6603,7 +7076,7 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
           if(!alive()) return;
           for(var i3=0;i3<gr.children.length;i3++)
             if(gr.children[i3].textContent===String(r.ans)) gr.children[i3].classList.add('ok');
-          say(r.exp); hint.style.color='#22c55e'; hint.textContent='📘 '+r.exp;
+          hint.style.color='#22c55e'; hint.textContent='📘 '+r.exp;
           g.score++; gr.style.pointerEvents='none'; next(1800);
         },1800);
       }
@@ -6658,13 +7131,12 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
           if(right){
             locked=true; b.classList.add('ok');
             if(g.first) g.score++;
-            sndOK(); say('શાબાશ!');
+            sndOK();
             next();
           }else{
             g.first=false;
             b.classList.add('bad'); sndNO();
             $('fnH').textContent='💡 ફરી વિચારો — '+r.exp;
-            say(r.exp);
             lessonTimeout(function(){ b.classList.remove('bad') },700);
           }
         }
@@ -6682,7 +7154,6 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
       tb.style.cssText='text-align:center;font-family:var(--guj);font-size:13px;color:#93c5fd;margin-top:8px';
       tb.textContent='📘 '+r.exp;
       c.appendChild(tb);
-      say(r.exp);
     }
     w.appendChild(c);
   }
@@ -6856,7 +7327,7 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
       }
       if(P.si<steps.length) activate(stepCell(P.si));
       var cur=steps[P.si];
-      if(cur){ hint.textContent=cur.hint||''; if(cur.say&&st.mode==='L') say(cur.say) }
+      if(cur) hint.textContent=cur.hint||'';
     }
     function fill(i2,val,good){
       var el=stepCell(i2); if(!el) return;
@@ -6913,7 +7384,7 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
         if(st.mode==='P') g.score++;
         hint.style.color='#22c55e';
         hint.textContent='✅ દાખલો પૂરો! '+(st.mode==='P'&&P.wrong?('(ભૂલ: '+P.wrong+')'):'');
-        sndOK(); say('શાબાશ! દાખલો પૂરો');
+        sndOK();
       }
       var nx=document.createElement('button');
       nx.className='btn pri';
@@ -7029,7 +7500,6 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
         if(!document.getElementById('nb_'+steps[0].id)){ clearInterval(ti); return }
         if(P.si>=steps.length){ clearInterval(ti); done(); return }
         var s2=steps[P.si];
-        say(s2.say||s2.exp);
         P.entered[P.si]=s2.exp;
         fill(P.si,s2.exp,true);
         P.si++; mark();
@@ -7465,11 +7935,7 @@ definePage('sixcam','🎥 6 કૅમેરા · બધા વર્ગ',functi
   body.classList.add('mid');
   if(!sixCamAllowed()){ body.appendChild(bigMsg('આ સ્ક્રીન Settings માંથી બંધ છે')); return }
   var w=document.createElement('div'); w.style.cssText='width:100%;max-width:1600px;margin:0 auto';
-  function jUrl(c,k){
-    return 'https://meet.jit.si/'+jRoomCam(c,k)+
-      '#userInfo.displayName=%22Teacher%22&config.prejoinPageEnabled=false'+
-      '&config.startWithAudioMuted=true&config.startWithVideoMuted=true';
-  }
+  function jUrl(c,k){ return jWatchUrl(c,k) }
   var g=document.createElement('div');
   g.style.cssText='display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:1fr 1fr;'+
     'gap:7px;height:calc(100vh - 165px);min-height:340px';
@@ -7480,7 +7946,7 @@ definePage('sixcam','🎥 6 કૅમેરા · બધા વર્ગ',functi
         'border-radius:11px;overflow:hidden;min-width:0;background:#0d1320';
       p.innerHTML='<div style="padding:5px 10px;background:#111827;font-family:var(--guj);font-size:12.5px">'+
         'ધોરણ '+c+' · કૅમેરા '+k+'</div>'+
-        '<iframe src="'+jUrl(c,k)+'" allow="camera; microphone; fullscreen; autoplay" '+
+        '<iframe src="'+jUrl(c,k)+'" allow="'+JIT_ALLOW+'" allowfullscreen '+
         'style="flex:1;border:0;background:#000;min-height:0"></iframe>';
       g.appendChild(p);
     });
@@ -7498,6 +7964,7 @@ definePage('sixcam','🎥 6 કૅમેરા · બધા વર્ગ',functi
    full evaluation session (પ્રેક્ટિસ કે ટેસ્ટ) for its own student.
    ================================================================== */
 definePage('eval2','👥 મૂલ્યાંકન · બે વિદ્યાર્થી',function(body){
+  setBusy(false);
   body.classList.add('mid');
   var TYPES=[['quiz','🅰 ક્વિઝ'],['truefalse','✔ ખરું-ખોટું'],
              ['joinab','🔗 જોડકાં'],['classification','🗂 વર્ગીકરણ']];
@@ -7633,12 +8100,6 @@ function besikGen(id){
     return {html:emoRow(n,em), q:'કેટલા છે?', say:'કેટલા છે?',
       opts:opts4(n,1,10), ans:n, exp:'કુલ '+n+' — '+GU_NUM[n]};
   }
-  if(id==='bhear'){
-    n=R2(1,10);
-    return {html:'<div style="text-align:center;font-size:60px">🔊</div>',
-      q:'સાંભળો અને આંકડો દબાવો', say:GU_NUM[n],
-      opts:opts4(n,1,10), ans:n, exp:n+' એટલે '+GU_NUM[n], repeat:GU_NUM[n]};
-  }
   if(id==='bword'){
     n=R2(1,10);
     var o=[GU_NUM[n]], g=0;
@@ -7654,7 +8115,14 @@ function besikGen(id){
   }
   if(id==='bmore'){
     a=R2(1,9); b=a; while(b===a) b=R2(1,9);
-    return {two:[a,b], q:'કયા જૂથમાં વધારે?', say:'કયા જૂથમાં વધારે?',
+    var pairHtml='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
+      '<div style="border:1px solid var(--line);border-radius:14px;padding:8px">'+
+      '<div style="text-align:center;font-family:var(--guj);color:#93c5fd;font-size:16px">A</div>'+
+      dotsRow(a,'#60a5fa',0,34)+'</div>'+
+      '<div style="border:1px solid var(--line);border-radius:14px;padding:8px">'+
+      '<div style="text-align:center;font-family:var(--guj);color:#f59e0b;font-size:16px">B</div>'+
+      dotsRow(b,'#f59e0b',0,34)+'</div></div>';
+    return {two:[a,b], html:pairHtml, q:'કયા જૂથમાં વધારે?', say:'કયા જૂથમાં વધારે?',
       opts:['A','B'], ans:(a>b?'A':'B'), exp:'A = '+a+' , B = '+b};
   }
   if(id==='border'){
@@ -7748,10 +8216,10 @@ function svgEl(w,h,inner,vb){
 function LINES(y,gap){ return {top:y, hang:y+gap, base:y+gap*2, low:y+gap*3, gap:gap} }
 function fourLines(w,y,gap,label){
   var L=LINES(y,gap), g='';
-  g+='<line class="rule" x1="10" y1="'+L.top+'" x2="'+(w-10)+'" y2="'+L.top+'"/>';
-  g+='<line class="ruleMid" x1="10" y1="'+L.hang+'" x2="'+(w-10)+'" y2="'+L.hang+'" stroke="#22c55e" opacity=".55"/>';
-  g+='<line class="rule" x1="10" y1="'+L.base+'" x2="'+(w-10)+'" y2="'+L.base+'" stroke="#475569"/>';
-  g+='<line class="rule" x1="10" y1="'+L.low+'" x2="'+(w-10)+'" y2="'+L.low+'"/>';
+  g+='<line stroke="#1e293b" stroke-width="1.5" x1="10" y1="'+L.top+'" x2="'+(w-10)+'" y2="'+L.top+'"/>';
+  g+='<line stroke="#334155" stroke-width="1.5" stroke-dasharray="6 6" x1="10" y1="'+L.hang+'" x2="'+(w-10)+'" y2="'+L.hang+'" stroke="#22c55e" opacity=".55"/>';
+  g+='<line stroke="#1e293b" stroke-width="1.5" x1="10" y1="'+L.base+'" x2="'+(w-10)+'" y2="'+L.base+'" stroke="#475569"/>';
+  g+='<line stroke="#1e293b" stroke-width="1.5" x1="10" y1="'+L.low+'" x2="'+(w-10)+'" y2="'+L.low+'"/>';
   if(label){
     g+='<text x="14" y="'+(L.hang-5)+'" fill="#22c55e" font-size="11" font-family="sans-serif">લટકતી લીટી — અક્ષર અહીંથી લટકે</text>';
     g+='<text x="14" y="'+(L.base-5)+'" fill="#64748b" font-size="11" font-family="sans-serif">આધારરેખા — અક્ષર અહીં અટકે</text>';
@@ -7759,16 +8227,18 @@ function fourLines(w,y,gap,label){
   return g;
 }
 function animPath(d, dur, cls){
+  /* styles are inlined so the board does not need the course stylesheet */
   var id='p'+(++__p);
-  return '<path id="'+id+'" class="'+(cls||'trace')+'" d="'+d+'" '+
-      'stroke-dasharray="1200" stroke-dashoffset="1200">'+
-      '<animate attributeName="stroke-dashoffset" from="1200" to="0" dur="'+dur+'s" '+
+  return '<path id="'+id+'" d="'+d+'" pathLength="1" stroke="#22c55e" stroke-width="5" '+
+      'fill="none" stroke-linecap="round" stroke-linejoin="round" '+
+      'stroke-dasharray="1 1" stroke-dashoffset="1">'+
+      '<animate attributeName="stroke-dashoffset" from="1" to="0" dur="'+dur+'s" '+
       'repeatCount="indefinite" fill="freeze"/></path>'+
-    '<circle class="pen" r="7">'+
+    '<circle r="7" fill="#fbbf24">'+
       '<animateMotion dur="'+dur+'s" repeatCount="indefinite" rotate="auto">'+
-        '<mpath href="#'+id+'"/></animateMotion></circle>';
+        '<mpath href="#'+id+'" xlink:href="#'+id+'"/></animateMotion></circle>';
 }
-function ghostPath(d){ return '<path class="guide" d="'+d+'" stroke-dasharray="7 7"/>' }
+function ghostPath(d){ return '<path d="'+d+'" stroke="#334155" stroke-width="2" fill="none" stroke-dasharray="7 7"/>' }
 function strokeStage(key){
   var s=STROKES[key];
   return '<div class="stage">'+
@@ -7778,24 +8248,34 @@ function strokeStage(key){
 }
 function letterStage(ch, note){
   var gap=55, L=LINES(30,gap);
-  var fs=Math.round(gap*1.42);            /* letter fills the middle zone */
+  /* cap-height of this font ≈ 0.72 × font-size, so this size makes the
+     letter TOUCH the upper line while its foot rests ON the base line
+     — it never reaches the bottom line (that space is for matras) */
+  var fs=Math.round(gap/0.72);
+  var wipe='w'+(++__p);
   var inner=fourLines(480,30,gap,true)+
+    /* faint model letter */
     '<text x="240" y="'+L.base+'" text-anchor="middle" font-size="'+fs+'" '+
-      'font-family="var(--guj)" fill="#1e293b" opacity=".6">'+ch+'</text>'+
-    '<text x="240" y="'+L.base+'" text-anchor="middle" font-size="'+fs+'" '+
-      'font-family="var(--guj)" fill="none" stroke="#22c55e" stroke-width="2.5" '+
-      'stroke-dasharray="900" stroke-dashoffset="900">'+ch+
-      '<animate attributeName="stroke-dashoffset" from="900" to="0" dur="4s" '+
-      'repeatCount="indefinite" fill="freeze"/></text>'+
-    '<circle cx="240" cy="'+L.hang+'" r="4" fill="#22c55e"/>';
+      'font-family="\'Noto Sans Gujarati\',\'Shruti\',sans-serif" fill="#1e293b">'+ch+'</text>'+
+    /* the same letter revealed left→right, as if being written */
+    '<clipPath id="'+wipe+'"><rect x="0" y="0" height="250" width="0">'+
+      '<animate attributeName="width" values="0;480;480" dur="4s" '+
+      'repeatCount="indefinite" fill="freeze"/></rect></clipPath>'+
+    '<g clip-path="url(#'+wipe+')">'+
+      '<text x="240" y="'+L.base+'" text-anchor="middle" font-size="'+fs+'" '+
+      'font-family="\'Noto Sans Gujarati\',\'Shruti\',sans-serif" fill="#22c55e">'+ch+'</text></g>'+
+    /* start marker on the upper line */
+    '<circle cx="240" cy="'+L.hang+'" r="5" fill="#22c55e"/>'+
+    '<text x="252" y="'+(L.hang-6)+'" fill="#22c55e" font-size="11" '+
+      'font-family="sans-serif">શરૂ</text>';
   return '<div class="stage">'+svgEl(480,250,inner)+
     (note?'<div class="tip">💡 '+note+'</div>':'')+'</div>';
 }
 function matraStage(base, matra, note){
-  var gap=55, L=LINES(30,gap), fs=Math.round(gap*1.42);
+  var gap=55, L=LINES(30,gap), fs=Math.round(gap/0.72);
   var inner=fourLines(480,30,gap,true)+
-    '<text x="200" y="'+L.base+'" text-anchor="middle" font-size="'+fs+'" font-family="var(--guj)" fill="#334155">'+base+'</text>'+
-    '<text x="200" y="'+L.base+'" text-anchor="middle" font-size="'+fs+'" font-family="var(--guj)" fill="var(--amber)">'+base+matra+'</text>'+
+    '<text x="200" y="'+L.base+'" text-anchor="middle" font-size="'+fs+'" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif" fill="#334155">'+base+'</text>'+
+    '<text x="200" y="'+L.base+'" text-anchor="middle" font-size="'+fs+'" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif" fill="#fbbf24">'+base+matra+'</text>'+
     '<circle cx="300" cy="60" r="0" fill="none" stroke="#fbbf24" stroke-width="3">'+
       '<animate attributeName="r" values="0;26;0" dur="2.4s" repeatCount="indefinite"/>'+
       '<animate attributeName="opacity" values="1;0" dur="2.4s" repeatCount="indefinite"/></circle>';
@@ -7808,10 +8288,10 @@ function compareStage(good, bad, gLabel, bLabel){
     '<rect x="244" y="8" width="228" height="150" rx="12" fill="#2a1214" stroke="#7f1d1d"/>'+
     '<text x="122" y="30" text-anchor="middle" fill="#22c55e" font-size="13" font-family="sans-serif">'+gLabel+'</text>'+
     '<text x="358" y="30" text-anchor="middle" fill="#fca5a5" font-size="13" font-family="sans-serif">'+bLabel+'</text>'+
-    '<line class="ruleMid" x1="20" y1="70" x2="224" y2="70"/>'+
-    '<line class="rule" x1="20" y1="130" x2="224" y2="130" stroke="#475569"/>'+
-    '<line class="ruleMid" x1="256" y1="70" x2="460" y2="70"/>'+
-    '<line class="rule" x1="256" y1="130" x2="460" y2="130" stroke="#475569"/>'+
+    '<line stroke="#334155" stroke-width="1.5" stroke-dasharray="6 6" x1="20" y1="70" x2="224" y2="70"/>'+
+    '<line stroke="#1e293b" stroke-width="1.5" x1="20" y1="130" x2="224" y2="130" stroke="#475569"/>'+
+    '<line stroke="#334155" stroke-width="1.5" stroke-dasharray="6 6" x1="256" y1="70" x2="460" y2="70"/>'+
+    '<line stroke="#1e293b" stroke-width="1.5" x1="256" y1="130" x2="460" y2="130" stroke="#475569"/>'+
     good+bad;
   return '<div class="stage">'+svgEl(480,170,inner)+'</div>';
 }
@@ -7865,6 +8345,7 @@ var COURSE=[
   steps:[
   {
     t:'1. પેન્સિલની સાચી પકડ',
+    days:'1 દિવસ',
     goal:'પેન્સિલ ત્રણ આંગળીથી પકડવી — અંગૂઠો, પહેલી અને વચલી આંગળી.',
     stage:'<div class="stage">'+svgEl(480,220,
       '<circle cx="150" cy="120" r="70" fill="#111827" stroke="#334155"/>'+
@@ -7872,9 +8353,9 @@ var COURSE=[
       '<circle cx="128" cy="105" r="15" fill="#22c55e"/><text x="128" y="110" text-anchor="middle" font-size="13" fill="#04210f" font-family="sans-serif">1</text>'+
       '<circle cx="172" cy="100" r="15" fill="#60a5fa"/><text x="172" y="105" text-anchor="middle" font-size="13" fill="#04210f" font-family="sans-serif">2</text>'+
       '<circle cx="168" cy="140" r="15" fill="#a855f7"/><text x="168" y="145" text-anchor="middle" font-size="13" fill="#04210f" font-family="sans-serif">3</text>'+
-      '<text x="300" y="80" fill="#22c55e" font-size="15" font-family="var(--guj)">1 = અંગૂઠો</text>'+
-      '<text x="300" y="115" fill="#60a5fa" font-size="15" font-family="var(--guj)">2 = પહેલી આંગળી</text>'+
-      '<text x="300" y="150" fill="#a855f7" font-size="15" font-family="var(--guj)">3 = વચલી આંગળી (ટેકો)</text>')+
+      '<text x="300" y="80" fill="#22c55e" font-size="15" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif">1 = અંગૂઠો</text>'+
+      '<text x="300" y="115" fill="#60a5fa" font-size="15" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif">2 = પહેલી આંગળી</text>'+
+      '<text x="300" y="150" fill="#a855f7" font-size="15" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif">3 = વચલી આંગળી (ટેકો)</text>')+
       '<div class="tip">💡 પેન્સિલની અણીથી આંગળી <b>2 સેમી</b> ઉપર રહે</div></div>',
     do:['પેન્સિલ ટેબલ પર મૂકો. અણી તમારી તરફ રાખો.',
         'અંગૂઠો અને પહેલી આંગળીથી હળવેથી ઉપાડો — દબાવો નહીં.',
@@ -7887,6 +8368,7 @@ var COURSE=[
   },
   {
     t:'2. બેસવાની રીત',
+    days:'1 દિવસ',
     goal:'પીઠ સીધી, બંને પગ જમીન પર, આંખ અને નોટબુક વચ્ચે એક હાથનું અંતર.',
     stage:'<div class="stage">'+svgEl(480,200,
       '<line x1="60" y1="180" x2="420" y2="180" stroke="#334155" stroke-width="3"/>'+
@@ -7897,8 +8379,8 @@ var COURSE=[
       '<path d="M300 92 L300 140 L300 175" stroke="#22c55e" stroke-width="8" stroke-linecap="round"/>'+
       '<path d="M300 110 L250 128" stroke="#22c55e" stroke-width="7" stroke-linecap="round"/>'+
       '<path d="M300 140 L340 175" stroke="#334155" stroke-width="8" stroke-linecap="round"/>'+
-      '<text x="360" y="60" fill="#22c55e" font-size="14" font-family="var(--guj)">પીઠ સીધી</text>'+
-      '<text x="60" y="205" fill="#9ca3af" font-size="13" font-family="var(--guj)">પગ જમીન પર</text>')+
+      '<text x="360" y="60" fill="#22c55e" font-size="14" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif">પીઠ સીધી</text>'+
+      '<text x="60" y="205" fill="#9ca3af" font-size="13" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif">પગ જમીન પર</text>')+
       '</div>',
     do:['ખુરશીમાં પાછળ સુધી બેસો — પીઠ ટેકે લાગે.',
         'બંને પગ જમીન પર સપાટ રાખો, હલાવો નહીં.',
@@ -7911,6 +8393,7 @@ var COURSE=[
   },
   {
     t:'3. નોટબુકનો ખૂણો અને બીજો હાથ',
+    days:'1 દિવસ',
     goal:'નોટબુક થોડી ત્રાંસી, અને બીજો હાથ પાનું પકડે.',
     stage:'<div class="stage">'+svgEl(480,200,
       '<rect x="150" y="40" width="180" height="130" rx="6" fill="#111827" stroke="#334155" transform="rotate(-12 240 105)"/>'+
@@ -7918,8 +8401,8 @@ var COURSE=[
       '<line x1="170" y1="100" x2="320" y2="100" stroke="#1f2937" transform="rotate(-12 240 105)"/>'+
       '<line x1="170" y1="130" x2="320" y2="130" stroke="#1f2937" transform="rotate(-12 240 105)"/>'+
       '<path d="M120 120 q20 -15 40 0" stroke="#60a5fa" stroke-width="7" fill="none" stroke-linecap="round"/>'+
-      '<text x="60" y="150" fill="#60a5fa" font-size="13" font-family="var(--guj)">ડાબો હાથ<tspan x="60" dy="18">પાનું પકડે</tspan></text>'+
-      '<text x="350" y="60" fill="#fbbf24" font-size="13" font-family="var(--guj)">10°–15° ત્રાંસી</text>')+
+      '<text x="60" y="150" fill="#60a5fa" font-size="13" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif">ડાબો હાથ<tspan x="60" dy="18">પાનું પકડે</tspan></text>'+
+      '<text x="350" y="60" fill="#fbbf24" font-size="13" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif">10°–15° ત્રાંસી</text>')+
       '</div>',
     do:['નોટબુક લખવાના હાથ તરફ 10–15 ડિગ્રી ત્રાંસી રાખો.',
         'બીજા હાથથી પાનું ઉપરના ભાગે દબાવી રાખો — પાનું ખસે નહીં.',
@@ -7933,7 +8416,7 @@ var COURSE=[
   n:'સ્તર 2', t:'પૂર્વ-લેખન — હાથ કેળવો',
   s:'અક્ષર પહેલાં આ આકારો — આનાથી હાથ પર કાબૂ આવે',
   steps:[
-  { t:'4. ઊભી અને ત્રાંસી લીટી', goal:'લીટી સીધી, સરખા અંતરે અને એક જ ઝાટકે.',
+  { t:'4. ઊભી અને ત્રાંસી લીટી', days:'3 દિવસ', goal:'લીટી સીધી, સરખા અંતરે અને એક જ ઝાટકે.',
     stage:strokeStage('vert')+strokeStage('slant'),
     do:['ચાર લીટીની નોટબુકમાં ઉપરની લીટીથી શરૂ કરો.',
         'ઉપરથી નીચે — વચ્ચે અટકો નહીં, પેન્સિલ ઉપાડો નહીં.',
@@ -7941,7 +8424,7 @@ var COURSE=[
         'પછી ત્રાંસી લીટીઓ — બધીનો ઢાળ સરખો.'],
     nb:'<b>2 લીટી ઊભી + 2 લીટી ત્રાંસી</b> · દરેક 5 વાર · 8 મિનિટ',
     checks:['બધી લીટી સીધી છે?','અંતર સરખું છે?','લીટી લીટીથી લીટી સુધી પહોંચે છે?'] },
-  { t:'5. કમાન — ડાબી અને જમણી', goal:'ગોળાઈ સરખી, ખૂણા વગરની.',
+  { t:'5. કમાન — ડાબી અને જમણી', days:'2 દિવસ', goal:'ગોળાઈ સરખી, ખૂણા વગરની.',
     stage:strokeStage('curveR')+strokeStage('curveL'),
     do:['કમાન ધીમે દોરો — ઝડપ કરવાથી ખૂણા પડે.',
         'હાથનું કાંડું ફેરવો; આખો હાથ ન ખસેડો.',
@@ -7949,21 +8432,21 @@ var COURSE=[
     nb:'<b>2 લીટી જમણી કમાન + 2 લીટી ડાબી કમાન</b> · 8 મિનિટ',
     warn:'ગુજરાતીના ઘણા અક્ષર (ક, ફ, હ, વ) આ કમાન પર જ ઊભા છે — અહીં ઉતાવળ ન કરો.',
     checks:['કમાન ગોળ છે, ખૂણાવાળી નથી?','બધી કમાન સરખા કદની છે?'] },
-  { t:'6. લહેરિયું અને ઝિગઝેગ', goal:'હાથ સતત ચાલે — અટક્યા વગર.',
+  { t:'6. લહેરિયું અને ઝિગઝેગ', days:'1 દિવસ', goal:'હાથ સતત ચાલે — અટક્યા વગર.',
     stage:strokeStage('wave')+strokeStage('zig'),
     do:['પેન્સિલ ઉપાડ્યા વગર આખી લીટી પૂરી કરો.',
         'લહેરની ઊંચાઈ સરખી રાખો.',
         'ઝિગઝેગમાં ખૂણા તીક્ષ્ણ બનાવો.'],
     nb:'<b>2 લીટી લહેરિયું + 2 લીટી ઝિગઝેગ</b> · 6 મિનિટ',
     checks:['પેન્સિલ વચ્ચે ઉપાડી નથી?','ઊંચાઈ સરખી છે?'] },
-  { t:'7. ગૂંચળું અને આંકડી', goal:'વળાંક પર કાબૂ — અક્ષરના છેડા સુંદર બને.',
+  { t:'7. ગૂંચળું અને આંકડી', days:'2 દિવસ', goal:'વળાંક પર કાબૂ — અક્ષરના છેડા સુંદર બને.',
     stage:strokeStage('loop')+strokeStage('hook'),
     do:['ગૂંચળાં એક જ કદનાં અને એક જ દિશામાં.',
         'આંકડીમાં નીચે જઈને ધીમેથી વળો — તૂટે નહીં.',
         'ધીમે કરો; ઝડપ પછી આપોઆપ આવશે.'],
     nb:'<b>2 લીટી ગૂંચળાં + 2 લીટી આંકડી</b> · 8 મિનિટ',
     checks:['ગૂંચળાં સરખાં છે?','આંકડીનો વળાંક લીસો છે?'] },
-  { t:'8. ગોળ — બંને દિશામાં', goal:'એક જ સ્ટ્રોકમાં પૂરો ગોળ.',
+  { t:'8. ગોળ — બંને દિશામાં', days:'2 દિવસ', goal:'એક જ સ્ટ્રોકમાં પૂરો ગોળ.',
     stage:strokeStage('circleR')+strokeStage('circleL'),
     do:['ગોળ એક જ વારમાં પૂરો કરો — બે કટકે નહીં.',
         'શરૂ કરેલી જગ્યાએ જ પાછા આવો.',
@@ -7975,11 +8458,11 @@ var COURSE=[
   n:'સ્તર 3', t:'ચાર લીટીની નોટબુક — અક્ષરની જગ્યા',
   s:'સૌથી મોટી ભૂલ અહીં થાય છે: અક્ષર લીટી પર બેસતા નથી',
   steps:[
-  { t:'9. શિરોરેખા અને આધારરેખા', goal:'દરેક અક્ષર ઉપરની લીટીએ લટકે અને નીચે આધારરેખા પર અટકે.',
+  { t:'9. શિરોરેખા અને આધારરેખા', days:'2 દિવસ', goal:'દરેક અક્ષર ઉપરની લીટીએ લટકે અને નીચે આધારરેખા પર અટકે.',
     stage:'<div class="stage">'+svgEl(480,250, fourLines(480,30,55,true)+
-      '<text x="120" y="140" text-anchor="middle" font-size="78" font-family="var(--guj)" fill="#22c55e">ક</text>'+
-      '<text x="240" y="140" text-anchor="middle" font-size="78" font-family="var(--guj)" fill="#22c55e">મ</text>'+
-      '<text x="360" y="140" text-anchor="middle" font-size="78" font-family="var(--guj)" fill="#22c55e">ત</text>')+
+      '<text x="120" y="140" text-anchor="middle" font-size="78" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif" fill="#22c55e">ક</text>'+
+      '<text x="240" y="140" text-anchor="middle" font-size="78" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif" fill="#22c55e">મ</text>'+
+      '<text x="360" y="140" text-anchor="middle" font-size="78" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif" fill="#22c55e">ત</text>')+
       '<div class="tip">💡 ત્રણેય અક્ષર ઉપરની લીટીએ <b>લટકે</b> છે અને નીચે <b>આધારરેખા</b> પર અટકે છે</div></div>',
     do:['ચાર લીટીની નોટબુક જ વાપરો — સાદી નોટબુકમાં અક્ષર ડોલે છે.',
         'અક્ષર <b>બીજી લીટીથી શરૂ કરો</b> — ત્યાંથી અક્ષર લટકે છે.',
@@ -7989,35 +8472,35 @@ var COURSE=[
     nb:'<b>ક મ ત ન પ</b> — દરેક 1 લીટી, ચાર લીટીની નોટબુકમાં · 10 મિનિટ',
     warn:'અક્ષર ઉપરની લીટીથી છૂટો રહે (હવામાં તરે) કે આધારરેખા નીચે ઊતરી જાય — આ બે ભૂલ સૌથી વધુ દેખાય છે.',
     checks:['બધા અક્ષર બીજી લીટીએથી લટકે છે?','બધા અક્ષર આધારરેખા પર અટકે છે?','કોઈ અક્ષર લીટીની બહાર નથી?'] },
-  { t:'10. અક્ષરનું કદ સરખું', goal:'બધા અક્ષર એક જ ઊંચાઈના.',
+  { t:'10. અક્ષરનું કદ સરખું', days:'2 દિવસ', goal:'બધા અક્ષર એક જ ઊંચાઈના.',
     stage:compareStage(
-      '<text x="60" y="126" font-size="52" fill="#22c55e" font-family="var(--guj)">કમલ</text>',
-      '<text x="290" y="126" font-size="52" fill="#fca5a5" font-family="var(--guj)">ક</text>'+
-      '<text x="330" y="126" font-size="34" fill="#fca5a5" font-family="var(--guj)">મ</text>'+
-      '<text x="365" y="126" font-size="62" fill="#fca5a5" font-family="var(--guj)">લ</text>',
+      '<text x="60" y="126" font-size="52" fill="#22c55e" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif">કમલ</text>',
+      '<text x="290" y="126" font-size="52" fill="#fca5a5" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif">ક</text>'+
+      '<text x="330" y="126" font-size="34" fill="#fca5a5" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif">મ</text>'+
+      '<text x="365" y="126" font-size="62" fill="#fca5a5" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif">લ</text>',
       'સાચું — સરખું કદ','ખોટું — વધઘટ'),
     do:['દરેક અક્ષર ઉપરની લીટીથી આધારરેખા સુધીની આખી જગ્યા ભરે.',
         'એક શબ્દ લખ્યા પછી અક્ષરોની ટોચ પર આંગળી ફેરવો — સીધી લાગવી જોઈએ.',
         'મોટા-નાના અક્ષર દેખાય તો એ જ અક્ષર ફરી 1 લીટી લખો.'],
     nb:'<b>કમલ · સરળ · નમન</b> — દરેક શબ્દ 2 લીટી · 10 મિનિટ',
     checks:['બધા અક્ષર સરખી ઊંચાઈના છે?','ટોચ પર આંગળી ફેરવતાં સીધું લાગે છે?'] },
-  { t:'11. અક્ષરો વચ્ચે સરખું અંતર', goal:'ન બહુ ચોંટેલા, ન બહુ છૂટા.',
+  { t:'11. અક્ષરો વચ્ચે સરખું અંતર', days:'1 દિવસ', goal:'ન બહુ ચોંટેલા, ન બહુ છૂટા.',
     stage:compareStage(
-      '<text x="45" y="126" font-size="46" fill="#22c55e" font-family="var(--guj)">શાળા</text>',
-      '<text x="255" y="112" font-size="40" fill="#fca5a5" font-family="var(--guj)">શાળા</text>'+
-      '<text x="255" y="150" font-size="40" fill="#fca5a5" font-family="var(--guj)">શા ળા</text>',
+      '<text x="45" y="126" font-size="46" fill="#22c55e" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif">શાળા</text>',
+      '<text x="255" y="112" font-size="40" fill="#fca5a5" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif">શાળા</text>'+
+      '<text x="255" y="150" font-size="40" fill="#fca5a5" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif">શા ળા</text>',
       'સાચું','ખોટું — ચોંટેલા કે છૂટા'),
     do:['બે અક્ષર વચ્ચે <b>એક પેન્સિલની અણી</b> જેટલી જગ્યા.',
         'બે શબ્દ વચ્ચે <b>એક આંગળી</b> જેટલી જગ્યા.',
         'લખ્યા પછી ખરેખર આંગળી મૂકીને તપાસો.'],
     nb:'<b>મારી શાળા સરસ છે</b> — 3 વાર · 8 મિનિટ',
     checks:['અક્ષરો વચ્ચે અંતર સરખું છે?','શબ્દો વચ્ચે આંગળી જેટલી જગ્યા છે?'] },
-  { t:'12. અક્ષરનો ઢાળ એક જ', goal:'બધા અક્ષર એક જ દિશામાં — ડોલતા નહીં.',
+  { t:'12. અક્ષરનો ઢાળ એક જ', days:'1 દિવસ', goal:'બધા અક્ષર એક જ દિશામાં — ડોલતા નહીં.',
     stage:compareStage(
-      '<text x="55" y="126" font-size="46" fill="#22c55e" font-family="var(--guj)">નમન</text>',
-      '<text x="270" y="126" font-size="46" fill="#fca5a5" font-family="var(--guj)" transform="rotate(-14 285 120)">ન</text>'+
-      '<text x="320" y="126" font-size="46" fill="#fca5a5" font-family="var(--guj)" transform="rotate(12 335 120)">મ</text>'+
-      '<text x="375" y="126" font-size="46" fill="#fca5a5" font-family="var(--guj)">ન</text>',
+      '<text x="55" y="126" font-size="46" fill="#22c55e" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif">નમન</text>',
+      '<text x="270" y="126" font-size="46" fill="#fca5a5" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif" transform="rotate(-14 285 120)">ન</text>'+
+      '<text x="320" y="126" font-size="46" fill="#fca5a5" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif" transform="rotate(12 335 120)">મ</text>'+
+      '<text x="375" y="126" font-size="46" fill="#fca5a5" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif">ન</text>',
       'સાચું — એક ઢાળ','ખોટું — ડોલતા અક્ષર'),
     do:['અક્ષરની ઊભી લીટીઓ એકબીજાને સમાંતર રહે.',
         'નોટબુકનો ખૂણો બદલાય તો ઢાળ બદલાય — નોટબુક સ્થિર રાખો.',
@@ -8029,35 +8512,35 @@ var COURSE=[
   n:'સ્તર 4', t:'અક્ષર કુટુંબ — સરખા આકારવાળા સાથે',
   s:'કક્કાના ક્રમમાં નહીં — જે અક્ષરમાં એક જ સ્ટ્રોક છે તે સાથે',
   steps:[
-  { t:'13. ગોળ કુટુંબ — ડ ઠ ઢ ટ', goal:'ગોળાઈવાળા અક્ષર.',
+  { t:'13. ગોળ કુટુંબ — ડ ઠ ઢ ટ', days:'1 દિવસ', goal:'ગોળાઈવાળા અક્ષર.',
     stage:letterStage('ડ','ગોળ ભાગ પહેલાં, પછી નીચેનો છેડો')+letterStage('ઠ','બે ગોળ — બંને સરખા કદના'),
     do:['પહેલાં ગોળ ભાગ દોરો, પછી બાકીનું.',
         'ગોળ બંધ કરો — ખુલ્લો ગોળ અક્ષર બગાડે.',
         'ટ અને ઠ સાથે લખો — ફરક નજરે ચઢશે.'],
     nb:'<b>ડ ઠ ઢ ટ</b> — દરેક 1 લીટી · 10 મિનિટ',
     checks:['બધા ગોળ બંધ છે?','ગોળનું કદ સરખું છે?'] },
-  { t:'14. ઊભી લીટી કુટુંબ — ન મ ત જ', goal:'ઊભી લીટીથી શરૂ થતા અક્ષર.',
+  { t:'14. ઊભી લીટી કુટુંબ — ન મ ત જ', days:'1 દિવસ', goal:'ઊભી લીટીથી શરૂ થતા અક્ષર.',
     stage:letterStage('ન','ઊભી લીટી પહેલાં — શિરોરેખાથી આધારરેખા સુધી')+letterStage('મ','બંને ઊભી લીટી સમાંતર'),
     do:['ઊભી લીટી પહેલાં દોરો — તે અક્ષરનો કરોડ છે.',
         'લીટી શિરોરેખાથી આધારરેખા સુધી પૂરી પહોંચે.',
         'પછી બાકીના ભાગ ઉમેરો.'],
     nb:'<b>ન મ ત જ</b> — દરેક 1 લીટી · 10 મિનિટ',
     checks:['ઊભી લીટીઓ પૂરી લંબાઈની છે?','સમાંતર છે?'] },
-  { t:'15. કમાન કુટુંબ — ક ફ હ વ', goal:'કમાનવાળા અક્ષર.',
+  { t:'15. કમાન કુટુંબ — ક ફ હ વ', days:'1 દિવસ', goal:'કમાનવાળા અક્ષર.',
     stage:letterStage('ક','પહેલાં કમાન, પછી ઊભી લીટી')+letterStage('ફ','કમાનની ગોળાઈ સરખી રાખો'),
     do:['કમાન ધીમે અને એક જ સ્ટ્રોકમાં.',
         'સ્તર 2 નો કમાન મહાવરો યાદ કરો.',
         'ક અને ફ સાથે લખી સરખાવો.'],
     nb:'<b>ક ફ હ વ</b> — દરેક 1 લીટી · 10 મિનિટ',
     checks:['કમાન લીસી છે?','બધા અક્ષર સરખા કદના છે?'] },
-  { t:'16. મળતા આવતા અક્ષર — ભૂલ ન થાય', goal:'ઘ–ધ, ડ–ડ઼, ળ–ણ, બ–ભ છૂટા પાડો.',
+  { t:'16. મળતા આવતા અક્ષર — ભૂલ ન થાય', days:'1 દિવસ', goal:'ઘ–ધ, ડ–ડ઼, ળ–ણ, બ–ભ છૂટા પાડો.',
     stage:'<div class="stage">'+svgEl(480,150,
-      '<text x="70" y="95" font-size="58" fill="#22c55e" font-family="var(--guj)">ઘ</text>'+
-      '<text x="150" y="95" font-size="58" fill="#60a5fa" font-family="var(--guj)">ધ</text>'+
-      '<text x="250" y="95" font-size="58" fill="#22c55e" font-family="var(--guj)">બ</text>'+
-      '<text x="330" y="95" font-size="58" fill="#60a5fa" font-family="var(--guj)">ભ</text>'+
-      '<text x="70" y="130" font-size="14" fill="#9ca3af" font-family="var(--guj)">વચ્ચે આડી</text>'+
-      '<text x="250" y="130" font-size="14" fill="#9ca3af" font-family="var(--guj)">પેટમાં લીટી</text>')+
+      '<text x="70" y="95" font-size="58" fill="#22c55e" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif">ઘ</text>'+
+      '<text x="150" y="95" font-size="58" fill="#60a5fa" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif">ધ</text>'+
+      '<text x="250" y="95" font-size="58" fill="#22c55e" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif">બ</text>'+
+      '<text x="330" y="95" font-size="58" fill="#60a5fa" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif">ભ</text>'+
+      '<text x="70" y="130" font-size="14" fill="#9ca3af" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif">વચ્ચે આડી</text>'+
+      '<text x="250" y="130" font-size="14" fill="#9ca3af" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif">પેટમાં લીટી</text>')+
       '<div class="tip">💡 જોડમાં લખો — ફરક જાતે દેખાશે</div></div>',
     do:['દરેક જોડ સાથે લખો: ઘ-ધ, બ-ભ, ળ-ણ, ડ-ડ઼.',
         'ફરક ક્યાં છે તે મોટેથી બોલો.',
@@ -8069,7 +8552,7 @@ var COURSE=[
   n:'સ્તર 5', t:'માત્રા · જોડાક્ષર · શબ્દ',
   s:'અક્ષર સારા થયા — હવે આખું લખાણ સુંદર બનાવીએ',
   steps:[
-  { t:'17. કાનો અને માત્રાની જગ્યા', goal:'માત્રા સાચી જગ્યાએ અને સાચા કદની.',
+  { t:'17. કાનો અને માત્રાની જગ્યા', days:'2 દિવસ', goal:'માત્રા સાચી જગ્યાએ અને સાચા કદની.',
     stage:matraStage('ક','ા','કાનો ઉપરની લીટીથી આધારરેખા સુધી — અક્ષર જેટલો જ ઊંચો')+
           matraStage('ક','િ','હ્રસ્વ ઇ અક્ષરની ડાબે, ઉપરની જગ્યામાં'),
     do:['કાનો અક્ષરની જમણી બાજુ, ઉપરની લીટીથી આધારરેખા સુધી.',
@@ -8079,7 +8562,7 @@ var COURSE=[
     nb:'<b>કા કિ કી કુ કૂ કે કૈ કો કૌ</b> — 2 લીટી · 10 મિનિટ',
     warn:'નાનો કાનો કે લટકતી માત્રા — આ બે ભૂલથી લખાણ ગંદું લાગે છે.',
     checks:['કાનો પૂરી ઊંચાઈનો છે?','ઉપરની માત્રા ઉપરની જગ્યામાં છે?','નીચેની માત્રા નીચેની જગ્યામાં છે?'] },
-  { t:'18. જોડાક્ષર', goal:'બે અક્ષર જોડાય પણ કદ ન બગડે.',
+  { t:'18. જોડાક્ષર', days:'1 દિવસ', goal:'બે અક્ષર જોડાય પણ કદ ન બગડે.',
     stage:letterStage('ક્ત','ઉપરનો અક્ષર નાનો નહીં — બંને સરખા વજનના')+
           letterStage('ત્ર','જોડાણ સાફ દેખાય, ગૂંચવાય નહીં'),
     do:['જોડાક્ષર પણ ઉપરની લીટી અને આધારરેખા વચ્ચે જ રહે.',
@@ -8087,45 +8570,45 @@ var COURSE=[
         'ધીમે લખો — જોડાક્ષરમાં ઉતાવળ સૌથી વધુ નડે.'],
     nb:'<b>ક્ત ત્ર દ્ધ સ્ત પ્ર શ્ર</b> — દરેક 1 લીટી · 10 મિનિટ',
     checks:['જોડાક્ષર લીટીની અંદર છે?','બંને ભાગ સાફ દેખાય છે?'] },
-  { t:'19. શબ્દ લેખન', goal:'આખો શબ્દ સરખા કદ, અંતર અને ઢાળમાં.',
+  { t:'19. શબ્દ લેખન', days:'2 દિવસ', goal:'આખો શબ્દ સરખા કદ, અંતર અને ઢાળમાં.',
     stage:'<div class="stage">'+svgEl(480,250, fourLines(480,30,55,true)+
-      '<text x="240" y="140" text-anchor="middle" font-size="72" font-family="var(--guj)" fill="#22c55e">શાળા</text>')+
+      '<text x="240" y="140" text-anchor="middle" font-size="72" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif" fill="#22c55e">શાળા</text>')+
       '<div class="tip">💡 એક શબ્દ લખો → તપાસો → પછી બીજો. ઉતાવળે આખું પાનું નહીં.</div></div>',
     do:['શબ્દ મનમાં બોલો, પછી લખો.',
         'લખ્યા પછી ત્રણ વસ્તુ તપાસો: કદ, અંતર, લીટી પર બેઠક.',
         'ભૂલવાળો શબ્દ ભૂંસો નહીં — નીચે ફરી સાચો લખો.'],
     nb:'<b>શાળા · પુસ્તક · મિત્ર · વરસાદ · સૂરજ</b> — દરેક 1 લીટી · 12 મિનિટ',
     checks:['બધા શબ્દ સરખા કદના છે?','શબ્દો વચ્ચે આંગળી જેટલી જગ્યા છે?','બધું આધારરેખા પર બેસે છે?'] },
-  { t:'20. વાક્ય લેખન', goal:'આખી લીટી સીધી અને સરખી.',
+  { t:'20. વાક્ય લેખન', days:'1 દિવસ', goal:'આખી લીટી સીધી અને સરખી.',
     stage:'<div class="stage">'+svgEl(480,200, fourLines(480,30,45,false)+
-      '<text x="30" y="152" fill="#22c55e" font-size="34" font-family="var(--guj)">મને શાળા ગમે છે.</text>')+
+      '<text x="30" y="152" fill="#22c55e" font-size="34" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif">મને શાળા ગમે છે.</text>')+
       '<div class="tip">💡 લીટીના છેડે શબ્દ ન સમાય તો આખો શબ્દ નીચેની લીટીએ લઈ જાઓ</div></div>',
     do:['ડાબા હાંસિયાથી શરૂ કરો — બધી લીટી એક જ જગ્યાએથી.',
         'લીટીના છેડે શબ્દ તોડો નહીં.',
         'વાક્યના અંતે પૂર્ણવિરામ ભૂલશો નહીં.'],
     nb:'<b>3 વાક્ય</b>, દરેક 2 વાર · 12 મિનિટ',
     checks:['બધી લીટી હાંસિયાથી શરૂ થાય છે?','કોઈ શબ્દ તૂટ્યો નથી?','વિરામચિહ્ન છે?'] },
-  { t:'21. ધીમે લખો — સુંદરતા પહેલાં', goal:'ઝડપ નહીં, ચોકસાઈ.',
+  { t:'21. ધીમે લખો — સુંદરતા પહેલાં', days:'1 દિવસ', goal:'ઝડપ નહીં, ચોકસાઈ.',
     stage:compareStage(
-      '<text x="40" y="120" font-size="34" fill="#22c55e" font-family="var(--guj)">ધીરે — સુંદર</text>',
-      '<text x="262" y="120" font-size="34" fill="#fca5a5" font-family="var(--guj)" transform="skewX(-12)">ઝડપી — ગંદું</text>',
+      '<text x="40" y="120" font-size="34" fill="#22c55e" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif">ધીરે — સુંદર</text>',
+      '<text x="262" y="120" font-size="34" fill="#fca5a5" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif" transform="skewX(-12)">ઝડપી — ગંદું</text>',
       'ધીમે લખેલું','ઉતાવળે લખેલું'),
     do:['એક લીટી લખવા ઓછામાં ઓછી 1 મિનિટ લો.',
         'દર 5 લીટીએ હાથ 10 સેકન્ડ આરામ આપો.',
         'ઝડપ 3 અઠવાડિયામાં જાતે આવશે — પહેલાં આકાર પાકો કરો.'],
     nb:'એક ફકરો <b>ધીમે</b> ઉતારો — 10 મિનિટ',
     checks:['ઉતાવળ કર્યા વગર લખ્યું?','છેલ્લી લીટી પણ પહેલી જેવી સુંદર છે?'] },
-  { t:'22. રોજનો 10 મિનિટનો નિયમ', goal:'ટેવ પાડો — સુધારો ટકે.',
+  { t:'22. રોજનો 10 મિનિટનો નિયમ', days:'રોજ', goal:'ટેવ પાડો — સુધારો ટકે.',
     stage:'<div class="stage">'+svgEl(480,170,
       '<rect x="20" y="30" width="200" height="110" rx="12" fill="#0d1f16" stroke="#166534"/>'+
-      '<text x="120" y="60" text-anchor="middle" fill="#22c55e" font-size="15" font-family="var(--guj)">રોજ 10 મિનિટ</text>'+
-      '<text x="120" y="90" text-anchor="middle" fill="#e5e7eb" font-size="13" font-family="var(--guj)">3 મિનિટ — સ્ટ્રોક</text>'+
-      '<text x="120" y="112" text-anchor="middle" fill="#e5e7eb" font-size="13" font-family="var(--guj)">5 મિનિટ — અક્ષર/શબ્દ</text>'+
-      '<text x="120" y="134" text-anchor="middle" fill="#e5e7eb" font-size="13" font-family="var(--guj)">2 મિનિટ — તપાસ</text>'+
+      '<text x="120" y="60" text-anchor="middle" fill="#22c55e" font-size="15" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif">રોજ 10 મિનિટ</text>'+
+      '<text x="120" y="90" text-anchor="middle" fill="#e5e7eb" font-size="13" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif">3 મિનિટ — સ્ટ્રોક</text>'+
+      '<text x="120" y="112" text-anchor="middle" fill="#e5e7eb" font-size="13" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif">5 મિનિટ — અક્ષર/શબ્દ</text>'+
+      '<text x="120" y="134" text-anchor="middle" fill="#e5e7eb" font-size="13" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif">2 મિનિટ — તપાસ</text>'+
       '<rect x="260" y="30" width="200" height="110" rx="12" fill="#2a1214" stroke="#7f1d1d"/>'+
-      '<text x="360" y="60" text-anchor="middle" fill="#fca5a5" font-size="15" font-family="var(--guj)">અઠવાડિયે 1 વાર</text>'+
-      '<text x="360" y="95" text-anchor="middle" fill="#e5e7eb" font-size="13" font-family="var(--guj)">1 કલાક લખવાથી</text>'+
-      '<text x="360" y="118" text-anchor="middle" fill="#e5e7eb" font-size="13" font-family="var(--guj)">કંઈ સુધરતું નથી</text>')+
+      '<text x="360" y="60" text-anchor="middle" fill="#fca5a5" font-size="15" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif">અઠવાડિયે 1 વાર</text>'+
+      '<text x="360" y="95" text-anchor="middle" fill="#e5e7eb" font-size="13" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif">1 કલાક લખવાથી</text>'+
+      '<text x="360" y="118" text-anchor="middle" fill="#e5e7eb" font-size="13" font-family="\'Noto Sans Gujarati\',\'Shruti\',\'Nirmala UI\',sans-serif">કંઈ સુધરતું નથી</text>')+
       '</div>',
     do:['રોજ એક જ સમય નક્કી કરો (દા.ત. પહેલો પિરિયડ).',
         '10 મિનિટ: 3 સ્ટ્રોક + 5 લેખન + 2 તપાસ.',
@@ -8237,6 +8720,8 @@ function growthLevels(sc){
   var basic=BESIK.filter(function(b){ return !GROWTH_SKIP[b[0]] }).map(function(b){ return b[0] });
   for(var j=0;j<basic.length;j+=4)
     L.push({name:'લેવલ '+(L.length+1)+' · બેઝિક', ids:basic.slice(j,j+4)});
+  L.push({name:'લેવલ '+(L.length+1)+' · પૂર્ણ સંખ્યા',
+          ids:WHOLE_T.map(function(t){ return t[0] })});
   NUMSETS.forEach(function(ns){
     L.push({name:'લેવલ '+(L.length+1)+' · '+ns[2],
       ids:NUMTOOLS.map(function(t){ return 'n_'+ns[0]+'_'+t[0] })});
@@ -8248,18 +8733,86 @@ function growthTools(sc){
   growthLevels(sc).forEach(function(l){ out=out.concat(l.ids) });
   return out;
 }
+/* the tutor's whole-number skills — same maths as the notebook tools,
+   asked as tap-the-answer so the tutor can mark them automatically */
+var WHOLE_T=[['g_quiz','સ્થાનકિંમત · નાની-મોટી'],['g_add','સરવાળો'],['g_sub','બાદબાકી'],
+             ['g_mul','ગુણાકાર'],['g_div','ભાગાકાર']];
+function isWhole(id){ return String(id).indexOf('g_')===0 }
+function wholeOpts(ans, wrongs){
+  var out=[String(ans)];
+  for(var i=0;i<wrongs.length && out.length<4;i++){
+    var w=String(wrongs[i]);
+    if(w!==''&&w!=='NaN'&&Number(w)>=0&&out.indexOf(w)<0) out.push(w);
+  }
+  var g=0;
+  while(out.length<4 && g++<40){
+    var d=ans+R2(-20,20);
+    if(d>=0 && out.indexOf(String(d))<0) out.push(String(d));
+  }
+  return shuffle(out);
+}
+/* લઘુત્તમ સ્તર — વિદ્યાર્થી આટલું આવડે તો જ "પાસ" ગણાય:
+   સ્થાનકિંમત 101–1000 · સરવાળો/બાદબાકી 3 અંક · ગુણાકાર 2×2 અંક
+   · ભાગાકાર 4 અંક ÷ (2–20) */
+var WHOLE_MIN={quizLevel:2, addDigits:3, addCount:2, subDigits:3,
+               mulA:2, mulB:2, divDigits:4, divMax:20};
+function genWhole(id){
+  if(id==='g_quiz') return genQuiz({lv:2,lo:101,hi:1000});
+  var a,b,ans,html,exp;
+  if(id==='g_add'){
+    a=R2(101,999); b=R2(101,999); ans=a+b;
+    html='<div style="text-align:center;font-size:34px;font-family:var(--mono)">'+
+      fmtIN(a)+' + '+fmtIN(b)+'</div>';
+    exp=fmtIN(a)+' + '+fmtIN(b)+' = '+fmtIN(ans);
+    return {html:html,q:'સરવાળો કેટલો?',opts:wholeOpts(ans,[a-b,ans+10,ans-10,ans+100]),
+            ans:String(ans),exp:exp};
+  }
+  if(id==='g_sub'){
+    a=R2(201,999); b=R2(101,a-1); ans=a-b;
+    html='<div style="text-align:center;font-size:34px;font-family:var(--mono)">'+
+      fmtIN(a)+' − '+fmtIN(b)+'</div>';
+    return {html:html,q:'બાદબાકી કેટલી?',opts:wholeOpts(ans,[a+b,ans+10,ans-10,ans+1]),
+            ans:String(ans),exp:fmtIN(a)+' − '+fmtIN(b)+' = '+fmtIN(ans)};
+  }
+  if(id==='g_mul'){
+    a=R2(11,99); b=R2(11,99); ans=a*b;          /* 2 અંક × 2 અંક */
+    html='<div style="text-align:center;font-size:34px;font-family:var(--mono)">'+
+      a+' × '+b+'</div>';
+    return {html:html,q:'ગુણાકાર કેટલો?',opts:wholeOpts(ans,[a+b,ans+a,ans-a,ans+100]),
+            ans:String(ans),exp:a+' × '+b+' = '+fmtIN(ans)};
+  }
+  /* 4 અંકનો ભાજ્ય ÷ 2 થી 20 */
+  b=R2(2,20);
+  ans=R2(Math.ceil(1000/b), Math.floor(9999/b));
+  a=b*ans;
+  html='<div style="text-align:center;font-size:34px;font-family:var(--mono)">'+
+    fmtIN(a)+' ÷ '+b+'</div>';
+  return {html:html,q:'ભાગાકાર કેટલો?',opts:wholeOpts(ans,[a-b,ans+1,ans-1,ans+10]),
+          ans:String(ans),exp:fmtIN(a)+' ÷ '+b+' = '+ans};
+}
 function growthLabel(id){
+  if(isWhole(id)){
+    for(var i=0;i<WHOLE_T.length;i++) if(WHOLE_T[i][0]===id) return WHOLE_T[i][1];
+  }
   if(id.indexOf('n_')===0) return numName(id);
   if(id.indexOf('r_')===0 || id.indexOf('w_')===0) return vlName(id);
   return besikName(id);
 }
 function growthAct(id){
+  /* same activity names the notebook tools save under, so the tutor
+     can read a child's existing whole-number history */
+  if(id==='g_quiz') return 'FLN સંખ્યા-ક્વિઝ';
+  if(id==='g_add')  return 'FLN સરવાળો';
+  if(id==='g_sub')  return 'FLN બાદબાકી';
+  if(id==='g_mul')  return 'FLN ગુણાકાર';
+  if(id==='g_div')  return 'FLN ભાગાકાર';
   if(id.indexOf('n_')===0) return 'FLN '+numName(id);
   if(id.indexOf('r_')===0) return 'FLN વાંચન · '+vlName(id);
   if(id.indexOf('w_')===0) return 'FLN લેખન · '+vlName(id);
   return 'FLN બેઝિક · '+besikName(id);
 }
 function growthGen(id){
+  if(isWhole(id)) return genWhole(id);
   if(id.indexOf('n_')===0){ var p=id.split('_'); return numGen(p[1],p[2]) }
   if(id.indexOf('r_')===0) return genRead(id);
   if(id.indexOf('w_')===0) return genWrite(id);
@@ -8277,6 +8830,7 @@ function starRow(n,size){
 function medalFor(avg){ return avg>=90?'🥇' : avg>=80?'🥈' : avg>=60?'🥉' : '' }
 
 definePage('growth','🌱 વ્યક્તિગત પ્રગતિ · Personal Progress',function(body){
+  setBusy(false);
   body.classList.add('mid');
   var SC=GROWTH_SCOPE||'ganan';
   var LEVELS=growthLevels(SC);
@@ -8329,7 +8883,7 @@ definePage('growth','🌱 વ્યક્તિગત પ્રગતિ · Pers
       c.innerHTML='<div style="text-align:center;font-family:var(--guj);padding:20px">પરિણામ જોવાય છે…</div>';
       return; }
     if(s.stage==='map')  return stMap(sd);
-    if(s.stage==='play') return stPlay(sd);
+    if(s.stage==='play'){ setBusy(true); return stPlay(sd) }
     if(s.stage==='done') return stDone(sd);
     if(s.stage==='level')return stLevelUp(sd);
   }
@@ -8348,14 +8902,39 @@ definePage('growth','🌱 વ્યક્તિગત પ્રગતિ · Pers
       },function(){ s.best={}; s.xp=0; s.stage='map'; draw(sd) });
     });
   }
+  /* a notebook test counts only if it was at least the minimum level */
+  function qualifies(id, chapter){
+    var ch=String(chapter||'');
+    if(id==='g_quiz'){
+      var m=/L(\d)/.exec(ch);
+      return m ? (+m[1] >= WHOLE_MIN.quizLevel) : false;
+    }
+    if(id==='g_add'){
+      var a=/(\d)\s*અંક\s*×\s*(\d)/.exec(ch);
+      return a ? (+a[1]>=WHOLE_MIN.addDigits && +a[2]>=WHOLE_MIN.addCount) : false;
+    }
+    if(id==='g_sub'){
+      var s=/(\d)\s*અંક/.exec(ch);
+      return s ? (+s[1]>=WHOLE_MIN.subDigits) : false;
+    }
+    if(id==='g_mul'){
+      var u=/(\d)\s*×\s*(\d)\s*અંક/.exec(ch);
+      return u ? (+u[1]>=WHOLE_MIN.mulA && +u[2]>=WHOLE_MIN.mulB) : false;
+    }
+    if(id==='g_div'){
+      var d=/(\d)\s*અંક\s*÷\s*(\d+)\s*-\s*(\d+)/.exec(ch);
+      return d ? (+d[1]>=WHOLE_MIN.divDigits && +d[3]>=WHOLE_MIN.divMax) : false;
+    }
+    return true;                       /* other skills have no level setting */
+  }
   function bestByTool(rows){
     var best={};
     rows.forEach(function(r){
       if((r.mode||'ટેસ્ટ')!=='ટેસ્ટ') return;                 /* tests only */
       growthTools(SC).forEach(function(id){
-        if(String(r.act||'')===growthAct(id)){
-          if(best[id]===undefined || r.pct>best[id]) best[id]=r.pct;
-        }
+        if(String(r.act||'')!==growthAct(id)) return;
+        if(isWhole(id) && !qualifies(id, r.ch)) return;       /* too easy — ignore */
+        if(best[id]===undefined || r.pct>best[id]) best[id]=r.pct;
       });
     });
     return best;
@@ -8423,10 +9002,13 @@ definePage('growth','🌱 વ્યક્તિગત પ્રગતિ · Pers
         '<span style="font-size:15px">'+(st2.complete?(medalFor(st2.avg)||'✅'):(st2.done+'/'+st2.total))+'</span></div>';
       lv.ids.forEach(function(id){
         var p=s.best[id];
+        var need={g_quiz:'101–1000',g_add:'3 અંક × 2',g_sub:'3 અંક',
+                  g_mul:'2 × 2 અંક',g_div:'4 અંક ÷ 2-20'}[id];
         h2+='<div style="display:flex;justify-content:space-between;align-items:center;'+
           'font-family:var(--guj);font-size:12.5px;padding:3px 0;color:'+
           (p===undefined?'var(--dim)':(p>=80?'#22c55e':'#fbbf24'))+'">'+
-          '<span>'+(p===undefined?'○':(p>=80?'✔':'●'))+' '+esc(growthLabel(id))+'</span>'+
+          '<span>'+(p===undefined?'○':(p>=80?'✔':'●'))+' '+esc(growthLabel(id))+
+          (need?('<span style="color:#64748b;font-size:11px"> · ઓછામાં ઓછું '+need+'</span>'):'')+'</span>'+
           '<span>'+(p===undefined?'—':starRow(starsFor(p),13))+'</span></div>';
       });
       d.innerHTML=h2;
@@ -8626,7 +9208,6 @@ definePage('hwcourse','✍ સુંદર અક્ષર · હસ્તાક
     c.style.cssText+=';margin-bottom:10px';
     c.innerHTML='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
       '<div style="font-family:var(--guj);font-size:15px;font-weight:700">✍ સુંદર અક્ષર</div>'+
-      '<div style="font-family:var(--guj);font-size:11.5px;color:#a855f7">'+esc(voiceLabel())+'</div>'+
       '<span style="flex:1"></span>'+
       '<div style="font-family:var(--mono);font-size:12.5px;color:var(--dim)">'+
         d+'/'+t+' પગલાં · '+dd+'/30 દિવસ</div></div>'+
@@ -8688,43 +9269,45 @@ definePage('hwcourse','✍ સુંદર અક્ષર · હસ્તાક
 
     var b=document.createElement('div');
     b.style.marginTop='10px';
-    var speech=[S.t,'ધ્યેય. '+S.goal]
-      .concat(S.do.map(function(d,i){ return 'પગલું '+(i+1)+'. '+String(d).replace(/<[^>]+>/g,'') }))
-      .concat(S.nb?['નોટબુકમાં. '+String(S.nb).replace(/<[^>]+>/g,'')]:[])
-      .concat(S.warn?['ધ્યાન રાખો. '+S.warn]:[]).join('. ');
-    var lb=document.createElement('button');
-    lb.className='btn'; lb.style.cssText+=';border-color:#a855f7;background:#1e1030;margin-bottom:10px';
-    lb.textContent='🔊 સાંભળો';
-    lb.onclick=function(){
-      if(lb.dataset.on==='1'){ stopSay(); lb.dataset.on=''; lb.textContent='🔊 સાંભળો'; return }
-      lb.dataset.on='1'; lb.textContent='⏹ બંધ';
-      sayGu(speech);
-      lessonTimeout(function(){ lb.dataset.on=''; lb.textContent='🔊 સાંભળો' },1200);
-    };
-    b.appendChild(lb);
 
-    var box=document.createElement('div');
-    box.innerHTML=
+    var grid=document.createElement('div');
+    grid.className='hwGrid';
+    grid.style.cssText='display:grid;grid-template-columns:1.15fr 1fr;gap:12px;align-items:start';
+    /* ---------- LEFT: what it looks like + why ---------- */
+    var left=document.createElement('div');
+    left.innerHTML=
       '<div style="background:#0c2233;border:1px solid #0ea5e9;border-radius:12px;padding:10px 14px;'+
         'font-family:var(--guj);font-size:14.5px;margin-bottom:10px">'+
         '<b style="color:#7dd3fc">🎯 ધ્યેય:</b> '+esc(S.goal)+'</div>'+
       (S.stage||'')+
-      '<ol style="counter-reset:s;margin:0;padding:0;list-style:none;font-family:var(--guj)">'+
+      '<ol style="margin:10px 0 0;padding:0;list-style:none;font-family:var(--guj)">'+
         S.do.map(function(d){
-          return '<li style="position:relative;padding:9px 0 9px 40px;font-size:15px;line-height:1.7;'+
+          return '<li style="position:relative;padding:9px 0 9px 40px;font-size:14.5px;line-height:1.7;'+
             'border-bottom:1px dashed #1f2937">'+
             '<span style="position:absolute;left:0;top:8px;width:26px;height:26px;border-radius:50%;'+
             'background:#1e293b;color:#fbbf24;font-family:var(--mono);font-size:13px;display:flex;'+
             'align-items:center;justify-content:center"></span>'+d+'</li>';
-        }).join('')+'</ol>'+
-      (S.nb?('<div style="margin-top:10px;background:#2a2010;border:1px solid #b45309;border-radius:12px;'+
-        'padding:10px 14px;font-family:var(--guj);font-size:14.5px"><b style="color:#fbbf24">✍ નોટબુકમાં:</b> '+S.nb+'</div>'):'')+
-      (S.warn?('<div style="margin-top:10px;background:#2a1214;border:1px solid #7f1d1d;border-radius:12px;'+
-        'padding:10px 14px;font-family:var(--guj);font-size:14px"><b style="color:#fca5a5">⚠ આ ભૂલ ટાળો:</b> '+esc(S.warn)+'</div>'):'');
-    b.appendChild(box);
-    /* number the steps (CSS counters are not reliable inside the board) */
-    var lis=box.querySelectorAll('li span');
+        }).join('')+'</ol>';
+    var lis=left.querySelectorAll('li span');
     for(var q=0;q<lis.length;q++) lis[q].textContent=String(q+1);
+    grid.appendChild(left);
+    /* ---------- RIGHT: what the child does, and for how long ---------- */
+    var right=document.createElement('div');
+    right.innerHTML=
+      '<div style="background:#0d1f16;border:1px solid #166534;border-radius:12px;padding:12px 14px;'+
+        'font-family:var(--guj);text-align:center;margin-bottom:10px">'+
+        '<div style="font-size:12px;color:var(--dim)">કેટલા દિવસ કરવું</div>'+
+        '<div style="font-size:26px;font-weight:800;color:#22c55e">'+esc(S.days||'1 દિવસ')+'</div>'+
+        '<div style="font-size:11.5px;color:var(--dim)">રોજ 10 મિનિટ</div></div>'+
+      (S.nb?('<div style="background:#2a2010;border:1px solid #b45309;border-radius:12px;'+
+        'padding:12px 14px;font-family:var(--guj);font-size:15px;line-height:1.8">'+
+        '<b style="color:#fbbf24">✍ નોટબુકમાં આટલું:</b><br>'+S.nb+'</div>'):'')+
+      (S.warn?('<div style="margin-top:10px;background:#2a1214;border:1px solid #7f1d1d;border-radius:12px;'+
+        'padding:10px 14px;font-family:var(--guj);font-size:13.5px"><b style="color:#fca5a5">⚠ આ ભૂલ ટાળો:</b><br>'+
+        esc(S.warn)+'</div>'):'');
+    grid.appendChild(right);
+    b.appendChild(grid);
+    var box=right;                    /* checks and the done button go on the right */
 
     var ck=document.createElement('div');
     ck.style.cssText='margin-top:10px;background:#0d1f16;border:1px solid #166534;border-radius:12px;padding:10px 14px';
@@ -8758,7 +9341,7 @@ definePage('hwcourse','✍ સુંદર અક્ષર · હસ્તાક
       paint();
       ck.appendChild(r);
     });
-    b.appendChild(ck);
+    right.appendChild(ck);
     doneBtn.onclick=function(){
       if(!state.every(function(x){ return x })) return;
       DONE[k]={done:!(DONE[k]&&DONE[k].done), checks:state.slice()};
@@ -8766,7 +9349,7 @@ definePage('hwcourse','✍ સુંદર અક્ષર · હસ્તાક
       render();
     };
     paintBtn();
-    b.appendChild(doneBtn);
+    right.appendChild(doneBtn);
     c.appendChild(b);
   }
   /* ---------- 30-day plan ---------- */
@@ -8778,16 +9361,11 @@ definePage('hwcourse','✍ સુંદર અક્ષર · હસ્તાક
       p.nb+'</div>';
     if(p.pat && STROKES[p.pat]) c.innerHTML+=strokeStage(p.pat);
     else if(p.txt) c.innerHTML+='<div class="stage">'+svgEl(480,250, fourLines(480,30,55,true)+
-      '<text x="240" y="140" text-anchor="middle" font-size="62" font-family="var(--guj)" '+
-      'fill="#22c55e">'+esc(p.txt)+'</text>')+
+      '<text x="240" y="140" text-anchor="middle" font-size="70" '+
+      'font-family="\'Noto Sans Gujarati\',sans-serif" fill="#22c55e">'+esc(p.txt)+'</text>')+
       '<div class="tip">💡 આ રીતે — ઉપરની લીટીએ લટકતા, આધારરેખા પર અટકતા</div></div>';
     var row=document.createElement('div');
     row.style.cssText='display:flex;gap:8px;margin-top:10px;flex-wrap:wrap';
-    var lb=document.createElement('button');
-    lb.className='btn'; lb.style.cssText+=';border-color:#a855f7;background:#1e1030;flex:1';
-    lb.textContent='🔊 સાંભળો';
-    lb.onclick=function(){ sayGu('દિવસ '+p.d+'. '+p.t+'. નોટબુકમાં. '+String(p.nb).replace(/<[^>]+>/g,'')) };
-    row.appendChild(lb);
     var db=document.createElement('button');
     var on=!!DONE['D'+p.d];
     db.className='btn'+(on?'':' pri');
@@ -8844,6 +9422,7 @@ definePage('hwcourse','✍ સુંદર અક્ષર · હસ્તાક
 });
 
 definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',function(body){
+  setBusy(false);
   body.classList.add('mid');
   var SCOPE=DUAL_SCOPE||'whole';
   var SCNAME={whole:'પૂર્ણ સંખ્યા',int:'પૂર્ણાંક',frac:'અપૂર્ણાંક',dec:'દશાંશ',
@@ -8885,7 +9464,7 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
     }
     return ACT2[id];
   }
-  function reset(sd){ S[sd]={side:sd,stage:'tool'} }
+  function reset(sd){ setBusy(false); S[sd]={side:sd,stage:'tool'} }
   function draw(sd){
     var s=S[sd], host=hosts[sd];
     host.innerHTML='';
@@ -8907,6 +9486,7 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
     if(s.stage==='mode') return stMode(sd);
     if(s.stage==='roll') return stRoll(sd);
     if(s.stage==='end')  return stEnd(sd);
+    setBusy(true);
     if(isNum(s.tool)||isBesik2(s.tool)||isRead(s.tool)||isWrite(s.tool)) paneMcq(sd);
     else if(s.tool==='quiz') paneQuiz(sd);
     else paneNb(sd);
@@ -8943,7 +9523,9 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
       items=WRITE_TOOLS.filter(function(t){ return t[0]!=='w_trace' })
         .map(function(t){ return [t[1].replace(/^\d+\.\s*/,''), t[0]] });
     }else if(SCOPE==='besik'){
-      items=BESIK.map(function(b){ return [b[1].replace(/^\d+\.\s*/,''), b[0]] });
+      /* the dot-making tool needs its own +/- screen — not in split mode */
+      items=BESIK.filter(function(b){ return b[0]!=='bmake' })
+        .map(function(b){ return [b[1].replace(/^\d+\.\s*/,''), b[0]] });
     }else if(SCOPE==='int'||SCOPE==='frac'||SCOPE==='dec'){
       items=NUMTOOLS.map(function(t){
         var ic={cmp:'⚖',add:'➕',sub:'➖',mul:'✖',div:'➗'}[t[0]];
@@ -9042,6 +9624,8 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
     });
   }
   function stEnd(sd){
+    setBusy(false);
+    if(PENDING_RELOAD){ PENDING_RELOAD=false; lessonTimeout(function(){ NAV.reload() },300); return }
     var s=S[sd], c=card(sd);
     var total=s.g.total, score=s.g.final;
     var pct=total?Math.round(score/total*100):0;
