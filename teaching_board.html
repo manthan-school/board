@@ -3583,6 +3583,40 @@ function saveQ(action,params,ok,fail){
 window.addEventListener('online',function(){ setTimeout(function(){ pendFlush() },1500) });
 setInterval(function(){ pendFlush() }, 60000);
 
+/* ---- ગુજરાતી અવાજ: જો પેનલમાં ગુજરાતી વૉઇસ ન હોય તો અક્ષરો
+   દેવનાગરીમાં ફેરવીને હિન્દી વૉઇસથી બોલાવીએ — અવાજ સાચો જ આવે છે ---- */
+var TTS={voice:null, mode:'', ready:false};
+function pickVoice(){
+  if(!window.speechSynthesis) return;
+  var vs=speechSynthesis.getVoices()||[];
+  function find(re){ for(var i=0;i<vs.length;i++){
+    var v=vs[i]; if(re.test((v.lang||'')+' '+(v.name||''))) return v } return null }
+  var gu=find(/gu[-_]?IN|gujarati/i);
+  if(gu){ TTS.voice=gu; TTS.mode='gu'; TTS.ready=true; return }
+  var hi=find(/hi[-_]?IN|hindi|mr[-_]?IN|marathi/i);
+  if(hi){ TTS.voice=hi; TTS.mode='dev'; TTS.ready=true; return }
+  var any=find(/en[-_]?IN/i)||vs[0]||null;
+  TTS.voice=any; TTS.mode=any?'dev':''; TTS.ready=!!any;
+}
+if(window.speechSynthesis){ pickVoice(); speechSynthesis.onvoiceschanged=pickVoice }
+function voiceLabel(){
+  if(!window.speechSynthesis) return 'આ બ્રાઉઝરમાં અવાજ નથી';
+  if(!TTS.ready) return 'અવાજ મળ્યો નથી';
+  return TTS.mode==='gu' ? 'ગુજરાતી અવાજ ✔' : 'હિન્દી અવાજથી ગુજરાતી બોલાય છે ✔';
+}
+function sayGu(text){
+  if(!window.speechSynthesis||!text) return;
+  try{
+    speechSynthesis.cancel();
+    var t=String(text).replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
+    if(!t) return;
+    var u=new SpeechSynthesisUtterance(TTS.mode==='dev'?guToDev(t):t);
+    if(TTS.voice) u.voice=TTS.voice;
+    u.lang=TTS.mode==='gu'?'gu-IN':'hi-IN';
+    u.rate=0.88;
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
 function sndOK(){ var s=soundCfg('CORRECT'); if(s.on) tone(s.vol,1,1320) }
 function sndNO(){ var s=soundCfg('WRONG');   if(s.on) tone(s.vol,1,240)  }
 function shuffle(a){ a=a.slice(); for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t} return a }
@@ -4544,13 +4578,7 @@ definePage('evaluation','મૂલ્યાંકન · Evaluation',function(bod
    📖 વાંચન ટેસ્ટ — Gujarati literacy + English-digit numeracy.
    Test results save to RESULT tabs (subject FLN) with GR NO.
    ================================================================ */
-function say(t){
-  try{
-    var u=new SpeechSynthesisUtterance(String(t));
-    u.lang='gu-IN'; u.rate=0.95;
-    speechSynthesis.cancel(); speechSynthesis.speak(u);
-  }catch(e){}
-}
+function say(t){ sayGu(t) }
 var GU_NUM=['શૂન્ય','એક','બે','ત્રણ','ચાર','પાંચ','છ','સાત','આઠ','નવ','દસ','અગિયાર','બાર','તેર','ચૌદ','પંદર','સોળ','સત્તર','અઢાર','ઓગણીસ','વીસ','એકવીસ','બાવીસ','ત્રેવીસ','ચોવીસ','પચીસ','છવ્વીસ','સત્તાવીસ','અઠ્ઠાવીસ','ઓગણત્રીસ','ત્રીસ','એકત્રીસ','બત્રીસ','તેત્રીસ','ચોત્રીસ','પાંત્રીસ','છત્રીસ','સાડત્રીસ','આડત્રીસ','ઓગણચાલીસ','ચાલીસ','એકતાલીસ','બેતાલીસ','તેતાલીસ','ચુંમાલીસ','પિસ્તાલીસ','છેતાલીસ','સુડતાલીસ','અડતાલીસ','ઓગણપચાસ','પચાસ','એકાવન','બાવન','ત્રેપન','ચોપન','પંચાવન','છપ્પન','સત્તાવન','અઠ્ઠાવન','ઓગણસાઠ','સાઠ','એકસઠ','બાસઠ','ત્રેસઠ','ચોસઠ','પાંસઠ','છાસઠ','સડસઠ','અડસઠ','અગણોસિત્તેર','સિત્તેર','એકોતેર','બોતેર','તોતેર','ચુમોતેર','પંચોતેર','છોતેર','સિત્યોતેર','ઇઠ્યોતેર','ઓગણાએંસી','એંસી','એક્યાસી','બ્યાસી','ત્યાસી','ચોર્યાસી','પંચ્યાસી','છ્યાસી','સિત્યાસી','ઈઠ્યાસી','નેવ્યાસી','નેવું','એકાણું','બાણું','ત્રાણું','ચોરાણું','પંચાણું','છન્નું','સત્તાણું','અઠ્ઠાણું','નવ્વાણું','સો'];
 var FLN_PASSAGES=[
  {name:'સ્તર 1 · શબ્દો', text:'ઘર વન નળ જળ ફળ કમળ મગર ગરમ નરમ સરળ પવન ગગન રમત શરમ કલમ સડક બપોર કબાટ મકાન વતન'},
@@ -5588,6 +5616,10 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
         'રોલ નં આપો → નબળી કુશળતા શોધી, પ્રેક્ટિસ કરાવી, ટેસ્ટ લઈ આગળ લઈ જશે</span>',
         '#22c55e','#0d2818',function(){ GROWTH_SCOPE=st.sec; NAV.go('growth') });
       vlList(w, isR?READ_TOOLS:WRITE_TOOLS, st.sec);
+      if(!isR) wideBtn(w,'✍ સુંદર અક્ષર — હસ્તાક્ષર સુધારણા કોર્સ '+
+        '<span style="font-weight:400;font-size:11.5px;color:var(--dim)">'+
+        '22 પગલાં · 30 દિવસનો પ્લાન · બધું નોટબુકમાં લખવાનું</span>',
+        '#a855f7','#1e1030',function(){ NAV.go('hwcourse') });
       wideBtn(w,'👥 બે વિદ્યાર્થી સાથે — '+(isR?'વાંચન':'લેખન')+
         ' <span style="font-weight:400;font-size:11.5px;color:var(--dim)">'+
         'બંને બાજુ અલગ વિદ્યાર્થી</span>','#7c3aed','#1c1030',
@@ -7701,6 +7733,477 @@ function isBesik(id){
   return false;
 }
 
+/* ============ ✍ હસ્તાક્ષર કોર્સ — data, animations, plan ============ */
+function guToDev(s){
+  var out='';
+  for(var i=0;i<s.length;i++){
+    var c=s.charCodeAt(i);
+    out += (c>=0x0A80 && c<=0x0AFF) ? String.fromCharCode(c-0x180) : s.charAt(i);
+  }
+  return out;
+}
+function svgEl(w,h,inner,vb){
+  return '<svg viewBox="'+(vb||('0 0 '+w+' '+h))+'" xmlns="http://www.w3.org/2000/svg">'+inner+'</svg>';
+}
+function LINES(y,gap){ return {top:y, hang:y+gap, base:y+gap*2, low:y+gap*3, gap:gap} }
+function fourLines(w,y,gap,label){
+  var L=LINES(y,gap), g='';
+  g+='<line class="rule" x1="10" y1="'+L.top+'" x2="'+(w-10)+'" y2="'+L.top+'"/>';
+  g+='<line class="ruleMid" x1="10" y1="'+L.hang+'" x2="'+(w-10)+'" y2="'+L.hang+'" stroke="#22c55e" opacity=".55"/>';
+  g+='<line class="rule" x1="10" y1="'+L.base+'" x2="'+(w-10)+'" y2="'+L.base+'" stroke="#475569"/>';
+  g+='<line class="rule" x1="10" y1="'+L.low+'" x2="'+(w-10)+'" y2="'+L.low+'"/>';
+  if(label){
+    g+='<text x="14" y="'+(L.hang-5)+'" fill="#22c55e" font-size="11" font-family="sans-serif">લટકતી લીટી — અક્ષર અહીંથી લટકે</text>';
+    g+='<text x="14" y="'+(L.base-5)+'" fill="#64748b" font-size="11" font-family="sans-serif">આધારરેખા — અક્ષર અહીં અટકે</text>';
+  }
+  return g;
+}
+function animPath(d, dur, cls){
+  var id='p'+(++__p);
+  return '<path id="'+id+'" class="'+(cls||'trace')+'" d="'+d+'" '+
+      'stroke-dasharray="1200" stroke-dashoffset="1200">'+
+      '<animate attributeName="stroke-dashoffset" from="1200" to="0" dur="'+dur+'s" '+
+      'repeatCount="indefinite" fill="freeze"/></path>'+
+    '<circle class="pen" r="7">'+
+      '<animateMotion dur="'+dur+'s" repeatCount="indefinite" rotate="auto">'+
+        '<mpath href="#'+id+'"/></animateMotion></circle>';
+}
+function ghostPath(d){ return '<path class="guide" d="'+d+'" stroke-dasharray="7 7"/>' }
+function strokeStage(key){
+  var s=STROKES[key];
+  return '<div class="stage">'+
+    '<div class="stageBar"><span class="cap">✍ '+s.name+'</span></div>'+
+    svgEl(480,240, fourLines(480,40,53,false)+ghostPath(s.d)+animPath(s.d,3.2))+
+    '<div class="tip">💡 '+s.tip+'</div></div>';
+}
+function letterStage(ch, note){
+  var gap=55, L=LINES(30,gap);
+  var fs=Math.round(gap*1.42);            /* letter fills the middle zone */
+  var inner=fourLines(480,30,gap,true)+
+    '<text x="240" y="'+L.base+'" text-anchor="middle" font-size="'+fs+'" '+
+      'font-family="var(--guj)" fill="#1e293b" opacity=".6">'+ch+'</text>'+
+    '<text x="240" y="'+L.base+'" text-anchor="middle" font-size="'+fs+'" '+
+      'font-family="var(--guj)" fill="none" stroke="#22c55e" stroke-width="2.5" '+
+      'stroke-dasharray="900" stroke-dashoffset="900">'+ch+
+      '<animate attributeName="stroke-dashoffset" from="900" to="0" dur="4s" '+
+      'repeatCount="indefinite" fill="freeze"/></text>'+
+    '<circle cx="240" cy="'+L.hang+'" r="4" fill="#22c55e"/>';
+  return '<div class="stage">'+svgEl(480,250,inner)+
+    (note?'<div class="tip">💡 '+note+'</div>':'')+'</div>';
+}
+function matraStage(base, matra, note){
+  var gap=55, L=LINES(30,gap), fs=Math.round(gap*1.42);
+  var inner=fourLines(480,30,gap,true)+
+    '<text x="200" y="'+L.base+'" text-anchor="middle" font-size="'+fs+'" font-family="var(--guj)" fill="#334155">'+base+'</text>'+
+    '<text x="200" y="'+L.base+'" text-anchor="middle" font-size="'+fs+'" font-family="var(--guj)" fill="var(--amber)">'+base+matra+'</text>'+
+    '<circle cx="300" cy="60" r="0" fill="none" stroke="#fbbf24" stroke-width="3">'+
+      '<animate attributeName="r" values="0;26;0" dur="2.4s" repeatCount="indefinite"/>'+
+      '<animate attributeName="opacity" values="1;0" dur="2.4s" repeatCount="indefinite"/></circle>';
+  return '<div class="stage">'+svgEl(480,250,inner)+
+    (note?'<div class="tip">💡 '+note+'</div>':'')+'</div>';
+}
+function compareStage(good, bad, gLabel, bLabel){
+  var inner=
+    '<rect x="8" y="8" width="228" height="150" rx="12" fill="#0d1f16" stroke="#166534"/>'+
+    '<rect x="244" y="8" width="228" height="150" rx="12" fill="#2a1214" stroke="#7f1d1d"/>'+
+    '<text x="122" y="30" text-anchor="middle" fill="#22c55e" font-size="13" font-family="sans-serif">'+gLabel+'</text>'+
+    '<text x="358" y="30" text-anchor="middle" fill="#fca5a5" font-size="13" font-family="sans-serif">'+bLabel+'</text>'+
+    '<line class="ruleMid" x1="20" y1="70" x2="224" y2="70"/>'+
+    '<line class="rule" x1="20" y1="130" x2="224" y2="130" stroke="#475569"/>'+
+    '<line class="ruleMid" x1="256" y1="70" x2="460" y2="70"/>'+
+    '<line class="rule" x1="256" y1="130" x2="460" y2="130" stroke="#475569"/>'+
+    good+bad;
+  return '<div class="stage">'+svgEl(480,170,inner)+'</div>';
+}
+var STROKES={
+  vert:   {d:'M60 40 L60 200 M140 40 L140 200 M220 40 L220 200 M300 40 L300 200 M380 40 L380 200',
+           name:'ઊભી લીટી', tip:'ઉપરથી નીચે — એક જ ઝાટકે, અટક્યા વગર'},
+  slant:  {d:'M60 200 L120 40 M160 200 L220 40 M260 200 L320 40 M360 200 L420 40',
+           name:'ત્રાંસી લીટી', tip:'નીચેથી ઉપર, બધી સરખા ઢાળે'},
+  curveR: {d:'M60 60 Q140 130 60 200 M180 60 Q260 130 180 200 M300 60 Q380 130 300 200',
+           name:'જમણી કમાન', tip:'ગોળાઈ સરખી — ખૂણા ન પડે'},
+  curveL: {d:'M140 60 Q60 130 140 200 M260 60 Q180 130 260 200 M380 60 Q300 130 380 200',
+           name:'ડાબી કમાન', tip:'હાથ ફેરવો, કાગળ નહીં'},
+  wave:   {d:'M40 120 Q80 50 120 120 T200 120 T280 120 T360 120 T440 120',
+           name:'લહેરિયું', tip:'ઉપર-નીચે સરખું, ઝડપ ધીમી'},
+  loop:   {d:'M50 190 C50 90 110 60 130 110 C145 150 95 165 90 120 C85 70 150 50 190 110 '+
+              'C210 145 165 175 160 130 C155 80 220 55 260 115',
+           name:'ગૂંચળું', tip:'બધાં ગૂંચળાં એક જ કદનાં'},
+  zig:    {d:'M40 190 L90 60 L140 190 L190 60 L240 190 L290 60 L340 190 L390 60 L440 190',
+           name:'ઝિગઝેગ', tip:'ખૂણા તીક્ષ્ણ, ઊંચાઈ સરખી'},
+  circleR:{d:'M120 120 m-60 0 a60 60 0 1 0 120 0 a60 60 0 1 0 -120 0',
+           name:'ગોળ (ઘડિયાળની દિશામાં)', tip:'એક જ સ્ટ્રોકમાં પૂરો ગોળ'},
+  circleL:{d:'M320 120 m60 0 a60 60 0 1 1 -120 0 a60 60 0 1 1 120 0',
+           name:'ગોળ (ઊંધી દિશામાં)', tip:'ગુજરાતી અક્ષરમાં આ દિશા વધુ વપરાય'},
+  hook:   {d:'M60 50 L60 160 Q60 200 110 200 M200 50 L200 160 Q200 200 250 200 '+
+              'M340 50 L340 160 Q340 200 390 200',
+           name:'આંકડી', tip:'નીચે જઈ ધીમેથી વળાંક — તૂટે નહીં'},
+  horiz:  {d:'M40 70 L440 70 M40 120 L440 120 M40 170 L440 170',
+           name:'આડી લીટી', tip:'ડાબેથી જમણે — છેડા સુધી સીધી'},
+  cupU:   {d:'M50 70 Q100 190 150 70 M180 70 Q230 190 280 70 M310 70 Q360 190 410 70',
+           name:'વાટકી (ઉપર ખુલ્લી)', tip:'ગુજરાતીના ઘણા અક્ષરનો પાયો'},
+  archD:  {d:'M50 190 Q100 60 150 190 M180 190 Q230 60 280 190 M310 190 Q360 60 410 190',
+           name:'કમાન (નીચે ખુલ્લી)', tip:'ટોચ ગોળ રહે, અણીદાર નહીં'},
+  spiral: {d:'M150 120 m0 -12 a12 12 0 1 1 -12 12 a24 24 0 1 1 24 24 a36 36 0 1 1 -36 -36 '+
+              'a48 48 0 1 1 48 48 M330 120 m0 -12 a12 12 0 1 1 -12 12 a24 24 0 1 1 24 24 '+
+              'a36 36 0 1 1 -36 -36 a48 48 0 1 1 48 48',
+           name:'ગોળ ગૂંચળું', tip:'હાથ ફેરવવાની ટેવ પડે — કાગળ ન ફેરવો'},
+  eight:  {d:'M120 60 C170 60 170 115 120 115 C70 115 70 180 120 180 C170 180 170 115 120 115 '+
+              'M320 60 C370 60 370 115 320 115 C270 115 270 180 320 180 C370 180 370 115 320 115',
+           name:'આઠડો', tip:'એક જ સ્ટ્રોકમાં — ઉપર-નીચે સરખા'},
+  dots:   {d:'M60 120 l0 0 M110 120 l0 0 M160 120 l0 0 M210 120 l0 0 M260 120 l0 0 '+
+              'M310 120 l0 0 M360 120 l0 0 M410 120 l0 0',
+           name:'ટપકાં જોડો', tip:'ટપકાં સરખા અંતરે — પછી લીટીથી જોડો'},
+  comb:   {d:'M40 60 L440 60 M80 60 L80 190 M140 60 L140 190 M200 60 L200 190 '+
+              'M260 60 L260 190 M320 60 L320 190 M380 60 L380 190',
+           name:'કાંસકી (લટકતી લીટી + ઊભી)', tip:'ગુજરાતી અક્ષરની રચના — ઉપરથી લટકે'}
+};
+var COURSE=[
+{
+  n:'સ્તર 1', t:'તૈયારી — પકડ, બેઠક, નોટબુક',
+  s:'સારા અક્ષરની શરૂઆત હાથથી નહીં, બેઠકથી થાય છે',
+  steps:[
+  {
+    t:'1. પેન્સિલની સાચી પકડ',
+    goal:'પેન્સિલ ત્રણ આંગળીથી પકડવી — અંગૂઠો, પહેલી અને વચલી આંગળી.',
+    stage:'<div class="stage">'+svgEl(480,220,
+      '<circle cx="150" cy="120" r="70" fill="#111827" stroke="#334155"/>'+
+      '<path d="M150 60 L150 180" stroke="#fbbf24" stroke-width="10" stroke-linecap="round"/>'+
+      '<circle cx="128" cy="105" r="15" fill="#22c55e"/><text x="128" y="110" text-anchor="middle" font-size="13" fill="#04210f" font-family="sans-serif">1</text>'+
+      '<circle cx="172" cy="100" r="15" fill="#60a5fa"/><text x="172" y="105" text-anchor="middle" font-size="13" fill="#04210f" font-family="sans-serif">2</text>'+
+      '<circle cx="168" cy="140" r="15" fill="#a855f7"/><text x="168" y="145" text-anchor="middle" font-size="13" fill="#04210f" font-family="sans-serif">3</text>'+
+      '<text x="300" y="80" fill="#22c55e" font-size="15" font-family="var(--guj)">1 = અંગૂઠો</text>'+
+      '<text x="300" y="115" fill="#60a5fa" font-size="15" font-family="var(--guj)">2 = પહેલી આંગળી</text>'+
+      '<text x="300" y="150" fill="#a855f7" font-size="15" font-family="var(--guj)">3 = વચલી આંગળી (ટેકો)</text>')+
+      '<div class="tip">💡 પેન્સિલની અણીથી આંગળી <b>2 સેમી</b> ઉપર રહે</div></div>',
+    do:['પેન્સિલ ટેબલ પર મૂકો. અણી તમારી તરફ રાખો.',
+        'અંગૂઠો અને પહેલી આંગળીથી હળવેથી ઉપાડો — દબાવો નહીં.',
+        'વચલી આંગળી નીચે ટેકા તરીકે ગોઠવો.',
+        'બાકીની બે આંગળી હથેળીમાં વાળી રાખો.',
+        'પેન્સિલ ખભા તરફ ઢળેલી રહે, સીધી ઊભી નહીં.'],
+    nb:'ખાલી પાનામાં પકડ સાચી રાખીને <b>10 ઊભી લીટી</b> દોરો. 3 મિનિટ.',
+    warn:'મુઠ્ઠી વાળીને પકડવું, ખૂબ દબાવવું, અણીની એકદમ નજીક પકડવું — આ ત્રણથી અક્ષર બગડે અને હાથ દુખે.',
+    checks:['ત્રણ આંગળીથી પકડ છે?','પકડ ઢીલી અને આરામદાયક છે?','આંગળી અણીથી 2 સેમી ઉપર છે?']
+  },
+  {
+    t:'2. બેસવાની રીત',
+    goal:'પીઠ સીધી, બંને પગ જમીન પર, આંખ અને નોટબુક વચ્ચે એક હાથનું અંતર.',
+    stage:'<div class="stage">'+svgEl(480,200,
+      '<line x1="60" y1="180" x2="420" y2="180" stroke="#334155" stroke-width="3"/>'+
+      '<rect x="120" y="120" width="120" height="12" fill="#1f2937"/>'+
+      '<line x1="130" y1="132" x2="130" y2="180" stroke="#1f2937" stroke-width="6"/>'+
+      '<line x1="230" y1="132" x2="230" y2="180" stroke="#1f2937" stroke-width="6"/>'+
+      '<circle cx="300" cy="70" r="22" fill="#334155"/>'+
+      '<path d="M300 92 L300 140 L300 175" stroke="#22c55e" stroke-width="8" stroke-linecap="round"/>'+
+      '<path d="M300 110 L250 128" stroke="#22c55e" stroke-width="7" stroke-linecap="round"/>'+
+      '<path d="M300 140 L340 175" stroke="#334155" stroke-width="8" stroke-linecap="round"/>'+
+      '<text x="360" y="60" fill="#22c55e" font-size="14" font-family="var(--guj)">પીઠ સીધી</text>'+
+      '<text x="60" y="205" fill="#9ca3af" font-size="13" font-family="var(--guj)">પગ જમીન પર</text>')+
+      '</div>',
+    do:['ખુરશીમાં પાછળ સુધી બેસો — પીઠ ટેકે લાગે.',
+        'બંને પગ જમીન પર સપાટ રાખો, હલાવો નહીં.',
+        'છાતી અને ટેબલ વચ્ચે એક મુઠ્ઠી જગ્યા રાખો.',
+        'માથું થોડું નમે, પણ સૂઈને લખો નહીં.',
+        'પ્રકાશ ડાબી બાજુથી આવે (ડાબોડી હોય તો જમણી બાજુથી).'],
+    nb:'સાચી બેઠકમાં બેસી <b>5 લીટી ઊભી લીટીઓ</b> દોરો. 3 મિનિટ.',
+    warn:'ટેબલ પર માથું મૂકીને લખવાથી અક્ષર ત્રાંસા થાય અને આંખ થાકે.',
+    checks:['પીઠ સીધી છે?','બંને પગ જમીન પર છે?','આંખ નોટબુકથી એક હાથ દૂર છે?']
+  },
+  {
+    t:'3. નોટબુકનો ખૂણો અને બીજો હાથ',
+    goal:'નોટબુક થોડી ત્રાંસી, અને બીજો હાથ પાનું પકડે.',
+    stage:'<div class="stage">'+svgEl(480,200,
+      '<rect x="150" y="40" width="180" height="130" rx="6" fill="#111827" stroke="#334155" transform="rotate(-12 240 105)"/>'+
+      '<line x1="170" y1="70" x2="320" y2="70" stroke="#1f2937" transform="rotate(-12 240 105)"/>'+
+      '<line x1="170" y1="100" x2="320" y2="100" stroke="#1f2937" transform="rotate(-12 240 105)"/>'+
+      '<line x1="170" y1="130" x2="320" y2="130" stroke="#1f2937" transform="rotate(-12 240 105)"/>'+
+      '<path d="M120 120 q20 -15 40 0" stroke="#60a5fa" stroke-width="7" fill="none" stroke-linecap="round"/>'+
+      '<text x="60" y="150" fill="#60a5fa" font-size="13" font-family="var(--guj)">ડાબો હાથ<tspan x="60" dy="18">પાનું પકડે</tspan></text>'+
+      '<text x="350" y="60" fill="#fbbf24" font-size="13" font-family="var(--guj)">10°–15° ત્રાંસી</text>')+
+      '</div>',
+    do:['નોટબુક લખવાના હાથ તરફ 10–15 ડિગ્રી ત્રાંસી રાખો.',
+        'બીજા હાથથી પાનું ઉપરના ભાગે દબાવી રાખો — પાનું ખસે નહીં.',
+        'લખતાં લખતાં નોટબુક ઉપર સરકાવો, હાથ કાગળની બહાર ન જાય.',
+        'હાથ ટેબલ પર ટેકવેલો રહે, હવામાં નહીં.'],
+    nb:'નોટબુક સાચી ગોઠવીને <b>2 લીટી ત્રાંસી લીટીઓ</b> દોરો.',
+    checks:['નોટબુક થોડી ત્રાંસી છે?','બીજો હાથ પાનું પકડે છે?','હાથ ટેબલ પર ટેકવેલો છે?']
+  }]
+},
+{
+  n:'સ્તર 2', t:'પૂર્વ-લેખન — હાથ કેળવો',
+  s:'અક્ષર પહેલાં આ આકારો — આનાથી હાથ પર કાબૂ આવે',
+  steps:[
+  { t:'4. ઊભી અને ત્રાંસી લીટી', goal:'લીટી સીધી, સરખા અંતરે અને એક જ ઝાટકે.',
+    stage:strokeStage('vert')+strokeStage('slant'),
+    do:['ચાર લીટીની નોટબુકમાં ઉપરની લીટીથી શરૂ કરો.',
+        'ઉપરથી નીચે — વચ્ચે અટકો નહીં, પેન્સિલ ઉપાડો નહીં.',
+        'બે લીટી વચ્ચે એક આંગળી જેટલું અંતર રાખો.',
+        'પછી ત્રાંસી લીટીઓ — બધીનો ઢાળ સરખો.'],
+    nb:'<b>2 લીટી ઊભી + 2 લીટી ત્રાંસી</b> · દરેક 5 વાર · 8 મિનિટ',
+    checks:['બધી લીટી સીધી છે?','અંતર સરખું છે?','લીટી લીટીથી લીટી સુધી પહોંચે છે?'] },
+  { t:'5. કમાન — ડાબી અને જમણી', goal:'ગોળાઈ સરખી, ખૂણા વગરની.',
+    stage:strokeStage('curveR')+strokeStage('curveL'),
+    do:['કમાન ધીમે દોરો — ઝડપ કરવાથી ખૂણા પડે.',
+        'હાથનું કાંડું ફેરવો; આખો હાથ ન ખસેડો.',
+        'બધી કમાનની ઊંચાઈ અને પહોળાઈ સરખી રાખો.'],
+    nb:'<b>2 લીટી જમણી કમાન + 2 લીટી ડાબી કમાન</b> · 8 મિનિટ',
+    warn:'ગુજરાતીના ઘણા અક્ષર (ક, ફ, હ, વ) આ કમાન પર જ ઊભા છે — અહીં ઉતાવળ ન કરો.',
+    checks:['કમાન ગોળ છે, ખૂણાવાળી નથી?','બધી કમાન સરખા કદની છે?'] },
+  { t:'6. લહેરિયું અને ઝિગઝેગ', goal:'હાથ સતત ચાલે — અટક્યા વગર.',
+    stage:strokeStage('wave')+strokeStage('zig'),
+    do:['પેન્સિલ ઉપાડ્યા વગર આખી લીટી પૂરી કરો.',
+        'લહેરની ઊંચાઈ સરખી રાખો.',
+        'ઝિગઝેગમાં ખૂણા તીક્ષ્ણ બનાવો.'],
+    nb:'<b>2 લીટી લહેરિયું + 2 લીટી ઝિગઝેગ</b> · 6 મિનિટ',
+    checks:['પેન્સિલ વચ્ચે ઉપાડી નથી?','ઊંચાઈ સરખી છે?'] },
+  { t:'7. ગૂંચળું અને આંકડી', goal:'વળાંક પર કાબૂ — અક્ષરના છેડા સુંદર બને.',
+    stage:strokeStage('loop')+strokeStage('hook'),
+    do:['ગૂંચળાં એક જ કદનાં અને એક જ દિશામાં.',
+        'આંકડીમાં નીચે જઈને ધીમેથી વળો — તૂટે નહીં.',
+        'ધીમે કરો; ઝડપ પછી આપોઆપ આવશે.'],
+    nb:'<b>2 લીટી ગૂંચળાં + 2 લીટી આંકડી</b> · 8 મિનિટ',
+    checks:['ગૂંચળાં સરખાં છે?','આંકડીનો વળાંક લીસો છે?'] },
+  { t:'8. ગોળ — બંને દિશામાં', goal:'એક જ સ્ટ્રોકમાં પૂરો ગોળ.',
+    stage:strokeStage('circleR')+strokeStage('circleL'),
+    do:['ગોળ એક જ વારમાં પૂરો કરો — બે કટકે નહીં.',
+        'શરૂ કરેલી જગ્યાએ જ પાછા આવો.',
+        'બંને દિશામાં કરો; ગુજરાતીમાં ઊંધી દિશા વધુ વપરાય.'],
+    nb:'<b>2 લીટી ગોળ</b> (દરેક દિશામાં 1) · 6 મિનિટ',
+    checks:['ગોળ બંધ થાય છે?','બધા ગોળ સરખા કદના છે?'] }]
+},
+{
+  n:'સ્તર 3', t:'ચાર લીટીની નોટબુક — અક્ષરની જગ્યા',
+  s:'સૌથી મોટી ભૂલ અહીં થાય છે: અક્ષર લીટી પર બેસતા નથી',
+  steps:[
+  { t:'9. શિરોરેખા અને આધારરેખા', goal:'દરેક અક્ષર ઉપરની લીટીએ લટકે અને નીચે આધારરેખા પર અટકે.',
+    stage:'<div class="stage">'+svgEl(480,250, fourLines(480,30,55,true)+
+      '<text x="120" y="140" text-anchor="middle" font-size="78" font-family="var(--guj)" fill="#22c55e">ક</text>'+
+      '<text x="240" y="140" text-anchor="middle" font-size="78" font-family="var(--guj)" fill="#22c55e">મ</text>'+
+      '<text x="360" y="140" text-anchor="middle" font-size="78" font-family="var(--guj)" fill="#22c55e">ત</text>')+
+      '<div class="tip">💡 ત્રણેય અક્ષર ઉપરની લીટીએ <b>લટકે</b> છે અને નીચે <b>આધારરેખા</b> પર અટકે છે</div></div>',
+    do:['ચાર લીટીની નોટબુક જ વાપરો — સાદી નોટબુકમાં અક્ષર ડોલે છે.',
+        'અક્ષર <b>બીજી લીટીથી શરૂ કરો</b> — ત્યાંથી અક્ષર લટકે છે.',
+        'અક્ષરનો નીચેનો છેડો <b>ત્રીજી લીટી (આધારરેખા)</b> પર અટકે.',
+        'આખો અક્ષર બીજી અને ત્રીજી લીટી વચ્ચે જ રહે.',
+        'પહેલી લીટીની જગ્યા ઉપરની માત્રા માટે, ચોથીની જગ્યા નીચેની માત્રા માટે.'],
+    nb:'<b>ક મ ત ન પ</b> — દરેક 1 લીટી, ચાર લીટીની નોટબુકમાં · 10 મિનિટ',
+    warn:'અક્ષર ઉપરની લીટીથી છૂટો રહે (હવામાં તરે) કે આધારરેખા નીચે ઊતરી જાય — આ બે ભૂલ સૌથી વધુ દેખાય છે.',
+    checks:['બધા અક્ષર બીજી લીટીએથી લટકે છે?','બધા અક્ષર આધારરેખા પર અટકે છે?','કોઈ અક્ષર લીટીની બહાર નથી?'] },
+  { t:'10. અક્ષરનું કદ સરખું', goal:'બધા અક્ષર એક જ ઊંચાઈના.',
+    stage:compareStage(
+      '<text x="60" y="126" font-size="52" fill="#22c55e" font-family="var(--guj)">કમલ</text>',
+      '<text x="290" y="126" font-size="52" fill="#fca5a5" font-family="var(--guj)">ક</text>'+
+      '<text x="330" y="126" font-size="34" fill="#fca5a5" font-family="var(--guj)">મ</text>'+
+      '<text x="365" y="126" font-size="62" fill="#fca5a5" font-family="var(--guj)">લ</text>',
+      'સાચું — સરખું કદ','ખોટું — વધઘટ'),
+    do:['દરેક અક્ષર ઉપરની લીટીથી આધારરેખા સુધીની આખી જગ્યા ભરે.',
+        'એક શબ્દ લખ્યા પછી અક્ષરોની ટોચ પર આંગળી ફેરવો — સીધી લાગવી જોઈએ.',
+        'મોટા-નાના અક્ષર દેખાય તો એ જ અક્ષર ફરી 1 લીટી લખો.'],
+    nb:'<b>કમલ · સરળ · નમન</b> — દરેક શબ્દ 2 લીટી · 10 મિનિટ',
+    checks:['બધા અક્ષર સરખી ઊંચાઈના છે?','ટોચ પર આંગળી ફેરવતાં સીધું લાગે છે?'] },
+  { t:'11. અક્ષરો વચ્ચે સરખું અંતર', goal:'ન બહુ ચોંટેલા, ન બહુ છૂટા.',
+    stage:compareStage(
+      '<text x="45" y="126" font-size="46" fill="#22c55e" font-family="var(--guj)">શાળા</text>',
+      '<text x="255" y="112" font-size="40" fill="#fca5a5" font-family="var(--guj)">શાળા</text>'+
+      '<text x="255" y="150" font-size="40" fill="#fca5a5" font-family="var(--guj)">શા ળા</text>',
+      'સાચું','ખોટું — ચોંટેલા કે છૂટા'),
+    do:['બે અક્ષર વચ્ચે <b>એક પેન્સિલની અણી</b> જેટલી જગ્યા.',
+        'બે શબ્દ વચ્ચે <b>એક આંગળી</b> જેટલી જગ્યા.',
+        'લખ્યા પછી ખરેખર આંગળી મૂકીને તપાસો.'],
+    nb:'<b>મારી શાળા સરસ છે</b> — 3 વાર · 8 મિનિટ',
+    checks:['અક્ષરો વચ્ચે અંતર સરખું છે?','શબ્દો વચ્ચે આંગળી જેટલી જગ્યા છે?'] },
+  { t:'12. અક્ષરનો ઢાળ એક જ', goal:'બધા અક્ષર એક જ દિશામાં — ડોલતા નહીં.',
+    stage:compareStage(
+      '<text x="55" y="126" font-size="46" fill="#22c55e" font-family="var(--guj)">નમન</text>',
+      '<text x="270" y="126" font-size="46" fill="#fca5a5" font-family="var(--guj)" transform="rotate(-14 285 120)">ન</text>'+
+      '<text x="320" y="126" font-size="46" fill="#fca5a5" font-family="var(--guj)" transform="rotate(12 335 120)">મ</text>'+
+      '<text x="375" y="126" font-size="46" fill="#fca5a5" font-family="var(--guj)">ન</text>',
+      'સાચું — એક ઢાળ','ખોટું — ડોલતા અક્ષર'),
+    do:['અક્ષરની ઊભી લીટીઓ એકબીજાને સમાંતર રહે.',
+        'નોટબુકનો ખૂણો બદલાય તો ઢાળ બદલાય — નોટબુક સ્થિર રાખો.',
+        'લખ્યા પછી ઊભી લીટીઓ પર નજર ફેરવો.'],
+    nb:'<b>નમન · વતન · જતન</b> — દરેક 2 લીટી · 8 મિનિટ',
+    checks:['ઊભી લીટીઓ સમાંતર છે?','કોઈ અક્ષર ડોલતો નથી?'] }]
+},
+{
+  n:'સ્તર 4', t:'અક્ષર કુટુંબ — સરખા આકારવાળા સાથે',
+  s:'કક્કાના ક્રમમાં નહીં — જે અક્ષરમાં એક જ સ્ટ્રોક છે તે સાથે',
+  steps:[
+  { t:'13. ગોળ કુટુંબ — ડ ઠ ઢ ટ', goal:'ગોળાઈવાળા અક્ષર.',
+    stage:letterStage('ડ','ગોળ ભાગ પહેલાં, પછી નીચેનો છેડો')+letterStage('ઠ','બે ગોળ — બંને સરખા કદના'),
+    do:['પહેલાં ગોળ ભાગ દોરો, પછી બાકીનું.',
+        'ગોળ બંધ કરો — ખુલ્લો ગોળ અક્ષર બગાડે.',
+        'ટ અને ઠ સાથે લખો — ફરક નજરે ચઢશે.'],
+    nb:'<b>ડ ઠ ઢ ટ</b> — દરેક 1 લીટી · 10 મિનિટ',
+    checks:['બધા ગોળ બંધ છે?','ગોળનું કદ સરખું છે?'] },
+  { t:'14. ઊભી લીટી કુટુંબ — ન મ ત જ', goal:'ઊભી લીટીથી શરૂ થતા અક્ષર.',
+    stage:letterStage('ન','ઊભી લીટી પહેલાં — શિરોરેખાથી આધારરેખા સુધી')+letterStage('મ','બંને ઊભી લીટી સમાંતર'),
+    do:['ઊભી લીટી પહેલાં દોરો — તે અક્ષરનો કરોડ છે.',
+        'લીટી શિરોરેખાથી આધારરેખા સુધી પૂરી પહોંચે.',
+        'પછી બાકીના ભાગ ઉમેરો.'],
+    nb:'<b>ન મ ત જ</b> — દરેક 1 લીટી · 10 મિનિટ',
+    checks:['ઊભી લીટીઓ પૂરી લંબાઈની છે?','સમાંતર છે?'] },
+  { t:'15. કમાન કુટુંબ — ક ફ હ વ', goal:'કમાનવાળા અક્ષર.',
+    stage:letterStage('ક','પહેલાં કમાન, પછી ઊભી લીટી')+letterStage('ફ','કમાનની ગોળાઈ સરખી રાખો'),
+    do:['કમાન ધીમે અને એક જ સ્ટ્રોકમાં.',
+        'સ્તર 2 નો કમાન મહાવરો યાદ કરો.',
+        'ક અને ફ સાથે લખી સરખાવો.'],
+    nb:'<b>ક ફ હ વ</b> — દરેક 1 લીટી · 10 મિનિટ',
+    checks:['કમાન લીસી છે?','બધા અક્ષર સરખા કદના છે?'] },
+  { t:'16. મળતા આવતા અક્ષર — ભૂલ ન થાય', goal:'ઘ–ધ, ડ–ડ઼, ળ–ણ, બ–ભ છૂટા પાડો.',
+    stage:'<div class="stage">'+svgEl(480,150,
+      '<text x="70" y="95" font-size="58" fill="#22c55e" font-family="var(--guj)">ઘ</text>'+
+      '<text x="150" y="95" font-size="58" fill="#60a5fa" font-family="var(--guj)">ધ</text>'+
+      '<text x="250" y="95" font-size="58" fill="#22c55e" font-family="var(--guj)">બ</text>'+
+      '<text x="330" y="95" font-size="58" fill="#60a5fa" font-family="var(--guj)">ભ</text>'+
+      '<text x="70" y="130" font-size="14" fill="#9ca3af" font-family="var(--guj)">વચ્ચે આડી</text>'+
+      '<text x="250" y="130" font-size="14" fill="#9ca3af" font-family="var(--guj)">પેટમાં લીટી</text>')+
+      '<div class="tip">💡 જોડમાં લખો — ફરક જાતે દેખાશે</div></div>',
+    do:['દરેક જોડ સાથે લખો: ઘ-ધ, બ-ભ, ળ-ણ, ડ-ડ઼.',
+        'ફરક ક્યાં છે તે મોટેથી બોલો.',
+        'પછી શિક્ષક બોલે તે લખો — ભૂલ થાય તો એ જોડ ફરી.'],
+    nb:'ચાર જોડ — દરેક જોડ 1 લીટી · 10 મિનિટ',
+    checks:['દરેક જોડનો ફરક દેખાય છે?','શ્રુતલેખનમાં ભૂલ થઈ નથી?'] }]
+},
+{
+  n:'સ્તર 5', t:'માત્રા · જોડાક્ષર · શબ્દ',
+  s:'અક્ષર સારા થયા — હવે આખું લખાણ સુંદર બનાવીએ',
+  steps:[
+  { t:'17. કાનો અને માત્રાની જગ્યા', goal:'માત્રા સાચી જગ્યાએ અને સાચા કદની.',
+    stage:matraStage('ક','ા','કાનો ઉપરની લીટીથી આધારરેખા સુધી — અક્ષર જેટલો જ ઊંચો')+
+          matraStage('ક','િ','હ્રસ્વ ઇ અક્ષરની ડાબે, ઉપરની જગ્યામાં'),
+    do:['કાનો અક્ષરની જમણી બાજુ, ઉપરની લીટીથી આધારરેખા સુધી.',
+        'ઇ-ઈ ની માત્રા ઉપરની (પહેલી) લીટીની જગ્યામાં.',
+        'ઉ-ઊ ની માત્રા આધારરેખાની નીચે, ચોથી લીટી સુધી.',
+        'માત્રા અક્ષરથી ચોંટે નહીં, દૂર પણ ન જાય.'],
+    nb:'<b>કા કિ કી કુ કૂ કે કૈ કો કૌ</b> — 2 લીટી · 10 મિનિટ',
+    warn:'નાનો કાનો કે લટકતી માત્રા — આ બે ભૂલથી લખાણ ગંદું લાગે છે.',
+    checks:['કાનો પૂરી ઊંચાઈનો છે?','ઉપરની માત્રા ઉપરની જગ્યામાં છે?','નીચેની માત્રા નીચેની જગ્યામાં છે?'] },
+  { t:'18. જોડાક્ષર', goal:'બે અક્ષર જોડાય પણ કદ ન બગડે.',
+    stage:letterStage('ક્ત','ઉપરનો અક્ષર નાનો નહીં — બંને સરખા વજનના')+
+          letterStage('ત્ર','જોડાણ સાફ દેખાય, ગૂંચવાય નહીં'),
+    do:['જોડાક્ષર પણ ઉપરની લીટી અને આધારરેખા વચ્ચે જ રહે.',
+        'બંને ભાગ સરખા ઘાટા લખો.',
+        'ધીમે લખો — જોડાક્ષરમાં ઉતાવળ સૌથી વધુ નડે.'],
+    nb:'<b>ક્ત ત્ર દ્ધ સ્ત પ્ર શ્ર</b> — દરેક 1 લીટી · 10 મિનિટ',
+    checks:['જોડાક્ષર લીટીની અંદર છે?','બંને ભાગ સાફ દેખાય છે?'] },
+  { t:'19. શબ્દ લેખન', goal:'આખો શબ્દ સરખા કદ, અંતર અને ઢાળમાં.',
+    stage:'<div class="stage">'+svgEl(480,250, fourLines(480,30,55,true)+
+      '<text x="240" y="140" text-anchor="middle" font-size="72" font-family="var(--guj)" fill="#22c55e">શાળા</text>')+
+      '<div class="tip">💡 એક શબ્દ લખો → તપાસો → પછી બીજો. ઉતાવળે આખું પાનું નહીં.</div></div>',
+    do:['શબ્દ મનમાં બોલો, પછી લખો.',
+        'લખ્યા પછી ત્રણ વસ્તુ તપાસો: કદ, અંતર, લીટી પર બેઠક.',
+        'ભૂલવાળો શબ્દ ભૂંસો નહીં — નીચે ફરી સાચો લખો.'],
+    nb:'<b>શાળા · પુસ્તક · મિત્ર · વરસાદ · સૂરજ</b> — દરેક 1 લીટી · 12 મિનિટ',
+    checks:['બધા શબ્દ સરખા કદના છે?','શબ્દો વચ્ચે આંગળી જેટલી જગ્યા છે?','બધું આધારરેખા પર બેસે છે?'] },
+  { t:'20. વાક્ય લેખન', goal:'આખી લીટી સીધી અને સરખી.',
+    stage:'<div class="stage">'+svgEl(480,200, fourLines(480,30,45,false)+
+      '<text x="30" y="152" fill="#22c55e" font-size="34" font-family="var(--guj)">મને શાળા ગમે છે.</text>')+
+      '<div class="tip">💡 લીટીના છેડે શબ્દ ન સમાય તો આખો શબ્દ નીચેની લીટીએ લઈ જાઓ</div></div>',
+    do:['ડાબા હાંસિયાથી શરૂ કરો — બધી લીટી એક જ જગ્યાએથી.',
+        'લીટીના છેડે શબ્દ તોડો નહીં.',
+        'વાક્યના અંતે પૂર્ણવિરામ ભૂલશો નહીં.'],
+    nb:'<b>3 વાક્ય</b>, દરેક 2 વાર · 12 મિનિટ',
+    checks:['બધી લીટી હાંસિયાથી શરૂ થાય છે?','કોઈ શબ્દ તૂટ્યો નથી?','વિરામચિહ્ન છે?'] },
+  { t:'21. ધીમે લખો — સુંદરતા પહેલાં', goal:'ઝડપ નહીં, ચોકસાઈ.',
+    stage:compareStage(
+      '<text x="40" y="120" font-size="34" fill="#22c55e" font-family="var(--guj)">ધીરે — સુંદર</text>',
+      '<text x="262" y="120" font-size="34" fill="#fca5a5" font-family="var(--guj)" transform="skewX(-12)">ઝડપી — ગંદું</text>',
+      'ધીમે લખેલું','ઉતાવળે લખેલું'),
+    do:['એક લીટી લખવા ઓછામાં ઓછી 1 મિનિટ લો.',
+        'દર 5 લીટીએ હાથ 10 સેકન્ડ આરામ આપો.',
+        'ઝડપ 3 અઠવાડિયામાં જાતે આવશે — પહેલાં આકાર પાકો કરો.'],
+    nb:'એક ફકરો <b>ધીમે</b> ઉતારો — 10 મિનિટ',
+    checks:['ઉતાવળ કર્યા વગર લખ્યું?','છેલ્લી લીટી પણ પહેલી જેવી સુંદર છે?'] },
+  { t:'22. રોજનો 10 મિનિટનો નિયમ', goal:'ટેવ પાડો — સુધારો ટકે.',
+    stage:'<div class="stage">'+svgEl(480,170,
+      '<rect x="20" y="30" width="200" height="110" rx="12" fill="#0d1f16" stroke="#166534"/>'+
+      '<text x="120" y="60" text-anchor="middle" fill="#22c55e" font-size="15" font-family="var(--guj)">રોજ 10 મિનિટ</text>'+
+      '<text x="120" y="90" text-anchor="middle" fill="#e5e7eb" font-size="13" font-family="var(--guj)">3 મિનિટ — સ્ટ્રોક</text>'+
+      '<text x="120" y="112" text-anchor="middle" fill="#e5e7eb" font-size="13" font-family="var(--guj)">5 મિનિટ — અક્ષર/શબ્દ</text>'+
+      '<text x="120" y="134" text-anchor="middle" fill="#e5e7eb" font-size="13" font-family="var(--guj)">2 મિનિટ — તપાસ</text>'+
+      '<rect x="260" y="30" width="200" height="110" rx="12" fill="#2a1214" stroke="#7f1d1d"/>'+
+      '<text x="360" y="60" text-anchor="middle" fill="#fca5a5" font-size="15" font-family="var(--guj)">અઠવાડિયે 1 વાર</text>'+
+      '<text x="360" y="95" text-anchor="middle" fill="#e5e7eb" font-size="13" font-family="var(--guj)">1 કલાક લખવાથી</text>'+
+      '<text x="360" y="118" text-anchor="middle" fill="#e5e7eb" font-size="13" font-family="var(--guj)">કંઈ સુધરતું નથી</text>')+
+      '</div>',
+    do:['રોજ એક જ સમય નક્કી કરો (દા.ત. પહેલો પિરિયડ).',
+        '10 મિનિટ: 3 સ્ટ્રોક + 5 લેખન + 2 તપાસ.',
+        'અઠવાડિયે એક વાર જૂનું પાનું અને આજનું પાનું સાથે રાખી સરખાવો.',
+        'સુધારો દેખાય તે પાનું નોટબુકમાં નિશાની કરો.'],
+    nb:'આજથી <b>રોજ 10 મિનિટ</b> — 3 અઠવાડિયાં સુધી',
+    checks:['રોજનો સમય નક્કી કર્યો?','આજનું 10 મિનિટ પૂરું કર્યું?','જૂના પાના સાથે સરખાવ્યું?'] }]
+}
+];
+var PLAN=[
+/* d=દિવસ · w=અઠવાડિયું · t=શીર્ષક · nb=નોટબુકમાં શું · pat=બતાવવાનું ચિત્ર · txt=લખવાના અક્ષર */
+ {d:1, w:'અઠવાડિયું 1 · હાથ કેળવો', t:'પકડ + બેઠક + ટપકાં',
+  nb:'1) સાચી પકડ 2 મિનિટ  2) ટપકાં જોડો — 2 લીટી  3) ઊભી લીટી — 1 લીટી', pat:'dots'},
+ {d:2, w:'અઠવાડિયું 1 · હાથ કેળવો', t:'ઊભી લીટી',
+  nb:'ઊભી લીટી — 4 લીટી. દરેક લીટી ઉપરની લીટીથી આધારરેખા સુધી પૂરી.', pat:'vert'},
+ {d:3, w:'અઠવાડિયું 1 · હાથ કેળવો', t:'ઊભી લીટી પાકી કરો',
+  nb:'ઊભી લીટી — 4 લીટી, બે લીટી વચ્ચે એક આંગળીનું અંતર.', pat:'vert'},
+ {d:4, w:'અઠવાડિયું 1 · હાથ કેળવો', t:'આડી લીટી',
+  nb:'આડી લીટી — 3 લીટી (ડાબેથી જમણે) + ઊભી લીટી 1 લીટી.', pat:'horiz'},
+ {d:5, w:'અઠવાડિયું 1 · હાથ કેળવો', t:'ત્રાંસી લીટી',
+  nb:'ત્રાંસી લીટી — 4 લીટી. બધીનો ઢાળ એક જ.', pat:'slant'},
+ {d:6, w:'અઠવાડિયું 1 · હાથ કેળવો', t:'કાંસકી — ગુજરાતીની રચના',
+  nb:'કાંસકી (ઉપર આડી + નીચે ઊભી) — 3 લીટી. અક્ષર આમ જ લટકે છે.', pat:'comb'},
+ {d:7, w:'અઠવાડિયું 1 · હાથ કેળવો', t:'અઠવાડિયાની તપાસ',
+  nb:'ઊભી 1 + આડી 1 + ત્રાંસી 1 + કાંસકી 1 લીટી. દિવસ 1 નું પાનું સાથે રાખી સરખાવો.', pat:'comb'},
+
+ {d:8,  w:'અઠવાડિયું 2 · ગોળ અને વળાંક', t:'ગોળ — ઊંધી દિશા',
+  nb:'ગોળ (ઊંધી દિશામાં) — 3 લીટી. એક જ સ્ટ્રોકમાં પૂરો, બંધ થાય.', pat:'circleL'},
+ {d:9,  w:'અઠવાડિયું 2 · ગોળ અને વળાંક', t:'ગોળ — બંને દિશા',
+  nb:'ગોળ — 2 લીટી ઊંધી + 2 લીટી સીધી દિશામાં. બધા સરખા કદના.', pat:'circleR'},
+ {d:10, w:'અઠવાડિયું 2 · ગોળ અને વળાંક', t:'વાટકી',
+  nb:'વાટકી (ઉપર ખુલ્લી) — 4 લીટી. તળિયું ગોળ, અણીદાર નહીં.', pat:'cupU'},
+ {d:11, w:'અઠવાડિયું 2 · ગોળ અને વળાંક', t:'કમાન',
+  nb:'કમાન (નીચે ખુલ્લી) — 4 લીટી. ટોચ ગોળ.', pat:'archD'},
+ {d:12, w:'અઠવાડિયું 2 · ગોળ અને વળાંક', t:'ડાબી-જમણી કમાન',
+  nb:'જમણી કમાન 2 લીટી + ડાબી કમાન 2 લીટી.', pat:'curveR'},
+ {d:13, w:'અઠવાડિયું 2 · ગોળ અને વળાંક', t:'આંકડી અને આઠડો',
+  nb:'આંકડી 2 લીટી + આઠડો 2 લીટી. પેન્સિલ ઉપાડ્યા વગર.', pat:'eight'},
+ {d:14, w:'અઠવાડિયું 2 · ગોળ અને વળાંક', t:'ગૂંચળું + અઠવાડિયાની તપાસ',
+  nb:'ગોળ ગૂંચળું 2 લીટી + લહેરિયું 1 + ઝિગઝેગ 1 લીટી.', pat:'spiral'},
+
+ {d:15, w:'અઠવાડિયું 3 · અક્ષર', t:'લીટીએ લટકવું',
+  nb:'ચાર લીટીની નોટબુકમાં — ક મ ત, દરેક 1 લીટી. અક્ષર ઉપરની લીટીએ લટકે.', txt:'ક મ ત'},
+ {d:16, w:'અઠવાડિયું 3 · અક્ષર', t:'સરખું કદ',
+  nb:'ન પ લ સ — દરેક 1 લીટી. લખ્યા પછી અક્ષરોની ટોચ પર આંગળી ફેરવો.', txt:'ન પ લ સ'},
+ {d:17, w:'અઠવાડિયું 3 · અક્ષર', t:'ગોળ કુટુંબ',
+  nb:'ડ ઠ ઢ ટ — દરેક 1 લીટી. (દિવસ 8-9 નો ગોળ મહાવરો કામ લાગશે)', txt:'ડ ઠ ઢ ટ'},
+ {d:18, w:'અઠવાડિયું 3 · અક્ષર', t:'ઊભી લીટી કુટુંબ',
+  nb:'ન મ ત જ — દરેક 1 લીટી. ઊભી લીટી પહેલાં દોરો.', txt:'ન મ ત જ'},
+ {d:19, w:'અઠવાડિયું 3 · અક્ષર', t:'કમાન કુટુંબ',
+  nb:'ક ફ હ વ — દરેક 1 લીટી. કમાન ધીમે.', txt:'ક ફ હ વ'},
+ {d:20, w:'અઠવાડિયું 3 · અક્ષર', t:'મળતા આવતા અક્ષર',
+  nb:'ઘ-ધ · બ-ભ · ળ-ણ · ડ-ડ઼ — દરેક જોડ 1 લીટી, જોડમાં જ લખો.', txt:'ઘ ધ બ ભ'},
+ {d:21, w:'અઠવાડિયું 3 · અક્ષર', t:'આખો કક્કો + તપાસ',
+  nb:'આખો કક્કો 2 લીટીમાં. સૌથી ખરાબ લાગતા 3 અક્ષર ગોળ કરી નોંધો.', txt:'ક ખ ગ ઘ'},
+
+ {d:22, w:'અઠવાડિયું 4 · શબ્દ અને વાક્ય', t:'કાનો અને ઉપરની માત્રા',
+  nb:'કા કિ કી કે કૈ — 2 લીટી. કાનો અક્ષર જેટલો જ ઊંચો.', txt:'કા કિ કી'},
+ {d:23, w:'અઠવાડિયું 4 · શબ્દ અને વાક્ય', t:'નીચેની માત્રા',
+  nb:'કુ કૂ કૃ + કો કૌ કં — 2 લીટી. નીચેની માત્રા ચોથી લીટીની જગ્યામાં.', txt:'કુ કૂ કો'},
+ {d:24, w:'અઠવાડિયું 4 · શબ્દ અને વાક્ય', t:'જોડાક્ષર',
+  nb:'ક્ત ત્ર દ્ધ સ્ત પ્ર — દરેક 1 લીટી. બંને ભાગ સરખા ઘાટા.', txt:'ક્ત ત્ર પ્ર'},
+ {d:25, w:'અઠવાડિયું 4 · શબ્દ અને વાક્ય', t:'નાના શબ્દ',
+  nb:'ઘર · ગાય · ફૂલ · દૂધ — દરેક 1 લીટી.', txt:'ઘર ગાય ફૂલ'},
+ {d:26, w:'અઠવાડિયું 4 · શબ્દ અને વાક્ય', t:'મોટા શબ્દ + અંતર',
+  nb:'શાળા · પુસ્તક · મિત્ર · વરસાદ — દરેક 1 લીટી. શબ્દો વચ્ચે એક આંગળી.', txt:'શાળા પુસ્તક'},
+ {d:27, w:'અઠવાડિયું 4 · શબ્દ અને વાક્ય', t:'વાક્ય',
+  nb:'મને શાળા ગમે છે. / સૂરજ પૂર્વમાં ઊગે છે. — દરેક 2 વાર.', txt:'મને શાળા ગમે છે'},
+ {d:28, w:'અઠવાડિયું 4 · શબ્દ અને વાક્ય', t:'ધીમે લખો',
+  nb:'એક ફકરો (5 લીટી) ધીમે ઉતારો — એક લીટીએ ઓછામાં ઓછી 1 મિનિટ.', txt:'ધીમે લખો'},
+ {d:29, w:'અઠવાડિયું 4 · શબ્દ અને વાક્ય', t:'મારા નબળા અક્ષર',
+  nb:'દિવસ 21 માં નોંધેલા 3 અક્ષર — દરેક 2 લીટી + તે અક્ષરવાળા 3 શબ્દ.', txt:'?'},
+ {d:30, w:'અઠવાડિયું 4 · શબ્દ અને વાક્ય', t:'આખરી તપાસ 🎉',
+  nb:'એક ફકરો લખો. દિવસ 1 નું પાનું બાજુમાં રાખો — ફરક જુઓ અને બતાવો!', txt:'સુંદર અક્ષર'}
+];
+
+var __p=0;
+
 /* ==================================================================
    🌱 વ્યક્તિગત પ્રગતિ — PERSONAL PROGRESS (levels · stars · medals)
    The coach never keeps its own list of skills: it reads whatever
@@ -8084,6 +8587,259 @@ definePage('growth','🌱 વ્યક્તિગત પ્રગતિ · Pers
     b2.textContent='🗺 મારો નકશો';
     b2.onclick=function(){ s.stage='map'; draw(sd) };
     c.appendChild(b2);
+  }
+});
+
+/* ==================================================================
+   ✍ સુંદર અક્ષર — હસ્તાક્ષર કોર્સ (લેખન વિભાગમાં)
+   બધું લખવાનું નોટબુકમાં; બોર્ડ ફક્ત શીખવે અને પ્રગતિ સાચવે.
+   ================================================================== */
+definePage('hwcourse','✍ સુંદર અક્ષર · હસ્તાક્ષર કોર્સ',function(body){
+  body.classList.add('mid');
+  var w=document.createElement('div');
+  w.style.cssText='width:100%;max-width:900px;margin:0 auto';
+  body.appendChild(w);
+
+  var DONE={}, view='course';
+
+  function pkey(){ return 'hw_progress' }
+  function load(){
+    try{ DONE=JSON.parse(store.get(pkey(),'{}')||'{}') }catch(e){ DONE={} }
+  }
+  function save(){ store.set(pkey(), JSON.stringify(DONE)) }
+  function stepsTotal(){ var n=0; COURSE.forEach(function(L){ n+=L.steps.length }); return n }
+  function stepsDone(){ var n=0; for(var k in DONE) if(k.charAt(0)==='L'&&DONE[k]&&DONE[k].done) n++; return n }
+  function daysDone(){ var n=0; for(var k in DONE) if(k.charAt(0)==='D'&&DONE[k]) n++; return n }
+
+  load();
+  render();
+
+  function render(){
+    w.innerHTML='';
+    header();
+    if(view==='plan') planView(); else courseView();
+  }
+  /* ---------- header with progress ---------- */
+  function header(){
+    var t=stepsTotal(), d=stepsDone(), dd=daysDone();
+    var c=document.createElement('div'); c.className='evCard';
+    c.style.cssText+=';margin-bottom:10px';
+    c.innerHTML='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
+      '<div style="font-family:var(--guj);font-size:15px;font-weight:700">✍ સુંદર અક્ષર</div>'+
+      '<div style="font-family:var(--guj);font-size:11.5px;color:#a855f7">'+esc(voiceLabel())+'</div>'+
+      '<span style="flex:1"></span>'+
+      '<div style="font-family:var(--mono);font-size:12.5px;color:var(--dim)">'+
+        d+'/'+t+' પગલાં · '+dd+'/30 દિવસ</div></div>'+
+      '<div class="rpBarW" style="height:12px;margin-top:8px">'+
+        '<div class="rpBarF" style="width:'+Math.max(3,Math.round(d/t*100))+'%;background:#22c55e"></div></div>';
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;gap:8px;margin-top:10px;flex-wrap:wrap';
+    function tab(txt,v){
+      var b=document.createElement('button');
+      b.className='rpChip'+(view===v?' on':'');
+      b.textContent=txt;
+      b.onclick=function(){ view=v; render() };
+      row.appendChild(b);
+    }
+    tab('📘 કોર્સ (22 પગલાં)','course');
+    tab('📅 30 દિવસનો પ્લાન','plan');
+
+    c.appendChild(row);
+    w.appendChild(c);
+  }
+  function stopSay(){ try{ speechSynthesis.cancel() }catch(e){} }
+  /* ---------- the 22 steps ---------- */
+  function courseView(){
+    COURSE.forEach(function(L,li){
+      var allDone=L.steps.every(function(_,si){ return (DONE['L'+li+'S'+si]||{}).done });
+      var dn=L.steps.filter(function(_,si){ return (DONE['L'+li+'S'+si]||{}).done }).length;
+      var open=!!store.get('hwopen'+li, li===0?1:0);
+      var hb=document.createElement('button');
+      hb.style.cssText='display:flex;align-items:center;gap:10px;width:100%;margin-bottom:8px;'+
+        'padding:13px 15px;border-radius:13px;cursor:pointer;text-align:left;color:var(--ink);'+
+        'font-family:var(--guj);border:1px solid '+(allDone?'#166534':'#a855f7')+
+        ';background:'+(allDone?'#0d1f16':'#1e1030');
+      hb.innerHTML='<span style="font-size:18px">'+(open?'▼':'▶')+'</span>'+
+        '<span style="flex:1"><b style="font-size:15.5px;display:block">'+
+        (allDone?'✅ ':'')+esc(L.t)+'</b>'+
+        '<span style="font-size:11.5px;color:var(--dim)">'+esc(L.n)+' · '+esc(L.s)+'</span></span>'+
+        '<span style="font-family:var(--mono);font-size:12.5px;color:var(--dim)">'+dn+'/'+L.steps.length+'</span>';
+      hb.onclick=function(){ store.set('hwopen'+li, open?0:1); render() };
+      w.appendChild(hb);
+      if(open) L.steps.forEach(function(S,si){ stepCard(L,li,S,si) });
+    });
+  }
+  function stepCard(L,li,S,si){
+    var k='L'+li+'S'+si, st=DONE[k]||{done:false,checks:[]};
+    var c=document.createElement('div'); c.className='evCard';
+    c.style.cssText+=';margin:0 0 10px;border-color:'+(st.done?'#166534':'var(--line)');
+    var opened=!!store.get('hwstep'+k,0);
+    var head=document.createElement('button');
+    head.style.cssText='display:flex;align-items:center;gap:10px;width:100%;background:none;'+
+      'border:0;color:var(--ink);font-family:var(--guj);font-size:15px;cursor:pointer;text-align:left';
+    head.innerHTML='<span style="width:24px;height:24px;border-radius:50%;flex:0 0 auto;'+
+      'display:flex;align-items:center;justify-content:center;font-size:13px;'+
+      (st.done?'background:#22c55e;color:#04210f">✓':'border:2px solid #334155;color:transparent">✓')+'</span>'+
+      '<span style="flex:1">'+esc(S.t)+'</span><span style="color:var(--dim)">'+(opened?'▲':'▼')+'</span>';
+    head.onclick=function(){ store.set('hwstep'+k, opened?0:1); render() };
+    c.appendChild(head);
+    w.appendChild(c);
+    if(!opened) return;
+
+    var b=document.createElement('div');
+    b.style.marginTop='10px';
+    var speech=[S.t,'ધ્યેય. '+S.goal]
+      .concat(S.do.map(function(d,i){ return 'પગલું '+(i+1)+'. '+String(d).replace(/<[^>]+>/g,'') }))
+      .concat(S.nb?['નોટબુકમાં. '+String(S.nb).replace(/<[^>]+>/g,'')]:[])
+      .concat(S.warn?['ધ્યાન રાખો. '+S.warn]:[]).join('. ');
+    var lb=document.createElement('button');
+    lb.className='btn'; lb.style.cssText+=';border-color:#a855f7;background:#1e1030;margin-bottom:10px';
+    lb.textContent='🔊 સાંભળો';
+    lb.onclick=function(){
+      if(lb.dataset.on==='1'){ stopSay(); lb.dataset.on=''; lb.textContent='🔊 સાંભળો'; return }
+      lb.dataset.on='1'; lb.textContent='⏹ બંધ';
+      sayGu(speech);
+      lessonTimeout(function(){ lb.dataset.on=''; lb.textContent='🔊 સાંભળો' },1200);
+    };
+    b.appendChild(lb);
+
+    var box=document.createElement('div');
+    box.innerHTML=
+      '<div style="background:#0c2233;border:1px solid #0ea5e9;border-radius:12px;padding:10px 14px;'+
+        'font-family:var(--guj);font-size:14.5px;margin-bottom:10px">'+
+        '<b style="color:#7dd3fc">🎯 ધ્યેય:</b> '+esc(S.goal)+'</div>'+
+      (S.stage||'')+
+      '<ol style="counter-reset:s;margin:0;padding:0;list-style:none;font-family:var(--guj)">'+
+        S.do.map(function(d){
+          return '<li style="position:relative;padding:9px 0 9px 40px;font-size:15px;line-height:1.7;'+
+            'border-bottom:1px dashed #1f2937">'+
+            '<span style="position:absolute;left:0;top:8px;width:26px;height:26px;border-radius:50%;'+
+            'background:#1e293b;color:#fbbf24;font-family:var(--mono);font-size:13px;display:flex;'+
+            'align-items:center;justify-content:center"></span>'+d+'</li>';
+        }).join('')+'</ol>'+
+      (S.nb?('<div style="margin-top:10px;background:#2a2010;border:1px solid #b45309;border-radius:12px;'+
+        'padding:10px 14px;font-family:var(--guj);font-size:14.5px"><b style="color:#fbbf24">✍ નોટબુકમાં:</b> '+S.nb+'</div>'):'')+
+      (S.warn?('<div style="margin-top:10px;background:#2a1214;border:1px solid #7f1d1d;border-radius:12px;'+
+        'padding:10px 14px;font-family:var(--guj);font-size:14px"><b style="color:#fca5a5">⚠ આ ભૂલ ટાળો:</b> '+esc(S.warn)+'</div>'):'');
+    b.appendChild(box);
+    /* number the steps (CSS counters are not reliable inside the board) */
+    var lis=box.querySelectorAll('li span');
+    for(var q=0;q<lis.length;q++) lis[q].textContent=String(q+1);
+
+    var ck=document.createElement('div');
+    ck.style.cssText='margin-top:10px;background:#0d1f16;border:1px solid #166534;border-radius:12px;padding:10px 14px';
+    ck.innerHTML='<div style="font-family:var(--guj);font-size:12.5px;color:#22c55e;margin-bottom:4px">'+
+      '👀 તપાસો — બધું ✔ થાય પછી જ આગળ</div>';
+    var state=(st.checks&&st.checks.length===S.checks.length)?st.checks.slice():S.checks.map(function(){return false});
+    var doneBtn=document.createElement('button');
+    function paintBtn(){
+      var all=state.every(function(x){ return x });
+      doneBtn.className='btn'+(all?' pri':'');
+      doneBtn.style.cssText='width:100%;padding:12px;margin-top:10px;'+
+        'font-family:var(--guj);font-size:15px;font-weight:700;border-radius:12px;'+
+        (all?'border:1px solid #166534;background:#0d2818':'border:1px solid var(--line);background:#111827;opacity:.5');
+      doneBtn.textContent = st.done ? '✅ પૂરું થયું — ફરી ખોલવા દબાવો'
+        : (all ? '✔ આ પગલું પૂરું' : 'ઉપરના બધા ✔ કરો');
+    }
+    S.checks.forEach(function(t,ci){
+      var r=document.createElement('div');
+      r.style.cssText='display:flex;align-items:center;gap:10px;padding:6px 0;'+
+        'font-family:var(--guj);font-size:14.5px;cursor:pointer';
+      function paint(){
+        r.innerHTML='<span style="width:22px;height:22px;border-radius:6px;flex:0 0 auto;'+
+          'display:flex;align-items:center;justify-content:center;font-size:13px;'+
+          (state[ci]?'background:#22c55e;color:#04210f">✓':'border:2px solid #334155;color:transparent">✓')+
+          '</span><span>'+esc(t)+'</span>';
+      }
+      r.onclick=function(){
+        state[ci]=!state[ci]; paint();
+        DONE[k]=DONE[k]||{done:false}; DONE[k].checks=state.slice(); save(); paintBtn();
+      };
+      paint();
+      ck.appendChild(r);
+    });
+    b.appendChild(ck);
+    doneBtn.onclick=function(){
+      if(!state.every(function(x){ return x })) return;
+      DONE[k]={done:!(DONE[k]&&DONE[k].done), checks:state.slice()};
+      save();
+      render();
+    };
+    paintBtn();
+    b.appendChild(doneBtn);
+    c.appendChild(b);
+  }
+  /* ---------- 30-day plan ---------- */
+  function dayDetail(p){
+    var c=document.createElement('div'); c.className='evCard';
+    c.style.cssText+=';margin:-3px 0 10px;border-color:#b45309';
+    c.innerHTML='<div style="font-family:var(--guj);font-size:14.5px;background:#2a2010;'+
+      'border-radius:10px;padding:10px 12px"><b style="color:#fbbf24">✍ આજે નોટબુકમાં:</b><br>'+
+      p.nb+'</div>';
+    if(p.pat && STROKES[p.pat]) c.innerHTML+=strokeStage(p.pat);
+    else if(p.txt) c.innerHTML+='<div class="stage">'+svgEl(480,250, fourLines(480,30,55,true)+
+      '<text x="240" y="140" text-anchor="middle" font-size="62" font-family="var(--guj)" '+
+      'fill="#22c55e">'+esc(p.txt)+'</text>')+
+      '<div class="tip">💡 આ રીતે — ઉપરની લીટીએ લટકતા, આધારરેખા પર અટકતા</div></div>';
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;gap:8px;margin-top:10px;flex-wrap:wrap';
+    var lb=document.createElement('button');
+    lb.className='btn'; lb.style.cssText+=';border-color:#a855f7;background:#1e1030;flex:1';
+    lb.textContent='🔊 સાંભળો';
+    lb.onclick=function(){ sayGu('દિવસ '+p.d+'. '+p.t+'. નોટબુકમાં. '+String(p.nb).replace(/<[^>]+>/g,'')) };
+    row.appendChild(lb);
+    var db=document.createElement('button');
+    var on=!!DONE['D'+p.d];
+    db.className='btn'+(on?'':' pri');
+    db.style.cssText+=';flex:1;'+(on?'border-color:#166534;background:#0d2818':'');
+    db.textContent=on?'✅ આજનું પૂરું':'✔ આજનું પૂરું થયું';
+    db.onclick=function(){
+      if(DONE['D'+p.d]) delete DONE['D'+p.d]; else DONE['D'+p.d]=true;
+      save(); render();
+    };
+    row.appendChild(db);
+    c.appendChild(row);
+    w.appendChild(c);
+  }
+  function planView(){
+    var n=document.createElement('div');
+    n.style.cssText='background:#2a2010;border:1px solid #b45309;border-radius:12px;'+
+      'padding:10px 14px;font-family:var(--guj);font-size:14px;margin-bottom:10px';
+    n.innerHTML='<b style="color:#fbbf24">રોજનું 10 મિનિટ:</b> 3 મિનિટ સ્ટ્રોક · '+
+      '5 મિનિટ આજનું કામ · 2 મિનિટ તપાસ';
+    w.appendChild(n);
+    var week='';
+    PLAN.forEach(function(p){
+      if(p.w!==week){
+        week=p.w;
+        var t=document.createElement('div');
+        t.style.cssText='font-family:var(--head);font-size:12px;letter-spacing:1px;'+
+          'color:#7dd3fc;margin:14px 0 6px';
+        t.textContent=week;
+        w.appendChild(t);
+      }
+      var on=!!DONE['D'+p.d];
+      var r=document.createElement('button');
+      r.style.cssText='display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;'+
+        'border-radius:11px;margin-bottom:7px;cursor:pointer;text-align:left;color:var(--ink);'+
+        'font-family:var(--guj);border:1px solid '+(on?'#166534':'var(--line)')+
+        ';background:'+(on?'#0d1f16':'#111827');
+      r.innerHTML='<span style="width:32px;height:32px;border-radius:50%;flex:0 0 auto;'+
+        'display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:13.5px;'+
+        (on?'background:#14532d;color:#22c55e':'background:#1e293b;color:#fbbf24')+'">'+p.d+'</span>'+
+        '<span style="flex:1"><b style="font-size:14.5px;display:block">'+esc(p.t)+'</b>'+
+        '<span style="font-size:12px;color:var(--dim)">'+esc(String(p.nb).replace(/<[^>]+>/g,'').slice(0,60))+'…</span></span>'+
+        '<span style="width:24px;height:24px;border-radius:50%;flex:0 0 auto;display:flex;'+
+        'align-items:center;justify-content:center;font-size:13px;'+
+        (on?'background:#22c55e;color:#04210f">✓':'border:2px solid #334155;color:transparent">✓')+'</span>';
+      r.onclick=function(){
+        var o2=store.get('hwday'+p.d,0);
+        store.set('hwday'+p.d, o2?0:1);
+        render();
+      };
+      w.appendChild(r);
+      if(store.get('hwday'+p.d,0)) dayDetail(p);
+    });
   }
 });
 
