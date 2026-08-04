@@ -5651,6 +5651,360 @@ function genSub(cfg){
 window.__genSub=genSub;   /* test hook */
 
 /* ==================================================================
+   દશાંશ · નોટબુક જેમ — ખાનાં પ્રમાણે
+   ------------------------------------------------------------------
+   દશાંશના દાખલા હવે પૂર્ણ સંખ્યા જેવા જ ખાનાં-ખાનાં ગોઠવાય છે.
+   યુક્તિ: પહેલાં દશાંશ ચિહ્ન કાઢી નાખીને પૂરો દાખલો પૂર્ણ સંખ્યામાં
+   બનાવીએ (એટલે વદ્દી અને ઉછીનાની બધી જ ગોઠવણ એની એ જ રહે), પછી
+   વચ્ચે એક નવો સ્તંભ ઉમેરીને દરેક સંખ્યાની નીચે દશાંશ ચિહ્ન મૂકીએ.
+   એથી ચિહ્ન હંમેશાં ચિહ્નની બરાબર નીચે જ આવે — એ જ તો શીખવવાનું છે.
+   ================================================================== */
+function decFmt(v,p){                      /* 1245, 2 → "12.45" */
+  var neg=(v<0); v=Math.abs(v);
+  var t=String(v);
+  while(t.length<=p) t='0'+t;
+  return (neg?'-':'')+(p?t.slice(0,t.length-p)+'.'+t.slice(t.length-p):t);
+}
+/* પૂર્ણ સંખ્યાના દાખલામાં દશાંશ ચિહ્નનો સ્તંભ ઉમેરે */
+function decPoint(P,p){
+  if(!p) return P;
+  var cols=P.cols, cut=cols-p;             /* ચિહ્ન આ સ્તંભની જગ્યાએ આવે */
+  var rowsWithGiven={}, ansRow=null;
+  P.cells.forEach(function(c){
+    if(c.kind==='g') rowsWithGiven[c.r]=1;
+    if(/^ans\d+$/.test(c.id)) ansRow=c.r;
+  });
+  if(ansRow!=null) rowsWithGiven[ansRow]=1;
+  P.cells.forEach(function(c){ if(c.c>=cut) c.c+=1 });
+  (P.rules||[]).forEach(function(r){ r.c2+=1 });
+  (P.optRows||[]).forEach(function(r){ if(r.c2>=cut) r.c2+=1 });
+  var k=0;
+  for(var r in rowsWithGiven){
+    if(!rowsWithGiven.hasOwnProperty(r)) continue;
+    var cell=nbCell('dp'+(k++),'.','s',Number(r),cut);
+    cell.cls='#f472b6';                    /* ચિહ્ન અલગ રંગે — નજરે ચડે */
+    P.cells.push(cell);
+  }
+  P.cols=cols+1;
+  return P;
+}
+/* દશાંશવાળા દાખલા — અંદરથી પૂર્ણ સંખ્યા જ છે */
+function genDecAdd(cfg){
+  var p=cfg.p||2, d=(cfg.d||2)+p, n=cfg.n||2;
+  var P=genAdd({d:d,n:n,nums:cfg.nums});
+  P.title=P.title.split(' + ').map(function(x){ return decFmt(Number(x),p) }).join(' + ');
+  return decPoint(P,p);
+}
+function genDecSub(cfg){
+  var p=cfg.p||2, d=(cfg.d||2)+p;
+  var P=genSub({d:d,ab:cfg.ab});
+  P.title=P.title.split(' − ').map(function(x){ return decFmt(Number(x),p) }).join(' − ');
+  return decPoint(P,p);
+}
+/* ==================================================================
+   અપૂર્ણાંક · નોટબુક જેમ — ખાનાં પ્રમાણે
+   ------------------------------------------------------------------
+   અંશ ઉપર, છેદ નીચે, વચ્ચે લીટી — બરાબર નોટબુક જેવું જ.
+   દરેક ક્રિયાનાં પોતાનાં પગલાં છે અને દરેક પગલું બાળક ભરે છે:
+     સરવાળો · બાદબાકી → સામાન્ય છેદ (લ.સા.અ.) → બંને અંશ બદલો →
+                          અંશનો સરવાળો → સાદું રૂપ
+     ગુણાકાર          → અંશ × અંશ · છેદ × છેદ → સાદું રૂપ
+     ભાગાકાર          → બીજો અપૂર્ણાંક ઊંધો → પછી ગુણાકાર → સાદું રૂપ
+   ================================================================== */
+function lcm2(a,b){ return Math.abs(a*b)/gcd2(a,b) }
+
+function genFracNb(op,cfg){
+  var lim=cfg.lim||9;
+  function den(){ return R2(2,lim) }
+  var b=den(), d=den(), a, c;
+  a=R2(1,b-1); c=R2(1,d-1);                 /* સાચા અપૂર્ણાંક */
+  if(op==='sub'){                           /* જવાબ ઋણ ન આવે */
+    if(a/b < c/d){ var t1=a,t2=b; a=c; b=d; c=t1; d=t2 }
+    if(a/b===c/d){ c=Math.max(1,c-1) }
+  }
+  var cells=[], steps=[], rules=[];
+  var C_L=0, C_OP=1, C_R=2, C_EQ=3, C_A=4, COLS=5;
+
+  function frac(idKey,num,dnm,row,col,kind,hintN,hintD){
+    cells.push(nbCell(idKey+'n',num,kind,row,col));
+    rules.push({r:row+1,c1:col,c2:col});
+    cells.push(nbCell(idKey+'d',dnm,kind,row+2,col));
+    if(kind==='i'){
+      steps.push({id:idKey+'n',exp:String(num),hint:hintN,say:String(num)});
+      steps.push({id:idKey+'d',exp:String(dnm),hint:hintD,say:String(dnm)});
+    }
+  }
+  function sym(id,v,row,col,colr){
+    var e=nbCell(id,v,'s',row,col); e.cls=colr||'#93c5fd'; cells.push(e);
+    return e;
+  }
+  var OPCH={add:'+',sub:'−',mul:'×',div:'÷'}[op];
+
+  /* ---------- પગલું 1: આપેલો દાખલો ---------- */
+  frac('g1',a,b,0,C_L,'g');
+  sym('op1',OPCH,1,C_OP);
+  frac('g2',c,d,0,C_R,'g');
+
+  var row=4, ansN, ansD, title=a+'/'+b+' '+OPCH+' '+c+'/'+d;
+
+  if(op==='add'||op==='sub'){
+    /* ---------- પગલું 2: સામાન્ય છેદ ---------- */
+    var L=lcm2(b,d), x=a*(L/b), y=c*(L/d);
+    sym('l1','સામાન્ય છેદ',row,C_L,'#fbbf24');
+    cells.push(nbCell('lcm',L,'i',row,C_A));
+    steps.push({id:'lcm',exp:String(L),
+      hint:'બંને છેદનો લ.સા.અ. શોધો — '+b+' અને '+d,say:'છેદ '+L});
+    row+=1;
+    frac('c1',x,L,row,C_L,'i',
+      a+'/'+b+' ને '+L+' છેદમાં લખો — અંશ કેટલો?','છેદ '+L+' લખો');
+    sym('op2',OPCH,row+1,C_OP);
+    frac('c2',y,L,row,C_R,'i',
+      c+'/'+d+' ને '+L+' છેદમાં લખો — અંશ કેટલો?','છેદ '+L+' લખો');
+    sym('eq1','=',row+1,C_EQ);
+    ansN=(op==='add')?(x+y):(x-y); ansD=L;
+    frac('r1',ansN,ansD,row,C_A,'i',
+      (op==='add'?'બંને અંશ ઉમેરો':'અંશમાંથી અંશ બાદ કરો')+' — '+x+(op==='add'?' + ':' − ')+y,
+      'છેદ એનો એ જ રહે');
+    row+=4;
+  }
+  else if(op==='mul'){
+    sym('eq1','=',1,C_EQ);
+    ansN=a*c; ansD=b*d;
+    frac('r1',ansN,ansD,0,C_A,'i',
+      'અંશ × અંશ = '+a+' × '+c,'છેદ × છેદ = '+b+' × '+d);
+    row=4;
+  }
+  else{                                     /* div */
+    sym('l1','ઊંધો કરો',row,C_L,'#fbbf24');
+    frac('f1',a,b,row+1,C_L,'g');
+    sym('op2','×',row+2,C_OP,'#f472b6');
+    frac('f2',d,c,row+1,C_R,'i',
+      'બીજા અપૂર્ણાંકને ઊંધો કરો — ઉપર કયો આંકડો?',
+      'નીચે કયો આંકડો?');
+    sym('eq1','=',row+2,C_EQ);
+    ansN=a*d; ansD=b*c;
+    frac('r1',ansN,ansD,row+1,C_A,'i',
+      'અંશ × અંશ = '+a+' × '+d,'છેદ × છેદ = '+b+' × '+c);
+    row+=5;
+  }
+
+  /* ---------- છેલ્લું પગલું: સાદું રૂપ ---------- */
+  var g=gcd2(ansN,ansD), sn=ansN/g, sd=ansD/g;
+  sym('l2','સાદું રૂપ',row,C_L,'#fbbf24');
+  sym('eq2','=',row+1,C_EQ);
+  frac('s1',sn,sd,row,C_A,'i',
+    g>1 ? ('બંનેને '+g+' વડે ભાગો — અંશ કેટલો?')
+        : 'આ સાદું રૂપ જ છે — એનો એ અંશ લખો',
+    g>1 ? ('છેદને પણ '+g+' વડે ભાગો') : 'એનો એ છેદ લખો');
+
+  return {cols:COLS,cells:cells,steps:steps,rules:rules,title:title,
+          frac:true, ansN:sn, ansD:sd};
+}
+
+/* ==================================================================
+   દશાંશ ભાગાકાર — ચિહ્ન સીધું ઉપર ચડે
+   ------------------------------------------------------------------
+   શાળાની રીત: ભાગાકાર પૂર્ણ સંખ્યાની જેમ જ ચાલે; ભાજ્યના દશાંશ
+   ચિહ્નની બરાબર ઉપર ભાગફળનું ચિહ્ન આવે. એટલે ચિહ્નને પોતાનો સ્તંભ
+   આપીએ છીએ — નીચેની ગુણાકાર-બાદબાકીની હરોળોમાં પણ એ જ સ્તંભે ચિહ્ન
+   મુકાય, જેથી કશું આડું-અવળું ન દેખાય.
+   ================================================================== */
+function genDecDiv(cfg){
+  /* ------------------------------------------------------------------
+     ભાગાકારમાં ગણવાનું નથી — ખસેડવાનું અને ઉપર લાવવાનું છે.
+       પગલું 1: ભાજકનું દશાંશ ચિહ્ન કાઢી નાખો.
+                બંને સંખ્યાને એકસરખી 10 / 100 વડે ગુણો — જવાબ બદલાતો નથી.
+       પગલું 2: ભાજ્યના ચિહ્નની બરાબર ઉપર ભાગફળનું ચિહ્ન મૂકો,
+                પછી પૂર્ણ સંખ્યાની જેમ જ ભાગો.
+     ------------------------------------------------------------------ */
+  var p1=(cfg.p1==null?1:cfg.p1);        /* ભાજ્યમાં દશાંશ અંક */
+  var p2=(cfg.p2==null?0:cfg.p2);        /* ભાજકમાં દશાંશ અંક */
+  var wd=(cfg.dd||1);                    /* ભાજ્યના પૂર્ણ અંક */
+  if(p2>p1) p2=p1;
+
+  /* ખસેડ્યા *પછી*ના પૂર્ણ આંકડા પહેલાં પસંદ કરીએ, જેથી બંને બાજુ સાચા રહે */
+  var D=R2(2,9);                         /* ખસેડ્યા પછીનો ભાજક = પૂર્ણ */
+  if(p2>0){                              /* 1.2 → 12 જેવો; 6.0 જેવો નહીં */
+    D=R2(11,99);
+    while(D%10===0) D=R2(11,99);
+  }
+  var digs=wd+p1;
+  var X=R2(Math.pow(10,digs-1), Math.pow(10,digs)-1);
+  var shift=p2;                          /* કેટલા સ્થાન ખસેડવા */
+  var newP=p1-shift;                     /* ખસેડ્યા પછી ભાજ્યમાં દશાંશ અંક */
+
+  var P=genDiv({dividend:X, dsor:D});
+  var cols=P.cols;
+
+  /* ---- 1. ભાજ્ય અને ભાજકના ખાનાં ખાલી કરો — બાળક જ લખે ---- */
+  var pre=[];
+  P.cells.forEach(function(c){
+    if(/^dv\d+$/.test(c.id)||/^dd\d+$/.test(c.id)){
+      c.kind='i';
+      pre.push({id:c.id,exp:String(c.val),
+        hint:(/^dv/.test(c.id)
+          ? 'ખસેડ્યા પછીનો ભાજક લખો'
+          : 'ખસેડ્યા પછીનો ભાજ્ય લખો'),
+        say:String(c.val)});
+    }
+  });
+
+  /* ---- 2. દશાંશ ચિહ્નનો સ્તંભ ---- */
+  var ddCells=P.cells.filter(function(c){ return /^dd\d+$/.test(c.id) });
+  var dR=ddCells[0].r;
+  var qR=P.cells.filter(function(c){ return /^q\d+$/.test(c.id) })
+                .reduce(function(m,c){ return Math.min(m,c.r) }, 99);
+  var right=Math.max.apply(null,ddCells.map(function(c){ return c.c }));
+  var cut=right-newP+1;
+  var dotSteps=[];
+  if(newP>0){
+    P.cells.forEach(function(c){ if(c.c>=cut) c.c+=1 });
+    (P.rules||[]).forEach(function(r){
+      if(r.c1>=cut) r.c1+=1;
+      if(r.c2>=cut) r.c2+=1;
+    });
+    P.cols=cols=cols+1;
+    var byRow={};
+    P.cells.forEach(function(c){
+      if(c.kind==='s') return;
+      (byRow[c.r]=byRow[c.r]||[]).push(c.c);
+    });
+    var k=0;
+    for(var r in byRow){
+      if(!byRow.hasOwnProperty(r)) continue;
+      var cs=byRow[r];
+      if(Math.min.apply(null,cs)<cut && Math.max.apply(null,cs)>cut){
+        var isQ=(Number(r)===qR), isD=(Number(r)===dR);
+        var e=nbCell('dq'+(k++),'.',(isQ||isD)?'i':'s',Number(r),cut);
+        e.cls='#f472b6'; P.cells.push(e);
+        if(isD) pre.push({id:e.id,exp:'.',
+          hint:'ખસેડ્યા પછી ભાજ્યમાં દશાંશ ચિહ્ન અહીં આવે',say:'ચિહ્ન'});
+        if(isQ) dotSteps.push({id:e.id,exp:'.',
+          hint:'ભાજ્યના ચિહ્નની બરાબર ઉપર ચિહ્ન મૂકો — · દબાવો',say:'દશાંશ ચિહ્ન'});
+      }
+    }
+  }
+
+  /* ---- 3. સૌથી ઉપર: કેટલા સ્થાન ખસેડવા? ---- */
+  P.cells.forEach(function(c){ c.r+=2 });
+  (P.rules||[]).forEach(function(r){ r.r+=2 });
+  var lab=nbCell('shl','ખસેડો','s',0,0); lab.cls='#fbbf24'; lab.fs=15;
+  P.cells.push(lab);
+  P.cells.push(nbCell('sh',shift,'i',0,Math.min(2,cols-1)));
+  var mul=nbCell('shx',(shift===0?'—':'×'+Math.pow(10,shift)),'s',0,Math.min(4,cols-1));
+  mul.cls='#93c5fd'; mul.fs=14; P.cells.push(mul);
+  var shStep={id:'sh',exp:String(shift),
+    hint: p2>0
+      ? 'ભાજકમાં દશાંશ ચિહ્ન છે — એને પૂર્ણ બનાવવા કેટલા સ્થાન ખસેડવા પડે?'
+      : 'ભાજકમાં દશાંશ ચિહ્ન નથી — ખસેડવાની જરૂર નથી, 0 લખો',
+    say:String(shift)};
+
+  /* પગલાંનો ક્રમ: ખસેડો → નવો દાખલો લખો → ચિહ્ન ઉપર → પછી ભાગાકાર */
+  P.steps=[shStep].concat(pre, dotSteps, P.steps);
+  P.title=decFmt(X,p1)+' ÷ '+decFmt(D,p2);
+  P.ask=P.title;                         /* કાગળ કોરો છે — સવાલ ઉપર દેખાડો */
+  return P;
+}
+
+/* ==================================================================
+   દશાંશ ગુણાકાર — ચિહ્ન ગમે ત્યાં આવી શકે, એટલે ગણીને મૂકવું પડે
+   ------------------------------------------------------------------
+   શાળાની રીત, ત્રણ પગલાં:
+     1. ચિહ્ન ભૂલી જાઓ — પૂર્ણ સંખ્યાની જેમ જ ગુણો (ખાનાં પ્રમાણે)
+     2. બંને સંખ્યાના દશાંશ અંક ગણો અને સરવાળો કરો
+     3. જવાબમાં જમણેથી એટલા અંક છોડીને ચિહ્ન મૂકો
+   એટલે ચિહ્ન ક્યાં આવશે એ બાળક *ગણીને* નક્કી કરે છે — આપણે કહેતા નથી.
+   ================================================================== */
+function genDecMul(cfg){
+  var p1=(cfg.p1==null?1:cfg.p1), p2=(cfg.p2==null?1:cfg.p2);   /* 0 પણ ચાલે */
+  var da=(cfg.da||2)+p1, db=(cfg.db||1)+p2;
+  var P=genMul({da:da,db:db});
+  var f=P.title.split(' × ');
+  var A=Number(f[0]), B=Number(f[1]), prod=A*B;
+  var pt=p1+p2;
+  P.title=decFmt(A,p1)+' × '+decFmt(B,p2);
+
+  /* બંને સંખ્યાની નીચે દશાંશ ચિહ્ન — આપેલાં છે */
+  var cols=P.cols, aR=null, bR=null, ansR=null;
+  P.cells.forEach(function(c){
+    if(/^ma\d+$/.test(c.id)) aR=c.r;
+    if(/^mb\d+$/.test(c.id)) bR=c.r;
+    if(/^ans\d+$/.test(c.id) || /^p\d+_/.test(c.id)) ansR=Math.max(ansR==null?-1:ansR, c.r);
+  });
+  function shiftRow(row,places){
+    if(places<=0) return;
+    var cut=cols-places;
+    P.cells.forEach(function(c){ if(c.r===row && c.c>=cut) c.c+=0 });
+  }
+  /* ચિહ્ન દેખાડવા માટે એક વધારાનો સ્તંભ જમણી બાજુ ઉમેરવો પડે નહીં —
+     ઉપરની બે સંખ્યાનાં ચિહ્ન એમના પોતાના ખાનાં વચ્ચે બતાવીએ */
+  /* ચિહ્ન માટે જગ્યા: ચિહ્નની ડાબી બાજુના અંક એક ખાનું ડાબે ખસે,
+     જમણી બાજુના અંક જ્યાં છે ત્યાં જ રહે — એટલે એકમનો અંક ખસતો નથી */
+  function dotFor(row,places,idp){
+    if(places<=0) return;
+    var mine=P.cells.filter(function(c){ return c.r===row && c.kind==='g' });
+    if(!mine.length) return;
+    var rightmost=Math.max.apply(null,mine.map(function(c){ return c.c }));
+    var dotAt=rightmost-places;
+    P.cells.forEach(function(c){ if(c.r===row && c.c<=dotAt) c.c-=1 });
+    var e=nbCell(idp,'.','s',row,dotAt);
+    e.cls='#f472b6';
+    P.cells.push(e);
+  }
+  /* જમણેથી ડાબે ખસેડવું પડે એટલે પહેલાં બધું એક સ્તંભ પહોળું કરીએ */
+  P.cols=cols+1;
+  P.cells.forEach(function(c){ c.c+=1 });
+  (P.rules||[]).forEach(function(r){ r.c2+=1 });
+  (P.optRows||[]).forEach(function(r){ r.c2+=1 });
+  cols=P.cols;
+  dotFor(aR,p1,'dpa');
+  dotFor(bR,p2,'dpb');
+
+  /* ---- ગણતરીની હરોળ: ઉપર + નીચે = કુલ ---- */
+  var cntR=(ansR==null?0:ansR)+1;
+  if(cols<7){ P.cells.forEach(function(c){ c.c+=(7-cols) });
+    (P.rules||[]).forEach(function(r){ r.c2+=(7-cols) });
+    (P.optRows||[]).forEach(function(r){ r.c2+=(7-cols) });
+    cols=P.cols=7; }
+  function sym(id,v,c,col2){
+    var e=nbCell(id,v,'s',cntR,c); e.cls=col2||'#93c5fd'; e.fs=15; P.cells.push(e);
+  }
+  sym('lbl','·',cols-7,'#fbbf24');
+  P.cells.push(nbCell('cnt1',p1,'i',cntR,cols-5));
+  sym('cplus','+',cols-4);
+  P.cells.push(nbCell('cnt2',p2,'i',cntR,cols-3));
+  sym('ceq','=',cols-2);
+  P.cells.push(nbCell('cntT',pt,'i',cntR,cols-1));
+  P.steps.push({id:'cnt1',exp:String(p1),
+    hint:'ઉપરની સંખ્યામાં દશાંશ ચિહ્ન પછી કેટલા અંક છે?',say:String(p1)});
+  P.steps.push({id:'cnt2',exp:String(p2),
+    hint:'નીચેની સંખ્યામાં દશાંશ ચિહ્ન પછી કેટલા અંક છે?',say:String(p2)});
+  P.steps.push({id:'cntT',exp:String(pt),
+    hint:'બંનેનો સરવાળો — જવાબમાં જમણેથી એટલા અંક પછી ચિહ્ન આવશે',say:String(pt)});
+
+  /* ---- છેલ્લી હરોળ: જવાબ, ચિહ્ન બાળક મૂકે ----
+     લીટીને પોતાની ખાલી હરોળ જોઈએ, નહીંતર એ ગણતરીનાં ખાનાં ઉપર દોરાય */
+  var faR=cntR+2;
+  var ps=String(prod);
+  while(ps.length<=pt) ps='0'+ps;
+  var whole=ps.slice(0,ps.length-pt), frac=ps.slice(ps.length-pt);
+  var out=(whole+'.'+frac).split('');
+  var start=cols-out.length;
+  /* દરેક જગ્યાએ સરખું ખાલી ખાનું — ચિહ્ન કયા ખાનામાં જશે એ બાળક નક્કી કરે */
+  out.forEach(function(ch,i){
+    var id=(ch==='.')?'fp':('fa'+i);
+    P.cells.push(nbCell(id,ch,'i',faR,start+i));
+    P.steps.push({id:id,exp:ch,
+      hint:(ch==='.')
+        ? 'હવે દશાંશ ચિહ્ન મૂકો — જમણેથી '+pt+' અંક ગણીને · કીપેડમાં · દબાવો'
+        : 'ઉપરનો જ જવાબ ફરી લખો',
+      say:(ch==='.')?'દશાંશ ચિહ્ન':ch});
+  });
+  P.rules=(P.rules||[]).concat([{r:faR-1,c1:0,c2:cols-1}]);
+  return P;
+}
+
+/* ==================================================================
    ચઢતી અઘરાઈ · the three notebook sums now climb in difficulty
      સરવાળો  : 1 વદ્દી વગર · 2 અને 3 વદ્દી સાથે
      બાદબાકી : 1 ઉછીના વગર · 2 એક સ્તર ઉછીના · 3 બે સ્તર ઉછીના
@@ -5723,8 +6077,36 @@ function nbTry(make,level,want,tries){
   return best||make();
 }
 /* idx is 1, 2 or 3 — which of the three sums this is */
+function isDecNb(t){ return t==='decadd'||t==='decsub'||t==='decmul'||t==='decdiv' }
+window.__nbProblem2=nbProblem; window.__decFmt=decFmt; window.__isDecNb=isDecNb;
 function nbProblem(tool,cfg,idx){
   idx=Number(idx)||1;
+  /* દશાંશ — પૂર્ણ સંખ્યા જેવી જ ચઢતી અઘરાઈ, પછી ચિહ્ન ઉમેરાય */
+  if(tool==='decadd'){
+    var pa=nbProblem('add',cfgWith(cfg,{d:(cfg.d||2)+(cfg.p||2)}),idx);
+    pa.title=pa.title.split(' + ').map(function(x){ return decFmt(Number(x),cfg.p||2) }).join(' + ');
+    return decPoint(pa,cfg.p||2);
+  }
+  if(tool==='decsub'){
+    var ps=nbProblem('sub',cfgWith(cfg,{d:(cfg.d||2)+(cfg.p||2)}),idx);
+    ps.title=ps.title.split(' − ').map(function(x){ return decFmt(Number(x),cfg.p||2) }).join(' − ');
+    return decPoint(ps,cfg.p||2);
+  }
+  if(tool==='fracadd') return genFracNb('add',cfg);
+  if(tool==='fracsub') return genFracNb('sub',cfg);
+  if(tool==='fracmul') return genFracNb('mul',cfg);
+  if(tool==='fracdiv') return genFracNb('div',cfg);
+  if(tool==='decdiv'){
+    /* 1. x.x ÷ x  (ખસેડવું નથી)   2. x.xx ÷ x   3. x.xx ÷ x.x (ખસેડવું પડે) */
+    var DSH=[{p1:1,p2:0,dd:1},{p1:2,p2:0,dd:1},{p1:2,p2:1,dd:1}][(idx-1)%3];
+    return genDecDiv(cfgWith(cfg,DSH));
+  }
+  if(tool==='decmul'){
+    /* ત્રણેય દાખલા જુદા આકારના — ચિહ્ન દર વખતે જુદી જગ્યાએ આવે
+         1.  x.x  ×  x      2.  x.x  ×  x.x     3.  x.xx ×  x.x   */
+    var SHAPE=[{p1:1,p2:0},{p1:1,p2:1},{p1:2,p2:1}][(idx-1)%3];
+    return genDecMul(cfgWith(cfg,{p1:SHAPE.p1,p2:SHAPE.p2}));
+  }
   if(tool==='add'){
     var wantA=(idx===1)?0:1;
     if(wantA===0){
@@ -5856,12 +6238,17 @@ function genDiv(cfg){
      written with its leading zeros, digit brought down each time. */
   var dd=cfg.dd;
   var lo=cfg.dvMin||2, hi=cfg.dvMax||9;
-  var dividend=R2(Math.pow(10,dd-1), Math.pow(10,dd)-1);
-  var dsor=R2(lo,hi);
-  if(dsor>=dividend){                    /* keep it a real division */
-    var cap=Math.max(lo,Math.min(hi,Math.floor(dividend/2)));
-    dsor=R2(lo,cap);
-    if(dsor<2) dsor=2;
+  var dividend, dsor;
+  if(cfg.dividend && cfg.dsor){          /* દશાંશ ભાગાકાર નક્કી કરેલા આંકડા આપે */
+    dividend=cfg.dividend; dsor=cfg.dsor;
+  }else{
+    dividend=R2(Math.pow(10,dd-1), Math.pow(10,dd)-1);
+    dsor=R2(lo,hi);
+    if(dsor>=dividend){                  /* keep it a real division */
+      var cap=Math.max(lo,Math.min(hi,Math.floor(dividend/2)));
+      dsor=R2(lo,cap);
+      if(dsor<2) dsor=2;
+    }
   }
   var Dd=digits(dividend);
   var left=String(dsor).length+1;
@@ -5933,7 +6320,7 @@ var EMO=['🍎','⭐','🌸','🐟','🥭','🦋','🎈','🍬'];
    Options include the mistakes students really make, so a wrong tap
    is a teaching moment.
    ================================================================== */
-var BOARD_BUILD='2026-08-04 · panel registration + gate check';
+var BOARD_BUILD='2026-08-04 · ભાગાકાર · સવાલ ઉપર દેખાય';
 var GEN_TYPE='whole';     /* number type દાખલા બનાવો builds for */
 var DUAL_SCOPE='whole';   /* tools the 2-student page offers */
 window.__setScope=function(g,d){ if(g) GEN_TYPE=g; if(d) DUAL_SCOPE=d };
@@ -6617,6 +7004,9 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
     });
   }
   function numList(w,type){
+    /* દશાંશમાં સરવાળો · બાદબાકી · ગુણાકાર હવે નોટબુક જેમ ખાનાં-ખાનાં ચાલે */
+    var DECNB={add:'decadd',sub:'decsub',mul:'decmul',div:'decdiv'};
+    var FRNB ={add:'fracadd',sub:'fracsub',mul:'fracmul',div:'fracdiv'};
     NUMTOOLS.forEach(function(t,ix){
       var r=document.createElement('div');
       r.style.cssText='display:flex;gap:8px;align-items:center;max-width:900px;'+
@@ -6626,6 +7016,8 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
         'border:1px solid var(--line);background:#111827;font-family:var(--guj)';
       var sub={cmp:'કઈ મોટી / નાની?',add:'ઉમેરો',sub:'બાદ કરો',
                mul:'ગુણો',div:'ભાગો'}[t[0]];
+      if(((type==='dec' && DECNB[t[0]]) || (type==='frac' && FRNB[t[0]])))
+        sub+=' — નોટબુક જેમ, ખાનાં પ્રમાણે · દશાંશ ચિહ્ન નીચે ચિહ્ન';
       lab.innerHTML='<div style="font-size:15.5px;font-weight:700">'+(ix+1)+'. '+t[1]+'</div>'+
         '<div style="font-size:11.5px;color:var(--dim);margin-top:2px">'+sub+'</div>';
       r.appendChild(lab);
@@ -6635,7 +7027,18 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
           ';background:'+c2+';color:var(--ink);font-family:var(--guj);font-size:13px;font-weight:600;cursor:pointer';
         e.textContent=txt;
         e.onclick=function(){
-          st.tool='n_'+type+'_'+t[0]; st.mode=mode; st.cfg={lab:numName('n_'+type+'_'+t[0])};
+          /* દશાંશના સરવાળા-બાદબાકી-ગુણાકાર નોટબુકમાં જાય, બાકીનું MCQ માં */
+          var nb=(type==='dec') ? DECNB[t[0]]
+                : (type==='frac') ? FRNB[t[0]] : null;
+          st.tool = nb || ('n_'+type+'_'+t[0]);
+          st.mode=mode;
+          /* દશાંશ ગુણાકારના ત્રણેય દાખલા નક્કી જ છે —
+             x.x × x  ·  x.x × x.x  ·  x.xx × x.x
+             એટલે કશું પૂછવાનું નથી, પ્રેક્ટિસ અને ટેસ્ટ બંનેમાં એ જ. */
+          st.cfg = (nb==='decmul') ? {da:1,db:1,lab:'દશાંશ ગુણાકાર'}
+                 : (nb==='decdiv') ? {lab:'દશાંશ ભાગાકાર'}
+                 : (nb&&nb.indexOf('frac')===0) ? {lim:9,lab:'અપૂર્ણાંક'}
+                 : nb ? null : {lab:numName('n_'+type+'_'+t[0])};
           st.stu=null; st.g=null; st.playing=null; render();
         };
         r.appendChild(e);
@@ -7211,6 +7614,29 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
   }
 
   /* ---------- config screens ---------- */
+  function decCfg(w,title,onPick){
+    var c=document.createElement('div'); c.className='evCard';
+    var mt={L:'📘 શિક્ષક',P:'✍ પ્રેક્ટિસ',T:'📝 ટેસ્ટ'}[st.mode];
+    c.innerHTML='<div class="evQ" style="text-align:center;font-size:17px">'+title+
+      ' <span style="color:var(--dim);font-size:12px">'+mt+'</span></div>';
+    function grid(list,cb){
+      var g=document.createElement('div'); g.className='evGrid';
+      list.forEach(function(o){
+        var b=document.createElement('button'); b.className='evOpt';
+        b.style.textAlign='center'; b.innerHTML=o[0];
+        b.onclick=function(){ cb(o[1]) };
+        g.appendChild(b);
+      });
+      c.appendChild(g);
+    }
+    grid([['1 દશાંશ અંક<br><small>0.5</small>',1],['2 દશાંશ અંક<br><small>0.25</small>',2]],
+      function(p){
+        c.innerHTML='<div class="evQ" style="text-align:center;font-size:17px">'+
+          'દશાંશ ચિહ્ન પહેલાં કેટલા અંક?</div>';
+        grid([['1 અંક',1],['2 અંક',2],['3 અંક',3]],function(d){ onPick(p,d) });
+      });
+    w.appendChild(c);
+  }
   function cfgScreen(w){
     var c=document.createElement('div'); c.className='evCard';
     var mt={L:'📘 શિક્ષક',P:'✍ પ્રેક્ટિસ',T:'📝 ટેસ્ટ'}[st.mode];
@@ -7263,6 +7689,19 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
         });
       });
     }
+    else if(st.tool==='decadd'){
+      w.appendChild(document.createComment(''));
+      decCfg(w,'દશાંશ સરવાળો — કેટલા દશાંશ અંક?',function(p,d){
+        st.cfg={p:p,d:d,n:2,lab:'દશાંશ '+d+'.'+p}; st.g=null; render();
+      });
+      return;
+    }
+    else if(st.tool==='decsub'){
+      decCfg(w,'દશાંશ બાદબાકી — કેટલા દશાંશ અંક?',function(p,d){
+        st.cfg={p:p,d:d,lab:'દશાંશ '+d+'.'+p}; st.g=null; render();
+      });
+      return;
+    }
     else if(st.tool==='div'){
       c.innerHTML=head('ભાગાકાર — ભાજ્ય કેટલા અંકનો?');
       var dd=null;
@@ -7286,7 +7725,11 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
 
   /* ---------- session save ---------- */
   var ACT={quiz:'FLN સંખ્યા-ક્વિઝ',add:'FLN સરવાળો',sub:'FLN બાદબાકી',
-           mul:'FLN ગુણાકાર',div:'FLN ભાગાકાર'};
+           mul:'FLN ગુણાકાર',div:'FLN ભાગાકાર',
+           decadd:'FLN દશાંશ સરવાળો',decsub:'FLN દશાંશ બાદબાકી',
+           decmul:'FLN દશાંશ ગુણાકાર',decdiv:'FLN દશાંશ ભાગાકાર',
+           fracadd:'FLN અપૂર્ણાંક સરવાળો',fracsub:'FLN અપૂર્ણાંક બાદબાકી',
+           fracmul:'FLN અપૂર્ણાંક ગુણાકાર',fracdiv:'FLN અપૂર્ણાંક ભાગાકાર'};
   function actName(id){
     if(isBesik(id)) return 'FLN બેઝિક · '+besikName(id);
     if(isNum(id))   return 'FLN '+numName(id);
@@ -7599,6 +8042,15 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
 
     c.innerHTML='<div class="evTop"><span>દાખલો '+g.p+' / '+NP+'</span>'+
       '<span>'+(st.mode==='P'?('ભૂલ: '+P.wrong):('સાચા: '+g.score))+'</span></div>';
+    /* દશાંશ ભાગાકારમાં દાખલાના આંકડા પણ બાળકે જ લખવાના હોય છે, એટલે
+       કાગળ પર કશું છપાયેલું હોતું નથી — સવાલ અહીં ઉપર બતાવીએ */
+    if(P.ask){
+      var qh=document.createElement('div');
+      qh.style.cssText='text-align:center;font-family:var(--mono);font-size:30px;'+
+        'letter-spacing:2px;margin:6px 0 10px;color:#e5e7eb';
+      qh.textContent=P.ask;
+      c.appendChild(qh);
+    }
 
     var freeMode=(st.mode==='T');       /* test = student does everything alone */
     P.free=P.free||{};
@@ -7794,14 +8246,21 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
     /* keypad */
     var kp=document.createElement('div');
     kp.style.cssText='display:grid;grid-template-columns:repeat(5,1fr);gap:8px';
-    for(var k=0;k<=9;k++)(function(k2){
+    var KEYS=[];
+    for(var k=0;k<=9;k++) KEYS.push(String(k));
+    /* દશાંશવાળા દાખલામાં ચિહ્નની ચાવી પણ જોઈએ */
+    if(P.steps.some(function(s2){ return s2.exp==='.' })) KEYS.push('.');
+    KEYS.forEach(function(k2){
       var b=document.createElement('button');
-      b.style.cssText='height:58px;border-radius:12px;border:1px solid var(--line);'+
-        'background:#111827;color:var(--ink);font-size:24px;font-family:var(--mono);cursor:pointer';
-      b.textContent=k2;
+      var dot=(k2==='.');
+      b.style.cssText='height:58px;border-radius:12px;border:1px solid '+
+        (dot?'#be185d':'var(--line)')+';background:'+(dot?'#2a1020':'#111827')+
+        ';color:'+(dot?'#f472b6':'var(--ink)')+
+        ';font-size:'+(dot?28:24)+'px;font-family:var(--mono);cursor:pointer';
+      b.textContent=dot?'·':k2;
       b.onclick=function(){ press(k2) };
       kp.appendChild(b);
-    })(k);
+    });
     M.appendChild(kp);
     /* actions */
     var act=document.createElement('div');
