@@ -19,6 +19,7 @@
 <link media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Gujarati:wght@400;600;700&family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
 :root{
+  --bz:1;                       /* board zoom, set by the 🔍 buttons */
   --line:#1f2937;--ink:#e5e7eb;--dim:#9ca3af;--green:#22c55e;--blue:#60a5fa;
   /* local fallbacks first-class, so the board still reads well with no internet */
   --ui:Inter,'Noto Sans Gujarati','Nirmala UI',Shruti,'Segoe UI',system-ui,sans-serif;
@@ -97,11 +98,27 @@ html,body{height:100%;overflow:hidden;background:#000;color:var(--ink);
 .bk:active{background:#2d3d55;transform:scale(.96)}
 .bk svg{width:19px;height:19px;flex-shrink:0}
 .pgBody{flex:1;overflow-y:auto;padding:18px;-webkit-overflow-scrolling:touch}
+/* everything a page draws lives inside .pgZoom, so 🔍 can shrink or grow the
+   work without touching the header — handy when the keypad falls off the
+   bottom of the panel in ટેસ્ટ mode. The header stays full size so the zoom
+   buttons never shrink out of reach. */
+.pgZoom{zoom:var(--bz,1);min-height:calc(100%/var(--bz,1))}
+.zmBox{flex-shrink:0;display:flex;align-items:center;gap:4px;
+  border:1px solid var(--line);border-radius:23px;background:#1a2332;padding:3px}
+.zmB{width:40px;height:40px;border-radius:20px;border:0;background:#243247;color:var(--ink);
+  font-size:21px;line-height:1;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;font-family:var(--mono);-webkit-tap-highlight-color:transparent;
+  touch-action:manipulation}
+.zmB:active{background:#2d3d55}
+.zmB[disabled]{opacity:.32}
+.zmVal{min-width:46px;text-align:center;font-family:var(--mono);font-size:12.5px;
+  color:var(--dim);cursor:pointer;-webkit-tap-highlight-color:transparent}
+@media(max-width:620px){ .zmVal{display:none} }
 /* Centred, but with auto margins rather than justify-content, so content that
    is taller or wider than the page is never pushed off an edge you cannot
    scroll back to. */
-.pgBody.mid{display:flex;flex-direction:column}
-.pgBody.mid>*{width:100%;margin-block:auto}
+.pgZoom.mid{display:flex;flex-direction:column}
+.pgZoom.mid>*{width:100%;margin-block:auto}
 
 /* placeholder shown on a page that has no content yet */
 .soon{text-align:center;color:#334155;font-family:var(--head);font-size:clamp(20px,4vw,34px);
@@ -1508,10 +1525,58 @@ var NAV=(function(){
         '<h2>'+esc(def.title)+'</h2>'+
         '<button class="bk" data-back="1"><span>પાછળ</span>'+ARROW+'</button>'+
       '</div>'+
-      '<div class="pgBody"></div>';
+      '<div class="pgBody"><div class="pgZoom"></div></div>';
     pg.querySelectorAll('[data-back]').forEach(function(b){ b.onclick=back });
+    pg.querySelector('.pgTop').insertBefore(zoomBox(), pg.querySelector('.bk:last-of-type'));
     return pg;
   }
+
+  /* ---------------- 🔍 zoom ----------------
+     One size for the whole board, remembered between pages and between days.
+     The steps are gentle so a tap never overshoots. */
+  var ZSTEPS=[0.55,0.65,0.75,0.85,1,1.15,1.3,1.5,1.75];
+  function zoomGet(){
+    var v=parseFloat(store.get('vrd_zoom',1));
+    return (isFinite(v)&&v>0)?v:1;
+  }
+  function zoomApply(v){
+    v=Math.max(ZSTEPS[0], Math.min(ZSTEPS[ZSTEPS.length-1], v));
+    store.set('vrd_zoom', v);
+    document.documentElement.style.setProperty('--bz', String(v));
+    var boxes=document.querySelectorAll('.zmBox');
+    for(var i=0;i<boxes.length;i++) paintZoom(boxes[i], v);
+  }
+  function paintZoom(box, v){
+    var lab=box.querySelector('.zmVal');
+    if(lab) lab.textContent=Math.round(v*100)+'%';
+    var out=box.querySelector('[data-z="-"]'), inn=box.querySelector('[data-z="+"]');
+    if(out) out.disabled=(v<=ZSTEPS[0]+0.001);
+    if(inn) inn.disabled=(v>=ZSTEPS[ZSTEPS.length-1]-0.001);
+  }
+  function zoomStep(dir){
+    var v=zoomGet(), i=0, best=1e9;
+    for(var k=0;k<ZSTEPS.length;k++){
+      var gap=Math.abs(ZSTEPS[k]-v);
+      if(gap<best){ best=gap; i=k }
+    }
+    i=Math.max(0, Math.min(ZSTEPS.length-1, i+dir));
+    zoomApply(ZSTEPS[i]);
+  }
+  function zoomBox(){
+    var b=document.createElement('div');
+    b.className='zmBox';
+    b.innerHTML='<button class="zmB" data-z="-" title="નાનું · zoom out">−</button>'+
+      '<span class="zmVal" title="100% પર પાછા">100%</span>'+
+      '<button class="zmB" data-z="+" title="મોટું · zoom in">+</button>';
+    b.querySelector('[data-z="-"]').onclick=function(){ zoomStep(-1) };
+    b.querySelector('[data-z="+"]').onclick=function(){ zoomStep(1) };
+    b.querySelector('.zmVal').onclick=function(){ zoomApply(1) };
+    paintZoom(b, zoomGet());
+    return b;
+  }
+  window.__zoom=zoomApply;      /* test hook */
+  window.__zoomGet=zoomGet;
+  zoomApply(zoomGet());         /* restore last time's size at start-up */
 
   function render(id){
     var def=REG[id];
@@ -1524,9 +1589,9 @@ var NAV=(function(){
     host.classList.add('show');
     document.body.classList.add('pageOpen');
     var pp=document.getElementById('pnlPanel'); if(pp) pp.classList.remove('show');
-    try{ def.build(pg.querySelector('.pgBody'), pg) }catch(e){
+    try{ def.build(pg.querySelector('.pgZoom'), pg) }catch(e){
       try{ console.error('page build failed:', id, e) }catch(e2){}
-      pg.querySelector('.pgBody').innerHTML=
+      pg.querySelector('.pgZoom').innerHTML=
         '<div class="empty">આ પાનું ખૂલી શક્યું નહીં.'+
         '<div style="font-family:var(--mono);font-size:11px;color:#f87171;margin-top:10px">'+
         esc(String((e&&e.message)||e))+'</div>'+
@@ -1758,7 +1823,10 @@ function boardClass(){ return store.get('vrd_class','') }   /* ''=all, or '6'/'7
 
 /* ---------------- JSONP ---------------- */
 var __jp=0;
+var __JSPY=null;
+window.__setJsonpSpy=function(f){ __JSPY=f };   /* test hook */
 function jsonp(url,params,ok,err){
+  if(__JSPY){ __JSPY(url,params,ok,err); return }
   var cb='__bj'+(++__jp)+'_'+Date.now(), done=false;
   var q=[]; params=params||{};
   for(var k in params) q.push(encodeURIComponent(k)+'='+encodeURIComponent(params[k]));
@@ -1859,7 +1927,19 @@ window.boardSound=function(name,times,freq){
 /* ---------------- config loading ---------------- */
 function loadConfig(cb){
   api('config',{},function(d){
-    if(d&&d.ok){ MAIN.cfg=d; store.set('vrd_main_cfg',d); applyRemote(d) }
+    if(d&&d.ok){
+      /* the SETTINGS tab is the truth for the test switches. An older
+         deployed script does not return `allow` at all, so replacing
+         MAIN.cfg wholesale used to wipe it — and the missing value read
+         back as "all tests ON", which flipped the signature and reloaded
+         the page on top of a student who was mid-test. Keep it. */
+      var keep=(MAIN.cfg && MAIN.cfg.allowFrom==='sheet' && MAIN.cfg.allow)
+        ? MAIN.cfg.allow : null;
+      MAIN.cfg=d;
+      if(keep){ MAIN.cfg.allow=keep; MAIN.cfg.allowFrom='sheet' }
+      store.set('vrd_main_cfg',MAIN.cfg);
+      applyRemote(MAIN.cfg);
+    }
     cb&&cb(d);
   },function(e){ cb&&cb(null,e) });
 }
@@ -1896,15 +1976,37 @@ function loadAllowFromSheet(cb){
 }
 /* while a student is answering, the page must never be redrawn from
    under them — that would throw the class back to the menu */
-var BUSY=0;
-function setBusy(on){ BUSY = on ? 1 : 0 }
+var BUSY=0, BUSY_K={};
+/* Two students work side by side, so one flag is not enough: the left
+   half finishing must not drop the guard protecting the right half.
+   Each activity holds its own key; BUSY is true while any key is held.
+   setBusy(false) with no key is the page-level reset and clears all. */
+function setBusy(on,key){
+  if(!key){ BUSY_K={}; if(on) BUSY_K.main=1 }
+  else if(on) BUSY_K[key]=1;
+  else delete BUSY_K[key];
+  BUSY=0;
+  for(var k in BUSY_K){ if(BUSY_K.hasOwnProperty(k)){ BUSY=1; break } }
+}
+/* test hooks */
+window.__setBusy=setBusy;
+window.__busy=function(){ return BUSY };
+window.__applyRemote=function(c){ return applyRemote(c) };
+window.__main=function(){ return MAIN };
+window.__pendingReload=function(v){
+  if(v!==undefined) PENDING_RELOAD=v;
+  return PENDING_RELOAD;
+};
 var PENDING_RELOAD=false;
 var LAST_ALLOW='';
 function applyRemote(cfg){
   cfg=cfg||MAIN.cfg||{};
   /* the sheet switched test buttons on/off → redraw the open page */
   try{
-    var a=cfg.allow||{};
+    var a=cfg.allow;
+    /* no `allow` in this reply = we simply do not know. Saying nothing is
+       right; guessing "all on" would look like a change and force a reload. */
+    if(!a || typeof a!=='object') throw 0;
     var sig=(a.evalTest===false?'0':'1')+(a.flnTest===false?'0':'1');
     if(LAST_ALLOW && LAST_ALLOW!==sig && NAV && NAV.current){
       var cur=NAV.current();
@@ -2110,6 +2212,7 @@ function switchRow(host, label, sub, isOn, onChange){
   return {paint:paint, el:r, sw:sw};
 }
 
+window.__buildSetForm=function(x){ return buildSetForm(x) };   /* test hook */
 function buildSetForm(body){
   /* her main sheet URL sits in the box by default — just tap SAVE */
   var c=document.createElement('div'); c.className='setCard';
@@ -2123,6 +2226,71 @@ function buildSetForm(body){
     '<b>Deploy</b> કરેલી હોવી જોઈએ.</div>';
   body.appendChild(c);
   $('muIn').value = DEFAULT_SHEET_URL;
+
+  /* ---- 🔐 આ પેનલ નોંધો — ઘરેથી ખોટું પરિણામ અટકાવવા ---- */
+  var dv=document.createElement('div'); dv.className='setCard';
+  dv.innerHTML='<h4>🔐 આ પેનલ નોંધો · REGISTER THIS PANEL</h4>'+
+    '<div id="dvNow" style="font-family:var(--guj);font-size:13.5px;line-height:1.8;'+
+      'border-radius:11px;padding:10px 12px;margin-bottom:10px"></div>'+
+    '<input id="dvName" autocomplete="off" placeholder="પેનલનું નામ — દા.ત. ધોરણ 6 ની પેનલ">'+
+    '<input id="dvPass" type="password" inputmode="numeric" autocomplete="off" '+
+      'placeholder="નોંધણીનો પાસવર્ડ">'+
+    '<button class="btn pri" id="dvGo" style="width:100%">આ પેનલ નોંધો</button>'+
+    '<div class="setMsg" id="dvMsg"></div>'+
+    '<div class="note">શાળાની દરેક પેનલ પર <b>એક જ વાર</b> આ કરવાનું છે. '+
+    'પછી કદી પુછાશે નહીં.<br>'+
+    'નોંધ્યા પછી શીટના <b>🔐 DEVICES</b> પાનામાં એ પેનલ દેખાશે. કોઈ પેનલ કાઢી નાખવી હોય તો '+
+    'ત્યાં <b>ચાલુ?</b> કૉલમમાં <b>NO</b> લખો — એ પેનલ તરત બંધ થઈ જશે.<br>'+
+    '⚠ આ પાસવર્ડ કોઈ વિદ્યાર્થીને ન કહો.</div>';
+  body.appendChild(dv);
+  function dvPaint(){
+    var n=$('dvNow');
+    if(devRegistered()){
+      n.style.background='#0d1f16'; n.style.border='1px solid #166534'; n.style.color='#86efac';
+      n.innerHTML='✔ આ પેનલ નોંધાયેલી છે<br>'+
+        '<b>'+esc(devPanel()||'પેનલ')+'</b>'+
+        '<span style="color:#64748b;font-family:var(--mono);font-size:11px"> · '+esc(devId())+'</span>';
+      $('dvName').value=devPanel()||'';
+      $('dvGo').textContent='ફરી નોંધો (નામ બદલવા)';
+    }else{
+      n.style.background='#2a2010'; n.style.border='1px solid #b45309'; n.style.color='#fbbf24';
+      n.innerHTML='⚠ આ પેનલ હજી નોંધાયેલી નથી<br>'+
+        '<span style="color:#64748b;font-family:var(--mono);font-size:11px">'+esc(devId())+'</span>';
+      $('dvGo').textContent='આ પેનલ નોંધો';
+    }
+    n.innerHTML+='<div id="dvUrl" style="margin-top:7px;font-family:var(--mono);'+
+      'font-size:10.5px;color:#64748b;word-break:break-all">પરિણામ જ્યાં સચવાય: '+
+      esc(devShortUrl())+'</div>';
+  }
+  dvPaint();
+  /* તાળું ખરેખર આ સ્ક્રિપ્ટ પર છે? — કાર્ડ ખૂલતાં જ તપાસી લે */
+  devGateCheck(function(ok,why){
+    var u=$('dvUrl'); if(!u) return;
+    if(ok) u.innerHTML+='<br><span style="color:#22c55e">✔ તાળું આ સ્ક્રિપ્ટ પર છે</span>';
+    else if(why==='net') u.innerHTML+='<br><span style="color:#fbbf24">? જોડાણ થયું નહીં</span>';
+    else u.innerHTML+='<br><span style="color:#f87171">✘ આ સ્ક્રિપ્ટમાં તાળું નથી — '+
+      'school_gate.gs <b>આ જ</b> સ્ક્રિપ્ટમાં ઉમેરો અને ફરી Deploy કરો</span>';
+  });
+  $('dvGo').onclick=function(){
+    var nm=String($('dvName').value||'').trim();
+    var pw=String($('dvPass').value||'').trim();
+    if(!nm){ $('dvMsg').className='setMsg bad'; $('dvMsg').textContent='પેનલનું નામ લખો'; return }
+    if(!pw){ $('dvMsg').className='setMsg bad'; $('dvMsg').textContent='પાસવર્ડ નાખો'; return }
+    $('dvGo').disabled=true;
+    $('dvMsg').className='setMsg'; $('dvMsg').textContent='નોંધી રહ્યા છીએ…';
+    devRegister(pw,nm,function(ok,why){
+      $('dvGo').disabled=false;
+      $('dvPass').value='';
+      if(ok){
+        $('dvMsg').className='setMsg ok';
+        $('dvMsg').textContent='✔ નોંધાઈ ગઈ — હવે આ પેનલનાં પરિણામ સ્વીકારાશે';
+        dvPaint();
+      }else{
+        $('dvMsg').className='setMsg bad';
+        $('dvMsg').textContent='❌ '+why;
+      }
+    });
+  };
 
   /* ---- class selection — filters the Evaluate section ---- */
   var cc=document.createElement('div'); cc.className='setCard';
@@ -2548,7 +2716,9 @@ function buildMonitor(body){
   note.style.cssText+=';max-width:660px;margin:0 auto 10px';
   note.innerHTML='બધું <b>ફ્લોટિંગ વિન્ડો</b>માં ચાલે — — દબાવીને નાની કરો, બોર્ડ ચાલુ રહે.<br>'+
     '📷 <b>1 કૅમેરો</b> = એક દૃશ્ય · 📷📷 <b>2 કૅમેરા</b> = બે દૃશ્ય '+
-    '(રેકોર્ડિંગમાં બાજુ-બાજુ, Jitsi માં બીજી ટૅબ ખૂલે).';
+    '(રેકોર્ડિંગમાં બાજુ-બાજુ, Jitsi માં બીજી ટૅબ ખૂલે).<br>'+
+    '▶ એક જ ટૅપે <b>રેકોર્ડિંગ અને લાઇવ બંને</b> ચાલુ થાય — "Join meeting" દબાવવું નહીં પડે. '+
+    'Jitsi માં વિડિયો કાળો દેખાય તો વિન્ડોમાં 🎥 દબાવો.';
   box.appendChild(note);
 
   jCls.forEach(function(c){
@@ -2742,7 +2912,12 @@ function openTab(url){
 function csJitsiUrl(cls,cam,videoOn,audioOn,who){
   var nm=who||('Dhoran-'+cls+(Number(cam)===2?'-2':''));
   var p=['userInfo.displayName=%22'+encodeURIComponent(nm)+'%22',
+    /* skip the "Join meeting" screen. The key was renamed in 2022 —
+       the new one is what current meet.jit.si obeys, the old one is
+       kept so an older self-hosted server still understands it. */
+    'config.prejoinConfig.enabled=false',
     'config.prejoinPageEnabled=false',
+    'config.requireDisplayName=false',         /* no name prompt = no extra tap */
     'config.disableDeepLinking=true',          /* Android: રહો બ્રાઉઝરમાં જ */
     'config.startWithVideoMuted='+(videoOn?'false':'true'),
     'config.startWithAudioMuted='+(audioOn?'false':'true'),
@@ -3082,7 +3257,10 @@ function classSession(cls, cams, record){
   var env=csEnv();
   CS.on=true; CS.cls=String(cls); CS.cams=(Number(cams)===2?2:1); CS.rec=!!record;
   CS.chunks=[]; CS.streams=[]; CS.jcam=1;
-  CS.jvid=!record;                 /* recording keeps the camera → Jitsi starts video-off */
+  /* one tap must start BOTH: the file and the live stream. Chrome can hand
+     the same camera to the board and to the Jitsi frame, so we ask for video
+     even while recording — the 🎥 button turns it off if a panel refuses. */
+  CS.jvid=true;
   csFloat();
 
   /* ---------- 📡 Jitsi only ---------- */
@@ -3232,14 +3410,14 @@ function csStart(){
   clearInterval(CS.tm);
   function csTickNow(){
     var s=Math.floor((Date.now()-CS.t0)/1000);
-    csStatus('🔴 રેકોર્ડિંગ · '+(CS.cams>1?'2 કૅમેરા · ':'1 કૅમેરો · ')+
+    csStatus('🔴 રેકોર્ડિંગ + 📡 લાઇવ · '+(CS.cams>1?'2 કૅમેરા · ':'1 કૅમેરો · ')+
       Math.floor(s/60)+':'+('0'+s%60).slice(-2),'#f87171');
     var m=document.getElementById('csMLbl');
     if(m) m.textContent='REC '+Math.floor(s/60)+':'+('0'+s%60).slice(-2);
   }
   csTickNow();                       /* show 🔴 at once, not after a second */
   CS.tm=setInterval(csTickNow,1000);
-  /* Jitsi joins with video off so it does not fight for the same camera */
+  /* stream starts together with the recording — no join tap needed */
   csLoadJitsi(1,true);
   csLoginHint();
   setTimeout(function(){ if(CS.on) csMini(true) },3000);
@@ -3503,7 +3681,7 @@ definePage('allview','ત્રણેય વર્ગ · All Classes',function(b
   function jUrl(c){ return jWatchUrl(c,1) }
   var g=document.createElement('div');
   g.style.cssText='display:grid;grid-template-columns:repeat(3,1fr);gap:8px;'+
-    'height:calc(100vh - 170px);min-height:320px';
+    'height:calc((100vh - 170px)/var(--bz,1));min-height:320px';
   ['6','7','8'].forEach(function(c){
     var p=document.createElement('div');
     p.style.cssText='display:flex;flex-direction:column;border:1px solid var(--line);'+
@@ -3938,6 +4116,7 @@ var EVAL_CFG={
 /* ONE SHEET MODE: the school sheet answers everything itself, so its
    links say 'SELF'. Older multi-sheet setups keep working unchanged. */
 function linkOf(key){ return (MAIN.cfg&&MAIN.cfg.links&&MAIN.cfg.links[key])||'' }
+window.MAIN=MAIN;   /* test hook */
 function isSelf(u){ return String(u||'').toUpperCase()==='SELF' }
 function evalUrl(id){
   var u=linkOf(EVAL_CFG[id].key);
@@ -3967,9 +4146,66 @@ function studentUrl(){
   var u=linkOf('STUDENT_WEBAPP_URL');
   return isSelf(u) ? (MAIN.url||'') : u;
 }
+/* ==================================================================
+   🔐 આ પેનલની ઓળખ
+   ------------------------------------------------------------------
+   દરેક પેનલને એક કાયમી નંબર મળે છે. શાળામાં એક વાર પાસવર્ડ નાખીને
+   નોંધાવો — શીટ એને એક ગુપ્ત TOKEN આપે છે. પછી દરેક પરિણામ સાથે એ
+   TOKEN જાય છે. ઘરના કમ્પ્યુટર પાસે એ TOKEN હોતું નથી, એટલે એનું
+   પરિણામ શીટ સ્વીકારતી નથી.
+   ================================================================== */
+function devId(){
+  var d=store.get('vrd_devid','');
+  if(!d){
+    d='D'+Math.random().toString(36).slice(2,10).toUpperCase()+
+      Date.now().toString(36).toUpperCase();
+    store.set('vrd_devid',d);
+  }
+  return d;
+}
+function devToken(){ return store.get('vrd_devtok','') }
+function devPanel(){ return store.get('vrd_devname','') }
+function devRegistered(){ return !!devToken() }
+/* test hooks */
+window.devId=devId; window.devToken=devToken;
+window.devRegistered=devRegistered; window.devPanel=devPanel;
+window.devRegister=devRegister; window.__studentApi=studentApi;
+window.devShortUrl=devShortUrl; window.devGateCheck=devGateCheck;
+
 function studentApi(action,params,ok,err){
   var u=studentUrl(); if(!u){ err&&err('no-student-url'); return }
-  params=params||{}; params.action=action; jsonp(u,params,ok,err);
+  params=params||{}; params.action=action;
+  params.dev=devId();                       /* આ પેનલ કોણ છે */
+  params.token=devToken();                  /* એનો ગુપ્ત ટોકન */
+  jsonp(u,params,ok,err);
+}
+/* બોર્ડ કયા સ્ક્રિપ્ટ સાથે પરિણામ સાચવે છે — તાળું એ જ સ્ક્રિપ્ટમાં હોવું જોઈએ */
+function devTargetUrl(){ return studentUrl() }
+function devShortUrl(){
+  var u=devTargetUrl();
+  var m=/\/macros\/s\/([^\/]+)/.exec(u);
+  return m ? ('…/'+m[1].slice(0,14)+'…/exec') : (u||'(કોઈ URL નથી)');
+}
+/* તાળું આ URL પર બેઠું છે કે નહીં તે તપાસે */
+function devGateCheck(cb){
+  var u=devTargetUrl(); if(!u){ cb(false,'no-url'); return }
+  jsonp(u,{action:'gateping'},function(d){ cb(!!(d&&d.gate),'') },
+        function(){ cb(false,'net') });
+}
+/* પેનલ નોંધો — શાળામાં એક જ વાર */
+function devRegister(pass, panelName, cb){
+  var u=devTargetUrl(); if(!u){ cb(false,'શાળા શીટ સાથે જોડાણ નથી'); return }
+  jsonp(u,{action:'register',pass:pass,panel:panelName,dev:devId()},function(d){
+    if(d && d.error && String(d.error).indexOf('unknown action')>-1){
+      cb(false,'આ સ્ક્રિપ્ટમાં school_gate.gs નથી — '+devShortUrl());
+      return;
+    }
+    if(d && d.ok && d.token){
+      store.set('vrd_devtok',d.token);
+      store.set('vrd_devname',d.panel||panelName);
+      cb(true,'');
+    } else cb(false,(d&&d.error)||'નોંધણી થઈ નહીં');
+  },function(){ cb(false,'ઇન્ટરનેટ જોડાણ તપાસો') });
 }
 /* ================================================================
    📴 OFFLINE QUEUE — every result/mistake write is kept on the panel
@@ -5155,7 +5391,7 @@ var LESSON_T=[];
 function lessonTimeout(fn,ms){ var id=setTimeout(fn,ms); LESSON_T.push(id); return id }
 function lessonInterval(fn,ms){ var id=setInterval(fn,ms); LESSON_T.push(['i',id]); return id }
 function lessonStopAll(){
-  BUSY=0;
+  BUSY=0; BUSY_K={};
   LESSON_T.forEach(function(t){
     if(t && t[0]==='i') clearInterval(t[1]); else clearTimeout(t);
   });
@@ -5163,6 +5399,51 @@ function lessonStopAll(){
   try{ speechSynthesis.cancel() }catch(e){}
 }
 
+/* ---------------- two students, two fingers ----------------------
+   The browser only creates a click for the primary touch point, so while
+   the left student had a finger down the right student's taps did nothing
+   — buttons looked dead and answers went missing. Pointer events do carry
+   every finger, so for the non-primary ones we raise the tap ourselves.
+   A real click arriving late for the same button is swallowed so nothing
+   ever fires twice. ------------------------------------------------- */
+function multiTapFix(root){
+  if(!root || root.__mtf || !window.PointerEvent) return;
+  root.__mtf=1;
+  var down={};
+  function hit(e){
+    var t=e.target;
+    while(t && t!==root && t.nodeType===1){
+      if(t.tagName==='BUTTON' || t.onclick) return t;
+      t=t.parentNode;
+    }
+    return null;
+  }
+  root.addEventListener('pointerdown',function(e){
+    if(e.pointerType!=='touch' || e.isPrimary) return;
+    var t=hit(e); if(t) down[e.pointerId]=t;
+  },true);
+  root.addEventListener('pointerup',function(e){
+    if(e.pointerType!=='touch' || e.isPrimary) return;
+    var t=down[e.pointerId]; delete down[e.pointerId];
+    if(!t || t!==hit(e)) return;
+    if(!t.isConnected) return;
+    t.__mtfAt=Date.now(); t.__mtfSynth=1;
+    try{ t.click() }catch(err){ t.__mtfSynth=0 }
+  },true);
+  function forget(e){ delete down[e.pointerId] }
+  root.addEventListener('pointercancel',forget,true);
+  root.addEventListener('pointerleave',forget,true);
+  /* never let one finger count twice */
+  root.addEventListener('click',function(e){
+    var t=hit(e); if(!t) return;
+    if(t.__mtfSynth){ t.__mtfSynth=0; return }
+    if(t.__mtfAt && Date.now()-t.__mtfAt<600){
+      e.stopPropagation(); e.preventDefault();
+    }
+  },true);
+}
+
+window.__multiTapFix=multiTapFix;   /* test hook */
 /* ---------- shared maths helpers (used by FLN pages) ---------- */
 function R2(a,b){ return a+Math.floor(Math.random()*(b-a+1)) }
 function fmtIN(n){
@@ -5251,7 +5532,9 @@ function genQuiz(cfg){
 function genAdd(cfg){
   /* rows: 0 carry · 1..n addends · rule · answer */
   var d=cfg.d, n=cfg.n;
-  var nums=[]; for(var i=0;i<n;i++) nums.push(rnd(d));
+  var nums=[];
+  if(cfg.nums && cfg.nums.length===n) nums=cfg.nums.slice();   /* graded */
+  else for(var i=0;i<n;i++) nums.push(rnd(d));
   var sum=nums.reduce(function(a,b){return a+b},0);
   var W=String(sum).length, cols=W+1;
   var cells=[], steps=[];
@@ -5299,10 +5582,13 @@ function genSub(cfg){
      becomes 10+d. TWO levels are always reserved: a column that is
      adjusted a second time writes in the upper level and its first
      value gets crossed out. */
-  var d=cfg.d;
-  var a=rnd(d), b2=rnd(d);
-  if(b2>a){ var t=a; a=b2; b2=t }
-  if(a===b2) a+=R2(1,8);
+  var d=cfg.d, a, b2;
+  if(cfg.ab){ a=cfg.ab[0]; b2=cfg.ab[1] }                      /* graded */
+  else{
+    a=rnd(d); b2=rnd(d);
+    if(b2>a){ var t=a; a=b2; b2=t }
+    if(a===b2) a+=R2(1,8);
+  }
   var da=digits(a), db=digits(b2);
   while(db.length<da.length) db.unshift(0);
   var W=da.length, cols=W+1, cells=[], steps=[];
@@ -5362,6 +5648,111 @@ function genSub(cfg){
     optRows:[{r:adjT,c1:1,c2:cols-1},{r:adjB,c1:1,c2:cols-1}],
     title:a+' − '+b2};
 }
+window.__genSub=genSub;   /* test hook */
+
+/* ==================================================================
+   ચઢતી અઘરાઈ · the three notebook sums now climb in difficulty
+     સરવાળો  : 1 વદ્દી વગર · 2 અને 3 વદ્દી સાથે
+     બાદબાકી : 1 ઉછીના વગર · 2 એક સ્તર ઉછીના · 3 બે સ્તર ઉછીના
+   "બે સ્તર" means a column that is adjusted twice — it lends a ten and
+   then has to borrow itself, so its first value gets crossed out and
+   rewritten on the upper line. That needs at least 3 digits; with 2-digit
+   sums it cannot exist, so the board falls back to the closest it can
+   build rather than looping. ======================================== */
+function addCarryLevel(p){
+  for(var i=0;i<p.cells.length;i++) if(/^ca\d+$/.test(p.cells[i].id)) return 1;
+  return 0;
+}
+function subBorrowLevel(p){
+  var lvl=0;
+  for(var i=0;i<p.cells.length;i++){
+    var m=/^j\d+_(\d+)$/.exec(p.cells[i].id);
+    if(m) lvl=Math.max(lvl, m[1]==='0'?1:2);
+  }
+  return lvl;
+}
+function cfgWith(cfg,extra){
+  var o={},k;
+  for(k in cfg) if(cfg.hasOwnProperty(k)) o[k]=cfg[k];
+  for(k in extra) if(extra.hasOwnProperty(k)) o[k]=extra[k];
+  return o;
+}
+/* addends whose every column totals 9 or less — never any વદ્દી */
+function addNumsNoCarry(d,n){
+  if(n<1||n>9||d<1) return null;
+  var cols=[],c,i;
+  for(c=0;c<d;c++){
+    var lead=(c===0), tot=lead?R2(n,9):R2(0,9), part=[], left=tot;
+    for(i=0;i<n;i++){
+      var floorV=lead?1:0;
+      var need=lead?(n-1-i):0;              /* each addend still to come needs a 1 */
+      var top=Math.max(floorV,left-need);
+      var v=(i===n-1)?left:R2(floorV,top);
+      part.push(v); left-=v;
+    }
+    cols.push(part);
+  }
+  var nums=[];
+  for(i=0;i<n;i++){
+    var t='';
+    for(c=0;c<d;c++) t+=cols[c][i];
+    nums.push(parseInt(t,10));
+  }
+  return nums;
+}
+/* a − b where every column subtracts on its own — never any ઉછીના */
+function subNumsNoBorrow(d){
+  for(var g=0;g<300;g++){
+    var A=[],B=[];
+    for(var c=0;c<d;c++){
+      var t=(c===0)?R2(1,9):R2(0,9);
+      A.push(t); B.push((c===0)?R2(1,t):R2(0,t));
+    }
+    var a=parseInt(A.join(''),10), b=parseInt(B.join(''),10);
+    if(a>b) return [a,b];
+  }
+  return null;
+}
+function nbTry(make,level,want,tries){
+  var best=null,bestGap=1e9;
+  for(var i=0;i<tries;i++){
+    var p=make(), gap=Math.abs(level(p)-want);
+    if(!gap) return p;
+    if(gap<bestGap){ bestGap=gap; best=p }
+  }
+  return best||make();
+}
+/* idx is 1, 2 or 3 — which of the three sums this is */
+function nbProblem(tool,cfg,idx){
+  idx=Number(idx)||1;
+  if(tool==='add'){
+    var wantA=(idx===1)?0:1;
+    if(wantA===0){
+      var nums=addNumsNoCarry(cfg.d,cfg.n);
+      if(nums){
+        var p0=genAdd(cfgWith(cfg,{nums:nums}));
+        if(addCarryLevel(p0)===0) return p0;
+      }
+    }
+    return nbTry(function(){ return genAdd(cfg) }, addCarryLevel, wantA, 400);
+  }
+  if(tool==='sub'){
+    var wantS=(idx===1)?0:((idx===2)?1:2);
+    if(wantS===0){
+      var ab=subNumsNoBorrow(cfg.d);
+      if(ab){
+        var p1=genSub(cfgWith(cfg,{ab:ab}));
+        if(subBorrowLevel(p1)===0) return p1;
+      }
+    }
+    return nbTry(function(){ return genSub(cfg) }, subBorrowLevel, wantS, 600);
+  }
+  return (tool==='mul')?genMul(cfg):genDiv(cfg);
+}
+window.__nbProblem=nbProblem;          /* test hook */
+window.__subBorrowLevel=subBorrowLevel;
+window.__addCarryLevel=addCarryLevel;
+
 function genMul(cfg){
   /* School style: numbers directly under numbers, multiply starting
      from the LEFT digit of the multiplier (biggest place first) —
@@ -5542,7 +5933,7 @@ var EMO=['🍎','⭐','🌸','🐟','🥭','🦋','🎈','🍬'];
    Options include the mistakes students really make, so a wrong tap
    is a teaching moment.
    ================================================================== */
-var BOARD_BUILD='2026-08-03 · camera v4 · server + log-in build';
+var BOARD_BUILD='2026-08-04 · panel registration + gate check';
 var GEN_TYPE='whole';     /* number type દાખલા બનાવો builds for */
 var DUAL_SCOPE='whole';   /* tools the 2-student page offers */
 window.__setScope=function(g,d){ if(g) GEN_TYPE=g; if(d) DUAL_SCOPE=d };
@@ -7165,18 +7556,14 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
      notebook. 📘 auto-fills & speaks; ✍ rejects wrong digits;
      📝 accepts and scores the problem at the end.
      ================================================================ */
-  function nbNew(){
-    var P;
-    if(st.tool==='add') P=genAdd(st.cfg);
-    else if(st.tool==='sub') P=genSub(st.cfg);
-    else if(st.tool==='mul') P=genMul(st.cfg);
-    else P=genDiv(st.cfg);
+  function nbNew(idx){
+    var P=nbProblem(st.tool, st.cfg, idx||1);
     P.si=0; P.wrong=0; P.entered=[];
     return P;
   }
   function playNb(w){
     if(st.g && st.g.kind!=='nb') st.g=null;
-    if(!st.g) st.g={kind:'nb',p:1,score:0,perfect:0,P:nbNew()};
+    if(!st.g) st.g={kind:'nb',p:1,score:0,perfect:0,P:nbNew(1)};
     var NP=(st.mode==='T')?3:(st.mode==='P'?3:2);
     var g=st.g;
     if(g.p>NP){
@@ -7200,7 +7587,8 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
     L.style.cssText+=';flex:1.3;min-width:340px;margin:0;display:flex;flex-direction:column';
     var M=document.createElement('div');
     M.style.cssText='flex:1;min-width:280px;display:flex;flex-direction:column;gap:8px;'+
-      'position:sticky;top:8px;align-self:flex-start;max-height:calc(100vh - 120px);'+
+      'position:sticky;top:8px;align-self:flex-start;'+
+      'max-height:calc((100vh - 120px)/var(--bz,1));'+
       'overflow:auto;z-index:5';
     var RW=document.createElement('div');
     RW.className='evCard';
@@ -7249,8 +7637,11 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
       var base='height:'+sz+'px;display:flex;align-items:center;justify-content:center;'+
         'font-size:'+fs+'px;border-radius:10px;grid-row:'+(cl.r+1)+';grid-column:'+(cl.c+1)+
         ';align-self:end;';
+      /* the struck-through digit shows WHERE ઉછીના is needed. That is a
+         teaching aid in પ્રેક્ટિસ, but in ટેસ્ટ it hands the student the
+         answer — so in test mode it stays plain until "તપાસો". */
       if(cl.kind==='g') el.style.cssText=base+'color:var(--ink)'+
-        (cl.strike?';text-decoration:line-through;opacity:.5':'');
+        ((cl.strike && !freeMode)?';text-decoration:line-through;opacity:.5':'');
       else if(cl.kind==='s') el.style.cssText=base+'color:'+(cl.cls||'var(--dim)')+
         ';font-size:'+(cl.fs||Math.round(CS*.5))+'px';
       else el.style.cssText=base+'background:#0d1626;border:2px dashed #475569;'+
@@ -7366,6 +7757,12 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
           el.textContent=(got||'—')+'→'+s2.exp;
         }
       });
+      /* checked — now it is safe to show where the ઉછીના was taken */
+      P.cells.forEach(function(cl){
+        if(cl.kind!=='g' || !cl.strike) return;
+        var ge=document.getElementById('nb_'+cl.id);
+        if(ge){ ge.style.textDecoration='line-through'; ge.style.opacity='.5' }
+      });
       if(!wrong) g.score++;
       hint.style.color=wrong?'#f87171':'#22c55e';
       hint.textContent=wrong?('❌ '+wrong+' ખાનાં ખોટાં — સાચો જવાબ બતાવ્યો છે'):'✅ સાચો દાખલો!';
@@ -7373,7 +7770,7 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
       var nx=document.createElement('button');
       nx.className='btn pri'; nx.style.cssText+=';width:100%;padding:13px;margin-top:4px';
       nx.textContent=(g.p<NP)?'આગળનો દાખલો →':'પરિણામ 🏁';
-      nx.onclick=function(){ g.p++; g.P=nbNew(); render() };
+      nx.onclick=function(){ g.p++; g.P=nbNew(g.p); render() };
       M.appendChild(nx);
       kp.style.pointerEvents='none'; kp.style.opacity='.4';
       act.style.display='none';
@@ -7390,7 +7787,7 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
       nx.className='btn pri';
       nx.style.cssText+=';width:100%;padding:13px;margin-top:4px';
       nx.textContent=(g.p<NP)?'આગળનો દાખલો →':'પરિણામ 🏁';
-      nx.onclick=function(){ g.p++; g.P=nbNew(); render() };
+      nx.onclick=function(){ g.p++; g.P=nbNew(g.p); render() };
       M.appendChild(nx);
       kp.style.pointerEvents='none'; kp.style.opacity='.4';
     }
@@ -7426,7 +7823,7 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
         applyAddCarry();
       });
     }
-    aBtn('નવો દાખલો',function(){ g.P=nbNew(); render() });
+    aBtn('નવો દાખલો',function(){ g.P=nbNew(g.p); render() });
     M.appendChild(act);
 
     function press(d2){
@@ -7938,7 +8335,7 @@ definePage('sixcam','🎥 6 કૅમેરા · બધા વર્ગ',functi
   function jUrl(c,k){ return jWatchUrl(c,k) }
   var g=document.createElement('div');
   g.style.cssText='display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:1fr 1fr;'+
-    'gap:7px;height:calc(100vh - 165px);min-height:340px';
+    'gap:7px;height:calc((100vh - 165px)/var(--bz,1));min-height:340px';
   [1,2].forEach(function(k){
     ['6','7','8'].forEach(function(c){
       var p=document.createElement('div');
@@ -7978,12 +8375,16 @@ definePage('eval2','👥 મૂલ્યાંકન · બે વિદ્ય�
     var hh=document.createElement('div');
     hh.style.cssText='flex:1 1 0;min-width:0;border:1px solid var(--line);'+
       'border-radius:16px;padding:10px;background:#0b1220;'+
-      'height:calc(100vh - 150px);overflow-y:auto;overflow-x:hidden;'+
-      'overscroll-behavior:contain;-webkit-overflow-scrolling:touch';
+      'height:calc((100vh - 150px)/var(--bz,1));overflow-y:auto;overflow-x:hidden;'+
+      'overscroll-behavior:contain;-webkit-overflow-scrolling:touch;'+
+      /* pan-y = this half still scrolls, but two fingers on the board
+         can no longer be read as a pinch-zoom */
+      'touch-action:pan-y';
     wrap.appendChild(hh); hosts[sd]=hh;
     P[sd]={stage:'type', uid:sd};
   });
   body.appendChild(wrap);
+  multiTapFix(wrap);
   setTimeout(function(){ draw('L'); draw('R') },0);
 
   function reset(sd){ P[sd]={stage:'type', uid:sd}; }
@@ -8839,6 +9240,7 @@ definePage('growth','🌱 વ્યક્તિગત પ્રગતિ · Pers
   wrap.style.cssText='display:flex;gap:10px;width:100%;max-width:1700px;margin:0 auto;'+
     'align-items:stretch;flex-wrap:nowrap';
   body.appendChild(wrap);
+  multiTapFix(wrap);
   /* two students side by side — left and right, each fully independent */
   mkPane('L');
   mkPane('R');
@@ -8846,8 +9248,9 @@ definePage('growth','🌱 વ્યક્તિગત પ્રગતિ · Pers
   function mkPane(sd){
     var h=document.createElement('div');
     h.style.cssText='flex:1 1 0;min-width:0;border:1px solid var(--line);border-radius:16px;'+
-      'padding:10px;background:#0b1220;height:calc(100vh - 190px);overflow-y:auto;'+
-      'overscroll-behavior:contain;-webkit-overflow-scrolling:touch';
+      'padding:10px;background:#0b1220;'+
+      'height:calc((100vh - 190px)/var(--bz,1));overflow-y:auto;'+
+      'overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y';
     wrap.appendChild(h); hosts[sd]=h;
     S[sd]={stage:'roll', xp:0, passedToday:0, streak:0};
     draw(sd);
@@ -8870,7 +9273,10 @@ definePage('growth','🌱 વ્યક્તિગત પ્રગતિ · Pers
         (s.xp?('  ·  ⭐ '+s.xp):'')):'')+'</span>';
     var b=document.createElement('button');
     b.className='btn'; b.style.padding='6px 12px'; b.textContent='↺ બદલો';
-    b.onclick=function(){ S[sd]={stage:'roll',xp:0,passedToday:0,streak:0}; draw(sd) };
+    b.onclick=function(){
+      setBusy(false,'growth:'+sd);
+      S[sd]={stage:'roll',xp:0,passedToday:0,streak:0}; draw(sd);
+    };
     d.appendChild(b);
     hosts[sd].appendChild(d);
   }
@@ -8883,7 +9289,8 @@ definePage('growth','🌱 વ્યક્તિગત પ્રગતિ · Pers
       c.innerHTML='<div style="text-align:center;font-family:var(--guj);padding:20px">પરિણામ જોવાય છે…</div>';
       return; }
     if(s.stage==='map')  return stMap(sd);
-    if(s.stage==='play'){ setBusy(true); return stPlay(sd) }
+    if(s.stage==='play'){ setBusy(true,'growth:'+sd); return stPlay(sd) }
+    setBusy(false,'growth:'+sd);
     if(s.stage==='done') return stDone(sd);
     if(s.stage==='level')return stLevelUp(sd);
   }
@@ -9442,13 +9849,17 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
     var hh=document.createElement('div');
     hh.style.cssText='flex:1 1 0;min-width:0;border:1px solid var(--line);'+
       'border-radius:16px;padding:10px;background:#0b1220;'+
-      'height:calc(100vh - 150px);overflow-y:auto;overflow-x:hidden;'+
-      'overscroll-behavior:contain;-webkit-overflow-scrolling:touch';
+      'height:calc((100vh - 150px)/var(--bz,1));overflow-y:auto;overflow-x:hidden;'+
+      'overscroll-behavior:contain;-webkit-overflow-scrolling:touch;'+
+      /* pan-y = this half still scrolls, but two fingers on the board
+         can no longer be read as a pinch-zoom */
+      'touch-action:pan-y';
     wrap.appendChild(hh);
     hosts[sd]=hh;
     S[sd]={side:sd, stage:'tool'};
   });
   body.appendChild(wrap);
+  multiTapFix(wrap);
   setTimeout(function(){ draw('L'); draw('R') },0);
 
   var TOOLNAME={quiz:'સંખ્યા ક્વિઝ',add:'સરવાળો',sub:'બાદબાકી',mul:'ગુણાકાર',div:'ભાગાકાર'};
@@ -9464,8 +9875,41 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
     }
     return ACT2[id];
   }
-  function reset(sd){ setBusy(false); S[sd]={side:sd,stage:'tool'} }
-  function draw(sd){
+  function reset(sd){ setBusy(false,'fin2:'+sd); S[sd]={side:sd,stage:'tool'} }
+  /* move to the next question, but only if this page is still the one on
+     screen — a timer that fires after the board has navigated away must
+     not draw into a pane that no longer exists */
+  var MYGEN=window.PAGE_GEN;
+  function stepLater(sd,fn,ms){
+    lessonTimeout(function(){
+      if(window.PAGE_GEN!==MYGEN) return;
+      if(!hosts[sd] || !hosts[sd].isConnected) return;
+      try{ fn() }catch(e){ drawFail(sd,e) }
+    },ms);
+  }
+  /* if anything in a pane throws, show that one side's error and let her
+     restart it — never leave a blank half and never take down the other
+     student's test */
+  function drawFail(sd,e){
+    try{ console.error('fin2 pane failed ['+sd+']',e) }catch(e2){}
+    setBusy(false,'fin2:'+sd);
+    try{
+      hosts[sd].innerHTML='';
+      var c=document.createElement('div');
+      c.className='evCard'; c.style.cssText+=';margin:0;text-align:center';
+      c.innerHTML='<div style="font-size:30px">⚠</div>'+
+        '<div style="font-family:var(--guj);font-size:14px;line-height:1.8">'+
+        'આ બાજુનું સાધન અટકી ગયું.<br>બીજા વિદ્યાર્થીનું કામ ચાલુ છે.</div>';
+      var b=document.createElement('button');
+      b.className='btn pri'; b.style.cssText+=';width:100%;padding:11px;margin-top:10px';
+      b.textContent='↺ ફરી શરૂ કરો';
+      b.onclick=function(){ reset(sd); draw(sd) };
+      c.appendChild(b);
+      hosts[sd].appendChild(c);
+    }catch(e3){}
+  }
+  function draw(sd){ try{ drawInner(sd) }catch(e){ drawFail(sd,e) } }
+  function drawInner(sd){
     var s=S[sd], host=hosts[sd];
     host.innerHTML='';
     var hd=document.createElement('div');
@@ -9486,7 +9930,7 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
     if(s.stage==='mode') return stMode(sd);
     if(s.stage==='roll') return stRoll(sd);
     if(s.stage==='end')  return stEnd(sd);
-    setBusy(true);
+    setBusy(true,'fin2:'+sd);
     if(isNum(s.tool)||isBesik2(s.tool)||isRead(s.tool)||isWrite(s.tool)) paneMcq(sd);
     else if(s.tool==='quiz') paneQuiz(sd);
     else paneNb(sd);
@@ -9594,9 +10038,8 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
       s.mode=m; s.stage='roll'; draw(sd);
     });
   }
-  function newP(s){
-    var P=(s.tool==='add')?genAdd(s.cfg):(s.tool==='sub')?genSub(s.cfg)
-          :(s.tool==='mul')?genMul(s.cfg):genDiv(s.cfg);
+  function newP(s,idx){
+    var P=nbProblem(s.tool, s.cfg, idx||1);
     P.si=0; P.wrong=0; P.entered=[]; P.free={}; P.sel=null; P.checked=false; P.optDone=false;
     return P;
   }
@@ -9614,18 +10057,22 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
     s.g={p:1,score:0,perfect:0,i:0,first:true};
     if(isNum(s.tool)||isBesik2(s.tool)||isRead(s.tool)||isWrite(s.tool)) s.g.r=mcqGen(s);
     else if(s.tool==='quiz') s.g.r=genQuiz(s.cfg);
-    else s.g.P=newP(s);
+    else s.g.P=newP(s,1);
     draw(sd);
   }
   function stRoll(sd){
     var s=S[sd];
+    setBusy(false,'fin2:'+sd);
     flnStu(hosts[sd],true,function(stu,cls){
       s.stu=stu; s.cls=cls; startPlay(sd);
     });
   }
   function stEnd(sd){
-    setBusy(false);
-    if(PENDING_RELOAD){ PENDING_RELOAD=false; lessonTimeout(function(){ NAV.reload() },300); return }
+    setBusy(false,'fin2:'+sd);
+    /* only reload once BOTH halves are out of a test */
+    if(PENDING_RELOAD && !BUSY){
+      PENDING_RELOAD=false; lessonTimeout(function(){ NAV.reload() },300); return;
+    }
     var s=S[sd], c=card(sd);
     var total=s.g.total, score=s.g.final;
     var pct=total?Math.round(score/total*100):0;
@@ -9701,7 +10148,7 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
           if(g.first) g.score++;
           sndOK();
           if(hb){ hb.style.color='#22c55e'; hb.textContent='✅ '+(r.exp||'') }
-          setTimeout(function(){ g.i++; g.first=true; g.r=mcqGen(s); draw(sd) },900);
+          stepLater(sd,function(){ g.i++; g.first=true; g.r=mcqGen(s); draw(sd) },900);
         }else{
           sndNO();
           if(s.mode==='T'){
@@ -9709,7 +10156,7 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
             for(var i2=0;i2<gr.children.length;i2++)
               if(gr.children[i2].textContent===r.ans) gr.children[i2].classList.add('ok');
             if(hb){ hb.style.color='#f87171'; hb.textContent='સાચો જવાબ: '+r.ans }
-            setTimeout(function(){ g.i++; g.first=true; g.r=mcqGen(s); draw(sd) },1400);
+            stepLater(sd,function(){ g.i++; g.first=true; g.r=mcqGen(s); draw(sd) },1400);
           }else{
             g.first=false; b.classList.add('bad');
             setTimeout(function(){ b.classList.remove('bad') },600);
@@ -9742,13 +10189,13 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
           locked=true; gr.style.pointerEvents='none';
           b.classList.add(right?'ok':'bad');
           if(right){ g.score++; sndOK() } else sndNO();
-          setTimeout(function(){ g.i++; g.r=genQuiz(s.cfg); draw(sd) },800);
+          stepLater(sd,function(){ g.i++; g.r=genQuiz(s.cfg); draw(sd) },800);
         }else{
           if(right){
             locked=true; b.classList.add('ok');
             if(g.first) g.score++;
             sndOK();
-            setTimeout(function(){ g.i++; g.first=true; g.r=genQuiz(s.cfg); draw(sd) },700);
+            stepLater(sd,function(){ g.i++; g.first=true; g.r=genQuiz(s.cfg); draw(sd) },700);
           }else{
             g.first=false; b.classList.add('bad'); sndNO();
             var hb=document.getElementById('h'+sd);
@@ -9800,7 +10247,7 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
         'font-size:'+fs+'px;border-radius:8px;grid-row:'+(cl.r+1)+';grid-column:'+(cl.c+1)+
         ';align-self:end;';
       if(cl.kind==='g') el.style.cssText=base+'color:var(--ink)'+
-        (cl.strike?';text-decoration:line-through;opacity:.5':'');
+        ((cl.strike && !free)?';text-decoration:line-through;opacity:.5':'');
       else if(cl.kind==='s') el.style.cssText=base+'color:'+(cl.cls||'var(--dim)')+
         ';font-size:'+(cl.fs||Math.round(CS*0.5))+'px';
       else el.style.cssText=base+'background:#0d1626;border:2px dashed #475569;color:#60a5fa;font-weight:700';
@@ -9872,7 +10319,7 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
       var nx=document.createElement('button');
       nx.className='btn pri'; nx.style.cssText+=';width:100%;padding:11px;margin-top:6px';
       nx.textContent=(g.p<NP)?'આગળનો દાખલો →':'પરિણામ 🏁';
-      nx.onclick=function(){ g.p++; g.P=newP(s); draw(sd) };
+      nx.onclick=function(){ g.p++; g.P=newP(s,g.p); draw(sd) };
       hosts[sd].appendChild(nx);
     }
     function finishP(){
@@ -9896,6 +10343,11 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
         else{ wrong++; el.style.border='1px solid #ef4444';
           el.style.background='#450a0a'; el.style.color='#fca5a5';
           el.style.fontSize='56%'; el.textContent=(got||'—')+'→'+x.exp }
+      });
+      P.cells.forEach(function(cl){
+        if(cl.kind!=='g' || !cl.strike) return;
+        var ge=cell(cl.id);
+        if(ge){ ge.style.textDecoration='line-through'; ge.style.opacity='.5' }
       });
       if(!wrong) g.score++;
       hint.style.color=wrong?'#f87171':'#22c55e';
@@ -9946,7 +10398,7 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
       sndOK(); fill(P.si,d2,true); P.si++;
       if(P.si>=steps.length) finishP(); else mark();
     }
-    var extra=[['નવો દાખલો',function(){ g.P=newP(s); draw(sd) }]];
+    var extra=[['નવો દાખલો',function(){ g.P=newP(s,g.p); draw(sd) }]];
     if(free) extra=[['✔ તપાસો',function(){ checkFree() },true],
                     ['ભૂંસો',function(){
                       if(!P.sel||P.checked) return;
@@ -9954,7 +10406,7 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
                       var el=cell(P.sel); if(el) el.textContent='';
                       applyAdd();
                     }],
-                    ['નવો',function(){ g.P=newP(s); draw(sd) }]];
+                    ['નવો',function(){ g.P=newP(s,g.p); draw(sd) }]];
     padFor(sd,key,extra);
     setTimeout(mark,0);
   }
