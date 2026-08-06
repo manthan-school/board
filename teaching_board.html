@@ -5702,6 +5702,87 @@ function genDecSub(cfg){
   return decPoint(P,p);
 }
 /* ==================================================================
+   ગુ.સા.અ. અને લ.સા.અ. — સીડી પદ્ધતિ (ભાગાકાર રીત)
+   ------------------------------------------------------------------
+   શાળામાં જે રીતે શીખવાય છે એ જ:
+        2 | 12   18
+        3 |  6    9
+          |  2    3
+     ગુ.સા.અ. = ડાબી બાજુના બધા ભાજક ગુણો         = 2 × 3 = 6
+     લ.સા.અ.  = ડાબી બાજુના ભાજક × નીચે બચેલા    = 2 × 3 × 2 × 3 = 36
+   દરેક ભાજક અને દરેક ભાગફળ બાળક પોતે લખે છે.
+   ================================================================== */
+function smallPrimes(n){
+  var out=[], d=2;
+  while(d*d<=n){ while(n%d===0){ out.push(d); n/=d } d++ }
+  if(n>1) out.push(n);
+  return out;
+}
+function genLadder(want,cfg){
+  var lim=cfg.lim||60, tries=0, a, b, common;
+  do{
+    a=R2(4,lim); b=R2(4,lim);
+    common=gcd2(a,b);
+    tries++;
+  }while((a===b || common<2 || common>30) && tries<400);
+  if(common<2){ a=12; b=18; common=6 }
+
+  /* સીડીનાં પગથિયાં — દરેક વખતે સૌથી નાનો સામાન્ય અવિભાજ્ય અવયવ */
+  var x=a, y=b, divs=[], rows=[[a,b]];
+  while(gcd2(x,y)>1){
+    var g=smallPrimes(gcd2(x,y))[0];
+    divs.push(g); x=x/g; y=y/g;
+    rows.push([x,y]);
+  }
+  var hcf=divs.reduce(function(m,v){ return m*v },1);
+  var lcm=hcf*x*y;
+
+  var cells=[], steps=[], rules=[];
+  var C_D=0, C_BAR=1, C_A=2, C_B=3, COLS=4;
+  function sym(id,v,r,c,col){
+    var e=nbCell(id,v,'s',r,c); e.cls=col||'#64748b'; cells.push(e); return e;
+  }
+  /* પહેલી હરોળ — આપેલી બે સંખ્યા */
+  sym('bar0','|',0,C_BAR);
+  cells.push(nbCell('a0',a,'g',0,C_A));
+  cells.push(nbCell('b0',b,'g',0,C_B));
+
+  divs.forEach(function(g,i){
+    cells.push(nbCell('d'+i,g,'i',i,C_D));
+    steps.push({id:'d'+i,exp:String(g),
+      hint:'બંનેને કયા સામાન્ય અવયવથી ભાગી શકાય? ('+rows[i][0]+' અને '+rows[i][1]+')',
+      say:String(g)});
+    sym('bar'+(i+1),'|',i+1,C_BAR);
+    cells.push(nbCell('a'+(i+1),rows[i+1][0],'i',i+1,C_A));
+    steps.push({id:'a'+(i+1),exp:String(rows[i+1][0]),
+      hint:rows[i][0]+' ÷ '+g+' = ?',say:String(rows[i+1][0])});
+    cells.push(nbCell('b'+(i+1),rows[i+1][1],'i',i+1,C_B));
+    steps.push({id:'b'+(i+1),exp:String(rows[i+1][1]),
+      hint:rows[i][1]+' ÷ '+g+' = ?',say:String(rows[i+1][1])});
+  });
+
+  var last=divs.length;
+  rules.push({r:last+1,c1:0,c2:COLS-1});
+  var ansR=last+2;
+  if(want==='hcf'){
+    sym('lbl','ગુ.સા.અ. =',ansR,C_D,'#fbbf24');
+    cells.push(nbCell('ans',hcf,'i',ansR,C_B));
+    steps.push({id:'ans',exp:String(hcf),
+      hint:'ડાબી બાજુના બધા ભાજક ગુણો — '+divs.join(' × '),say:String(hcf)});
+  }else{
+    sym('lbl','લ.સા.અ. =',ansR,C_D,'#fbbf24');
+    cells.push(nbCell('ans',lcm,'i',ansR,C_B));
+    steps.push({id:'ans',exp:String(lcm),
+      hint:'ડાબી બાજુના ભાજક અને નીચે બચેલી બંને સંખ્યા — બધું ગુણો: '+
+           divs.concat([x,y]).join(' × '),
+      say:String(lcm)});
+  }
+  return {cols:COLS,cells:cells,steps:steps,rules:rules,
+          title:a+' , '+b, ask:(want==='hcf'?'ગુ.સા.અ. શોધો':'લ.સા.અ. શોધો')+
+          '   '+a+' , '+b, hcf:hcf, lcm:lcm};
+}
+
+/* ==================================================================
    અપૂર્ણાંક · નોટબુક જેમ — ખાનાં પ્રમાણે
    ------------------------------------------------------------------
    અંશ ઉપર, છેદ નીચે, વચ્ચે લીટી — બરાબર નોટબુક જેવું જ.
@@ -6077,6 +6158,62 @@ function nbTry(make,level,want,tries){
   return best||make();
 }
 /* idx is 1, 2 or 3 — which of the three sums this is */
+/* ==================================================================
+   ટેસ્ટમાં દરેક દાખલાની સમય-મર્યાદા
+   ------------------------------------------------------------------
+   સમય પૂરો થાય એટલે એ દાખલો જાતે તપાસાઈ જાય, પરિણામ દેખાય, અને
+   આગળનો દાખલો શરૂ થાય. પ્રેક્ટિસમાં કોઈ ઘડિયાળ નથી — ત્યાં નિરાંતે
+   શીખવાનું છે.
+   ================================================================== */
+function nbLimit(tool){
+  if(tool==='div'||tool==='decdiv') return 150;      /* 2½ મિનિટ */
+  if(tool==='add'||tool==='sub'||tool==='mul') return 120;
+  if(tool==='decadd'||tool==='decsub'||tool==='decmul') return 120;
+  if(tool==='fracadd'||tool==='fracsub'||tool==='fracmul') return 120;
+  if(tool==='fracdiv') return 150;
+  if(tool==='hcf'||tool==='lcm') return 120;
+  return 120;
+}
+/* ઘડિયાળનું ખાનું બનાવે અને ચલાવે. સમય પૂરો → onOut() */
+function nbClock(host, secs, onOut){
+  var box=document.createElement('div');
+  box.style.cssText='display:flex;align-items:center;justify-content:center;gap:8px;'+
+    'font-family:var(--mono);font-size:17px;margin:2px 0 8px;padding:6px 12px;'+
+    'border-radius:11px;background:#0b1220;border:1px solid var(--line)';
+  var lbl=document.createElement('span');
+  lbl.style.cssText='font-family:var(--guj);font-size:12.5px;color:var(--dim)';
+  lbl.textContent='બાકી સમય';
+  var val=document.createElement('b');
+  box.appendChild(lbl); box.appendChild(val);
+  host.appendChild(box);
+  var left=secs, id=0, dead=false;
+  function paint(){
+    var m=Math.floor(left/60), ss=left%60;
+    val.textContent=m+':'+('0'+ss).slice(-2);
+    val.style.color = left<=10 ? '#f87171' : (left<=30 ? '#fbbf24' : '#86efac');
+    box.style.borderColor = left<=10 ? '#7f1d1d' : 'var(--line)';
+  }
+  paint();
+  function step(){
+    if(dead) return;
+    left--;
+    if(left<=0){
+      left=0; paint(); dead=true;
+      try{ clearInterval(id) }catch(e){}
+      onOut();
+      return;
+    }
+    paint();
+  }
+  id=lessonInterval(step,1000);
+  window.__CLOCKS=(window.__CLOCKS||[]); window.__CLOCKS.push(step);   /* test hook */
+  return { stop:function(){ dead=true; try{ clearInterval(id) }catch(e){} },
+           el:box };
+}
+
+window.__nbLimit=nbLimit;   /* test hooks */
+window.__tick=function(){ (window.__CLOCKS||[]).forEach(function(f){ f() }) };
+window.__nbClock=function(h,sc,f){ return nbClock(h,sc,f) };
 function isDecNb(t){ return t==='decadd'||t==='decsub'||t==='decmul'||t==='decdiv' }
 window.__nbProblem2=nbProblem; window.__decFmt=decFmt; window.__isDecNb=isDecNb;
 function nbProblem(tool,cfg,idx){
@@ -6092,6 +6229,8 @@ function nbProblem(tool,cfg,idx){
     ps.title=ps.title.split(' − ').map(function(x){ return decFmt(Number(x),cfg.p||2) }).join(' − ');
     return decPoint(ps,cfg.p||2);
   }
+  if(tool==='hcf') return genLadder('hcf',cfg);
+  if(tool==='lcm') return genLadder('lcm',cfg);
   if(tool==='fracadd') return genFracNb('add',cfg);
   if(tool==='fracsub') return genFracNb('sub',cfg);
   if(tool==='fracmul') return genFracNb('mul',cfg);
@@ -6320,7 +6459,7 @@ var EMO=['🍎','⭐','🌸','🐟','🥭','🦋','🎈','🍬'];
    Options include the mistakes students really make, so a wrong tap
    is a teaching moment.
    ================================================================== */
-var BOARD_BUILD='2026-08-04 · ભાગાકાર · સવાલ ઉપર દેખાય';
+var BOARD_BUILD='2026-08-04 · ટેસ્ટમાં સમય-મર્યાદા';
 var GEN_TYPE='whole';     /* number type દાખલા બનાવો builds for */
 var DUAL_SCOPE='whole';   /* tools the 2-student page offers */
 window.__setScope=function(g,d){ if(g) GEN_TYPE=g; if(d) DUAL_SCOPE=d };
@@ -6948,6 +7087,50 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
           });
         });
         extras(inner,true,'whole');
+      });
+
+    /* ======== ગુ.સા.અ. · લ.સા.અ. — અપૂર્ણાંક પહેલાં આવે ======== */
+    tab('vrd_num_gl_open','⚖','ગુ.સા.અ. · લ.સા.અ.',
+      'સીડી પદ્ધતિ — બંનેને સામાન્ય અવયવથી ભાગો · અપૂર્ણાંક પહેલાં આ શીખવું',
+      '#f59e0b','#2a2010',function(inner){
+        var note=document.createElement('div');
+        note.className='note';
+        note.style.cssText+=';max-width:900px;margin:0 auto 8px';
+        note.innerHTML='અપૂર્ણાંકના સરવાળા-બાદબાકીમાં <b>સામાન્ય છેદ</b> જોઈએ — '+
+          'એ લ.સા.અ. જ છે. અને જવાબનું <b>સાદું રૂપ</b> ગુ.સા.અ. થી થાય. '+
+          'એટલે અપૂર્ણાંક પહેલાં આ બે પાકાં કરાવો.';
+        inner.appendChild(note);
+        [['hcf','1. ગુ.સા.અ. · HCF','મોટામાં મોટો સામાન્ય અવયવ — સીડી પદ્ધતિ'],
+         ['lcm','2. લ.સા.અ. · LCM','નાનામાં નાનો સામાન્ય અવયવી — સીડી પદ્ધતિ']
+        ].forEach(function(t){
+          var e=document.createElement('div');
+          e.style.cssText='display:flex;gap:8px;align-items:center;margin-bottom:8px;'+
+            'flex-wrap:wrap;max-width:900px;margin-left:auto;margin-right:auto';
+          var lab=document.createElement('div');
+          lab.style.cssText='flex:1;min-width:190px;border:1px solid var(--line);'+
+            'border-radius:12px;padding:10px 12px;background:#0d1320';
+          lab.innerHTML='<div style="font-family:var(--guj);font-size:15px;font-weight:600">'+
+            esc(t[1])+'</div><div style="font-family:var(--guj);font-size:12px;'+
+            'color:var(--dim)">'+esc(t[2])+'</div>';
+          e.appendChild(lab);
+          var MB=[];
+          if(!guestMode) MB.push(['L','📘 શિક્ષક','#1d4ed8','#132441']);
+          MB.push(['P','✍ પ્રેક્ટિસ','#b45309','#2a2010']);
+          if(flnTestOn()) MB.push(['T','📝 ટેસ્ટ','#166534','#0d2818']);
+          MB.forEach(function(m){
+            var b=document.createElement('button');
+            b.style.cssText='flex:0 0 auto;padding:11px 13px;border-radius:11px;'+
+              'border:1px solid '+m[2]+';background:'+m[3]+';color:var(--ink);'+
+              'font-family:var(--guj);font-size:13px;font-weight:600;cursor:pointer';
+            b.textContent=m[1];
+            b.onclick=function(){
+              st.tool=t[0]; st.mode=m[0]; st.cfg={lim:60,lab:'સીડી પદ્ધતિ'};
+              st.stu=null; st.g=null; st.playing=null; render();
+            };
+            e.appendChild(b);
+          });
+          inner.appendChild(e);
+        });
       });
 
     /* ======== 3-5. પૂર્ણાંક · અપૂર્ણાંક · દશાંશ ======== */
@@ -7729,7 +7912,8 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
            decadd:'FLN દશાંશ સરવાળો',decsub:'FLN દશાંશ બાદબાકી',
            decmul:'FLN દશાંશ ગુણાકાર',decdiv:'FLN દશાંશ ભાગાકાર',
            fracadd:'FLN અપૂર્ણાંક સરવાળો',fracsub:'FLN અપૂર્ણાંક બાદબાકી',
-           fracmul:'FLN અપૂર્ણાંક ગુણાકાર',fracdiv:'FLN અપૂર્ણાંક ભાગાકાર'};
+           fracmul:'FLN અપૂર્ણાંક ગુણાકાર',fracdiv:'FLN અપૂર્ણાંક ભાગાકાર',
+           hcf:'FLN ગુ.સા.અ.',lcm:'FLN લ.સા.અ.'};
   function actName(id){
     if(isBesik(id)) return 'FLN બેઝિક · '+besikName(id);
     if(isNum(id))   return 'FLN '+numName(id);
@@ -8219,6 +8403,7 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
       hint.style.color=wrong?'#f87171':'#22c55e';
       hint.textContent=wrong?('❌ '+wrong+' ખાનાં ખોટાં — સાચો જવાબ બતાવ્યો છે'):'✅ સાચો દાખલો!';
       if(wrong) sndNO(); else sndOK();
+      if(P.clock){ P.clock.stop(); P.clock=null }
       var nx=document.createElement('button');
       nx.className='btn pri'; nx.style.cssText+=';width:100%;padding:13px;margin-top:4px';
       nx.textContent=(g.p<NP)?'આગળનો દાખલો →':'પરિણામ 🏁';
@@ -8226,6 +8411,8 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
       M.appendChild(nx);
       kp.style.pointerEvents='none'; kp.style.opacity='.4';
       act.style.display='none';
+      /* સમય પૂરો થયો હોય તો જાતે જ આગળ વધો */
+      if(P.timedOut) lessonTimeout(function(){ nx.click() },2600);
     }
     function done(){
       {
@@ -8271,6 +8458,16 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
       b.textContent=t; b.onclick=fn; act.appendChild(b);
       return b;
     }
+    /* ⏱ ટેસ્ટ — દરેક દાખલાની ઘડિયાળ */
+    if(freeMode && !P.checked && !P.clock){
+      P.clock=nbClock(M, nbLimit(st.tool), function(){
+        if(P.checked) return;
+        P.timedOut=true;
+        hint.style.color='#fbbf24';
+        hint.textContent='⏱ સમય પૂરો — જેટલું લખ્યું એ તપાસાય છે';
+        checkFree();
+      });
+    }
     if(freeMode){
       var cb=aBtn('✔ તપાસો',function(){ checkFree() });
       cb.classList.add('pri');
@@ -8282,7 +8479,8 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
         applyAddCarry();
       });
     }
-    aBtn('નવો દાખલો',function(){ g.P=nbNew(g.p); render() });
+    /* ટેસ્ટમાં "નવો દાખલો" નથી — દાખલો બદલી નાખવો એ ટેસ્ટ ન કહેવાય */
+    if(!freeMode) aBtn('નવો દાખલો',function(){ g.P=nbNew(g.p); render() });
     M.appendChild(act);
 
     function press(d2){
@@ -10775,11 +10973,16 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
       if(steps[P.si]) hint.textContent=steps[P.si].hint||'';
     }
     function nextBtn(){
+      if(P.clock){ P.clock.stop(); P.clock=null }
       var nx=document.createElement('button');
       nx.className='btn pri'; nx.style.cssText+=';width:100%;padding:11px;margin-top:6px';
       nx.textContent=(g.p<NP)?'આગળનો દાખલો →':'પરિણામ 🏁';
       nx.onclick=function(){ g.p++; g.P=newP(s,g.p); draw(sd) };
       hosts[sd].appendChild(nx);
+      /* સમય પૂરો થયો હોય તો આ બાજુ જાતે જ આગળ વધે */
+      if(P.timedOut) lessonTimeout(function(){
+        if(hosts[sd] && hosts[sd].isConnected) nx.click();
+      },2600);
     }
     function finishP(){
       if(P.wrong===0) g.perfect++;
@@ -10858,6 +11061,16 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
       if(P.si>=steps.length) finishP(); else mark();
     }
     var extra=[['નવો દાખલો',function(){ g.P=newP(s,g.p); draw(sd) }]];
+    /* ⏱ ટેસ્ટ — આ બાજુની પોતાની ઘડિયાળ, બીજી બાજુથી સ્વતંત્ર */
+    if(free && !P.checked && !P.clock){
+      P.clock=nbClock(host, nbLimit(s.tool), function(){
+        if(P.checked) return;
+        P.timedOut=true;
+        hint.style.color='#fbbf24';
+        hint.textContent='⏱ સમય પૂરો — જેટલું લખ્યું એ તપાસાય છે';
+        checkFree();
+      });
+    }
     if(free) extra=[['✔ તપાસો',function(){ checkFree() },true],
                     ['ભૂંસો',function(){
                       if(!P.sel||P.checked) return;
@@ -10865,7 +11078,7 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
                       var el=cell(P.sel); if(el) el.textContent='';
                       applyAdd();
                     }],
-                    ['નવો',function(){ g.P=newP(s,g.p); draw(sd) }]];
+                    ];   /* ટેસ્ટમાં "નવો" નથી */
     padFor(sd,key,extra);
     setTimeout(mark,0);
   }
