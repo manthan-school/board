@@ -4714,7 +4714,10 @@ function stuBanner(w,st){
     'background:#12253d;border:1px solid #1d4ed8;font-family:var(--guj);font-size:15.5px;'+
     'display:flex;justify-content:space-between;align-items:center';
   b.innerHTML='<span>'+(st.mode==='P'?'✍':'👦')+' <b id="stuBnName'+(st.uid||'')+'">'+esc(stuLabel(st))+'</b> · ધોરણ '+esc(st.stuCls||'')+'</span>'+
-    '<span style="color:#93c5fd">'+esc(st.subject||'')+(st.chapterLabel?' · '+esc(st.chapterLabel):'')+'</span>';
+    '<span style="display:flex;align-items:center;gap:10px">'+
+      '<span id="stuBnClock'+(st.uid||'')+'"></span>'+
+      '<span style="color:#93c5fd">'+esc(st.subject||'')+
+      (st.chapterLabel?' · '+esc(st.chapterLabel):'')+'</span></span>';
   w.appendChild(b);
 }
 function evEndDispatch(w,st,againFn,backFn){
@@ -6176,13 +6179,13 @@ function nbLimit(tool){
 }
 /* ઘડિયાળનું ખાનું બનાવે અને ચલાવે. સમય પૂરો → onOut() */
 function nbClock(host, secs, onOut){
-  var box=document.createElement('div');
-  box.style.cssText='display:flex;align-items:center;justify-content:center;gap:8px;'+
-    'font-family:var(--mono);font-size:17px;margin:2px 0 8px;padding:6px 12px;'+
-    'border-radius:11px;background:#0b1220;border:1px solid var(--line)';
+  var box=document.createElement('span');
+  box.style.cssText='display:inline-flex;align-items:center;gap:6px;'+
+    'font-family:var(--mono);font-size:16px;padding:4px 11px;'+
+    'border-radius:999px;background:#0b1220;border:1px solid var(--line)';
   var lbl=document.createElement('span');
-  lbl.style.cssText='font-family:var(--guj);font-size:12.5px;color:var(--dim)';
-  lbl.textContent='બાકી સમય';
+  lbl.style.cssText='font-family:var(--guj);font-size:11.5px;color:var(--dim)';
+  lbl.textContent='⏱';
   var val=document.createElement('b');
   box.appendChild(lbl); box.appendChild(val);
   host.appendChild(box);
@@ -6459,7 +6462,7 @@ var EMO=['🍎','⭐','🌸','🐟','🥭','🦋','🎈','🍬'];
    Options include the mistakes students really make, so a wrong tap
    is a teaching moment.
    ================================================================== */
-var BOARD_BUILD='2026-08-04 · ટેસ્ટમાં સમય-મર્યાદા';
+var BOARD_BUILD='2026-08-04 · ઘડિયાળ નામની બાજુમાં';
 var GEN_TYPE='whole';     /* number type દાખલા બનાવો builds for */
 var DUAL_SCOPE='whole';   /* tools the 2-student page offers */
 window.__setScope=function(g,d){ if(g) GEN_TYPE=g; if(d) DUAL_SCOPE=d };
@@ -8460,7 +8463,8 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
     }
     /* ⏱ ટેસ્ટ — દરેક દાખલાની ઘડિયાળ */
     if(freeMode && !P.checked && !P.clock){
-      P.clock=nbClock(M, nbLimit(st.tool), function(){
+      P.clock=nbClock(document.getElementById('stuBnClock')||M,
+                      nbLimit(st.tool), function(){
         if(P.checked) return;
         P.timedOut=true;
         hint.style.color='#fbbf24';
@@ -10576,7 +10580,8 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
       '<span style="flex:1;font-family:var(--guj);font-size:13px;color:var(--dim)">'+
       (s.stu?('👦 '+esc(s.stu.roll+'. '+(s.stu.name||''))):'')+
       (s.tool?(' · '+(isNum(s.tool)?numName(s.tool):(isBesik2(s.tool)?'બેઝિક':TOOLNAME[s.tool]))):'')+
-      (s.mode?(' · '+(s.mode==='P'?'✍ પ્રેક્ટિસ':'📝 કસોટી')):'')+'</span>';
+      (s.mode?(' · '+(s.mode==='P'?'✍ પ્રેક્ટિસ':'📝 કસોટી')):'')+'</span>'+
+      '<span id="'+sd+'clk"></span>';   /* આ બાજુની પોતાની ઘડિયાળ */
     var rb=document.createElement('button');
     rb.className='btn'; rb.style.padding='6px 12px'; rb.textContent='↺ બદલો';
     rb.onclick=function(){ reset(sd); draw(sd) };
@@ -11063,7 +11068,8 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
     var extra=[['નવો દાખલો',function(){ g.P=newP(s,g.p); draw(sd) }]];
     /* ⏱ ટેસ્ટ — આ બાજુની પોતાની ઘડિયાળ, બીજી બાજુથી સ્વતંત્ર */
     if(free && !P.checked && !P.clock){
-      P.clock=nbClock(host, nbLimit(s.tool), function(){
+      P.clock=nbClock(document.getElementById(sd+'clk')||host,
+                      nbLimit(s.tool), function(){
         if(P.checked) return;
         P.timedOut=true;
         hint.style.color='#fbbf24';
