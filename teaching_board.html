@@ -490,6 +490,18 @@ body.pageOpen #pnlDot, body.pageOpen #pnlPanel{display:none !important}
       <path d="M12 6.5C10.2 4.9 7.6 4.2 3.5 4.3v13.4c4.1-.1 6.7.6 8.5 2.2 1.8-1.6 4.4-2.3 8.5-2.2V4.3c-4.1-.1-6.7.6-8.5 2.2Z"/>
       <path d="M12 6.5v13.4"/></svg></button>
 
+  <!-- 3b. dice -> Games -->
+  <button class="tbtn" data-go="games" data-tip="રમતો &middot; Games">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+      stroke-linejoin="round">
+      <rect x="3.2" y="3.2" width="17.6" height="17.6" rx="4"/>
+      <circle cx="8.4" cy="8.4" r="1.25" fill="currentColor" stroke="none"/>
+      <circle cx="15.6" cy="8.4" r="1.25" fill="currentColor" stroke="none"/>
+      <circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none"/>
+      <circle cx="8.4" cy="15.6" r="1.25" fill="currentColor" stroke="none"/>
+      <circle cx="15.6" cy="15.6" r="1.25" fill="currentColor" stroke="none"/>
+    </svg></button>
+
   <!-- 4. pen -> FIN finger writing -->
   <button class="tbtn" data-go="fin" data-tip="આંગળીથી લખો &middot; FIN">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
@@ -4716,6 +4728,7 @@ function stuBanner(w,st){
   b.innerHTML='<span>'+(st.mode==='P'?'✍':'👦')+' <b id="stuBnName'+(st.uid||'')+'">'+esc(stuLabel(st))+'</b> · ધોરણ '+esc(st.stuCls||'')+'</span>'+
     '<span style="display:flex;align-items:center;gap:10px">'+
       '<span id="stuBnClock'+(st.uid||'')+'"></span>'+
+      '<span id="stuBnAct'+(st.uid||'')+'"></span>'+
       '<span style="color:#93c5fd">'+esc(st.subject||'')+
       (st.chapterLabel?' · '+esc(st.chapterLabel):'')+'</span></span>';
   w.appendChild(b);
@@ -6462,7 +6475,7 @@ var EMO=['🍎','⭐','🌸','🐟','🥭','🦋','🎈','🍬'];
    Options include the mistakes students really make, so a wrong tap
    is a teaching moment.
    ================================================================== */
-var BOARD_BUILD='2026-08-04 · ઘડિયાળ નામની બાજુમાં';
+var BOARD_BUILD='2026-08-04 · 🎮 રમતો વિભાગ';
 var GEN_TYPE='whole';     /* number type દાખલા બનાવો builds for */
 var DUAL_SCOPE='whole';   /* tools the 2-student page offers */
 window.__setScope=function(g,d){ if(g) GEN_TYPE=g; if(d) DUAL_SCOPE=d };
@@ -8414,6 +8427,7 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
       M.appendChild(nx);
       kp.style.pointerEvents='none'; kp.style.opacity='.4';
       act.style.display='none';
+      var sl=document.getElementById('stuBnAct'); if(sl) sl.innerHTML='';
       /* સમય પૂરો થયો હોય તો જાતે જ આગળ વધો */
       if(P.timedOut) lessonTimeout(function(){ nx.click() },2600);
     }
@@ -8473,8 +8487,14 @@ definePage('fin','FLN · પાયાનું શિક્ષણ',function(body
       });
     }
     if(freeMode){
-      var cb=aBtn('✔ તપાસો',function(){ checkFree() });
-      cb.classList.add('pri');
+      /* ✔ તપાસો કીપેડથી દૂર, ઉપર જમણા ખૂણે — લખતાં લખતાં ભૂલથી ન દબાય */
+      var slot=document.getElementById('stuBnAct');
+      var cb=document.createElement('button');
+      cb.className='btn pri';
+      cb.style.cssText+=';padding:7px 15px;border-radius:999px;font-size:13.5px';
+      cb.textContent='✔ તપાસો';
+      cb.onclick=function(){ checkFree() };
+      if(slot) slot.appendChild(cb); else { act.appendChild(cb) }
       aBtn('ભૂંસો',function(){
         if(!P.sel||P.checked) return;
         P.free[P.sel]='';
@@ -8994,27 +9014,451 @@ definePage('sixcam','🎥 6 કૅમેરા · બધા વર્ગ',functi
   if(!sixCamAllowed()){ body.appendChild(bigMsg('આ સ્ક્રીન Settings માંથી બંધ છે')); return }
   var w=document.createElement('div'); w.style.cssText='width:100%;max-width:1600px;margin:0 auto';
   function jUrl(c,k){ return jWatchUrl(c,k) }
+
+  /* ---- ઉપરની પટ્ટી: લોગ-ઇન · ફુલ સ્ક્રીન ---- */
+  var bar=document.createElement('div');
+  bar.style.cssText='display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:7px';
+  if(jNeedsLogin()){
+    var lg=document.createElement('button');
+    lg.className='btn';
+    lg.style.cssText+=';padding:8px 14px;border-color:#b45309;background:#2a2010';
+    lg.textContent='🔑 Jitsi Log-in (એક જ વાર)';
+    lg.onclick=function(){ openTab('https://'+jHost()+'/') };
+    bar.appendChild(lg);
+  }
+  var fsB=document.createElement('button');
+  fsB.className='btn'; fsB.style.cssText+=';padding:8px 14px';
+  fsB.textContent='⛶ ફુલ સ્ક્રીન';
+  bar.appendChild(fsB);
+  var sp=document.createElement('span'); sp.style.flex='1'; bar.appendChild(sp);
+  var hintS=document.createElement('span');
+  hintS.style.cssText='font-family:var(--guj);font-size:12px;color:var(--dim)';
+  hintS.textContent='કોઈ પણ દૃશ્ય પર ⛶ દબાવો → એ એકલું મોટું દેખાશે';
+  bar.appendChild(hintS);
+  w.appendChild(bar);
+
   var g=document.createElement('div');
-  g.style.cssText='display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:1fr 1fr;'+
-    'gap:7px;height:calc((100vh - 165px)/var(--bz,1));min-height:340px';
+  var GRID='display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:1fr 1fr;'+
+    'gap:7px;height:calc((100vh - 205px)/var(--bz,1));min-height:340px';
+  g.style.cssText=GRID;
+  var panes=[], big=null;
   [1,2].forEach(function(k){
     ['6','7','8'].forEach(function(c){
       var p=document.createElement('div');
       p.style.cssText='display:flex;flex-direction:column;border:1px solid var(--line);'+
         'border-radius:11px;overflow:hidden;min-width:0;background:#0d1320';
-      p.innerHTML='<div style="padding:5px 10px;background:#111827;font-family:var(--guj);font-size:12.5px">'+
-        'ધોરણ '+c+' · કૅમેરા '+k+'</div>'+
+      p.innerHTML='<div style="padding:5px 10px;background:#111827;font-family:var(--guj);'+
+        'font-size:12.5px;display:flex;align-items:center;gap:6px">'+
+        '<span style="flex:1">ધોરણ '+c+' · કૅમેરા '+k+'</span>'+
+        '<button class="jtFB" data-zoom="1" title="મોટું · નાનું" '+
+          'style="min-width:30px;height:26px;font-size:13px">⛶</button></div>'+
         '<iframe src="'+jUrl(c,k)+'" allow="'+JIT_ALLOW+'" allowfullscreen '+
         'style="flex:1;border:0;background:#000;min-height:0"></iframe>';
+      panes.push(p);
       g.appendChild(p);
     });
   });
+  /* એક દૃશ્ય મોટું — બાકીનાં છુપાય, iframe ફરી લોડ થતું નથી એટલે
+     વિડિયો તૂટતો નથી */
+  function setBig(p){
+    big=(big===p)?null:p;
+    panes.forEach(function(x){ x.style.display=(big&&x!==big)?'none':'flex' });
+    g.style.cssText = big
+      ? 'display:grid;grid-template-columns:1fr;grid-template-rows:1fr;'+
+        'height:calc((100vh - 205px)/var(--bz,1));min-height:340px'
+      : GRID;
+    panes.forEach(function(x){
+      var b=x.querySelector('[data-zoom]');
+      if(b) b.textContent=(big===x)?'✕':'⛶';
+    });
+  }
+  panes.forEach(function(p){
+    var b=p.querySelector('[data-zoom]');
+    if(b) b.onclick=function(){ setBig(p) };
+  });
   w.appendChild(g);
+
+  /* ---- આખું પાનું ફુલ સ્ક્રીન ---- */
+  fsB.onclick=function(){
+    var el=w;
+    var on=document.fullscreenElement||document.webkitFullscreenElement;
+    try{
+      if(on){ (document.exitFullscreen||document.webkitExitFullscreen).call(document) }
+      else{ (el.requestFullscreen||el.webkitRequestFullscreen).call(el) }
+    }catch(e){}
+  };
+  document.addEventListener('fullscreenchange',function(){
+    var on=!!document.fullscreenElement;
+    fsB.textContent=on?'⛶ બહાર નીકળો':'⛶ ફુલ સ્ક્રીન';
+    w.style.background=on?'var(--bg)':'';
+    w.style.padding=on?'10px':'';
+    g.style.height=on?'calc(100vh - 90px)':'';
+  });
+
   var n=document.createElement('div'); n.className='note'; n.style.marginTop='7px';
-  n.textContent='ઉપર કૅમેરા 1, નીચે કૅમેરા 2 — ત્રણેય વર્ગના કુલ 6 દૃશ્ય. '+
-    'વર્ગની પેનલ પર "📷📷 2 કૅમેરા" દબાવેલું હોવું જોઈએ.';
+  n.innerHTML='ઉપર કૅમેરા 1, નીચે કૅમેરા 2 — ત્રણેય વર્ગના કુલ 6 દૃશ્ય. '+
+    'વર્ગની પેનલ પર <b>"📷📷 2 કૅમેરા"</b> દબાવેલું હોવું જોઈએ.'+
+    (jNeedsLogin()
+      ? '<br><b style="color:#fbbf24">દરેક ખાનામાં Log-in દેખાય છે?</b> '+
+        'meet.jit.si દરેક રૂમ માટે એક લોગ-ઇન થયેલો મોડરેટર માંગે છે, અને બ્રાઉઝર '+
+        'એ લોગ-ઇન iframe માં વહેંચતું નથી. ઉપરનું 🔑 બટન એક વાર દબાવીને લોગ-ઇન કરો '+
+        'અને એ ટૅબ ખુલ્લી રાખો. કાયમી ઉકેલ: ⚙ Settings → Monitoring માં લોગ-ઇન ન '+
+        'માંગતું Jitsi સર્વર લખો.'
+      : '');
   w.appendChild(n);
   body.appendChild(w);
+});
+
+/* ==================================================================
+   🎮 રમતો · GAMES
+   ------------------------------------------------------------------
+   ટૂંકી, ઝડપી, એકલા રમાય એવી શૈક્ષણિક રમતો. પરિણામ શીટમાં જતું નથી —
+   આ મહાવરો છે, કસોટી નથી. દરેક રમત પોતાનું પાનું છે.
+   ================================================================== */
+var GAMES=[
+  ['g_speed','⚡','ઝડપી ગણતરી','60 સેકન્ડમાં કેટલા સાચા? · સરવાળો · બાદબાકી · ગુણાકાર','#f59e0b','#2a2010'],
+  ['g_order','🎯','ક્રમમાં ગોઠવો','નાનાથી મોટા — પૂર્ણ સંખ્યા · દશાંશ · અપૂર્ણાંક','#22c55e','#0d2818'],
+  ['g_pair','🧠','જોડી શોધો','સરખી કિંમત જોડો — ½ અને 0.5 જેવી','#a855f7','#1e1030'],
+  ['g_next','🔢','આગળ શું આવશે?','સંખ્યાની ભાત ઓળખો','#0ea5e9','#0c2233'],
+  ['g_table','⏱','ઘડિયા દોડ','ઘડિયા કેટલા ઝડપથી આવડે?','#ef4444','#2a1214']
+];
+definePage('games','🎮 રમતો · GAMES',function(body){
+  body.classList.add('mid');
+  var w=document.createElement('div');
+  w.style.cssText='width:100%;max-width:820px;margin:0 auto';
+  var n=document.createElement('div'); n.className='note';
+  n.style.cssText+=';margin-bottom:12px';
+  n.innerHTML='આ રમતોનું પરિણામ શાળાની શીટમાં જતું નથી — નિરાંતે રમો અને શીખો.';
+  w.appendChild(n);
+  GAMES.forEach(function(gm){
+    var b=document.createElement('button');
+    b.style.cssText='display:flex;gap:13px;align-items:center;width:100%;margin-bottom:10px;'+
+      'padding:15px 16px;border-radius:15px;cursor:pointer;text-align:left;'+
+      'border:1px solid '+gm[4]+';background:'+gm[5]+';color:var(--ink)';
+    b.innerHTML='<span style="font-size:29px">'+gm[1]+'</span>'+
+      '<span style="flex:1"><span style="display:block;font-family:var(--guj);'+
+      'font-size:18px;font-weight:700">'+esc(gm[2])+'</span>'+
+      '<span style="display:block;font-family:var(--guj);font-size:12.5px;'+
+      'color:var(--dim)">'+esc(gm[3])+'</span></span>'+
+      '<span style="font-size:20px;color:'+gm[4]+'">▶</span>';
+    b.onclick=function(){ NAV.go(gm[0]) };
+    w.appendChild(b);
+  });
+  body.appendChild(w);
+});
+
+/* ---------- નાનાં સહિયારાં ઓજાર ---------- */
+function gmCard(body){
+  var c=document.createElement('div');
+  c.className='evCard';
+  c.style.cssText+=';max-width:760px;margin:0 auto';
+  body.appendChild(c);
+  return c;
+}
+function gmBig(txt,size){
+  var d=document.createElement('div');
+  d.style.cssText='text-align:center;font-family:var(--mono);font-size:'+(size||44)+'px;'+
+    'margin:14px 0;letter-spacing:2px';
+  d.textContent=txt;
+  return d;
+}
+function gmGrid(c){
+  var g=document.createElement('div');
+  g.style.cssText='display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px';
+  c.appendChild(g);
+  return g;
+}
+function gmOpt(g,txt,fn){
+  var b=document.createElement('button');
+  b.style.cssText='padding:19px 10px;border-radius:14px;border:1px solid var(--line);'+
+    'background:#0b1220;color:var(--ink);font-family:var(--mono);font-size:25px;cursor:pointer';
+  b.textContent=txt;
+  b.onclick=function(){ fn(b) };
+  g.appendChild(b);
+  return b;
+}
+function gmFlash(b,ok){
+  b.style.background = ok?'#0d2818':'#2a1214';
+  b.style.borderColor= ok?'#166534':'#7f1d1d';
+}
+function gmEnd(c,score,total,again){
+  c.innerHTML='';
+  var pc=total?Math.round(score*100/total):0;
+  c.appendChild(gmBig(pc>=80?'🌟':pc>=50?'👍':'💪',60));
+  var t=document.createElement('div');
+  t.style.cssText='text-align:center;font-family:var(--guj);font-size:21px';
+  t.textContent=score+' / '+total+' સાચા';
+  c.appendChild(t);
+  var b=document.createElement('button');
+  b.className='btn pri';
+  b.style.cssText+=';width:100%;padding:13px;margin-top:16px';
+  b.textContent='↻ ફરી રમો';
+  b.onclick=again;
+  c.appendChild(b);
+}
+function gmShuffle(a){
+  for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t }
+  return a;
+}
+
+/* ================= ⚡ ઝડપી ગણતરી ================= */
+definePage('g_speed','⚡ ઝડપી ગણતરી',function(body){
+  body.classList.add('mid');
+  var c=gmCard(body), score=0, asked=0, left=60, tid=0, cur=null;
+  function q(){
+    var op=['+','−','×'][R2(0,2)], a, b, ans;
+    if(op==='×'){ a=R2(2,9); b=R2(2,9); ans=a*b }
+    else if(op==='+'){ a=R2(5,49); b=R2(5,49); ans=a+b }
+    else { a=R2(20,80); b=R2(2,19); ans=a-b }
+    var opts=[ans], guard=0;
+    while(opts.length<4 && guard++<60){
+      var d=ans+R2(-9,9); if(d>=0 && opts.indexOf(d)<0) opts.push(d);
+    }
+    return {t:a+' '+op+' '+b, ans:ans, opts:gmShuffle(opts)};
+  }
+  function draw(){
+    c.innerHTML='';
+    var top=document.createElement('div');
+    top.className='evTop';
+    top.innerHTML='<span>⏱ '+left+' સેકન્ડ</span><span>સાચા: '+score+'</span>';
+    c.appendChild(top);
+    cur=q();
+    c.appendChild(gmBig(cur.t));
+    var g=gmGrid(c);
+    cur.opts.forEach(function(o){
+      gmOpt(g,String(o),function(b){
+        asked++;
+        if(o===cur.ans){ score++; sndOK(); gmFlash(b,true) }
+        else { sndNO(); gmFlash(b,false) }
+        lessonTimeout(draw,180);
+      });
+    });
+  }
+  function stop(){ try{ clearInterval(tid) }catch(e){}; gmEnd(c,score,asked,start) }
+  function start(){
+    score=0; asked=0; left=60;
+    draw();
+    try{ clearInterval(tid) }catch(e){}
+    tid=lessonInterval(function(){
+      left--;
+      var t=c.querySelector('.evTop span');
+      if(t) t.textContent='⏱ '+left+' સેકન્ડ';
+      if(left<=0) stop();
+    },1000);
+  }
+  start();
+});
+
+/* ================= 🎯 ક્રમમાં ગોઠવો ================= */
+definePage('g_order','🎯 ક્રમમાં ગોઠવો',function(body){
+  body.classList.add('mid');
+  var c=gmCard(body), round=0, score=0, NR=6;
+  function make(){
+    var kind=['whole','dec','frac'][round%3], vals=[], seen={};
+    while(vals.length<5){
+      var v,lab;
+      if(kind==='whole'){ v=R2(10,199); lab=String(v) }
+      else if(kind==='dec'){ v=R2(5,995)/100; lab=v.toFixed(2) }
+      else { var d=R2(2,9), n2=R2(1,d-1); v=n2/d; lab=n2+'/'+d }
+      var key=v.toFixed(4);
+      if(seen[key]) continue;
+      seen[key]=1; vals.push({v:v,lab:lab});
+    }
+    return {kind:kind, list:gmShuffle(vals.slice()),
+            order:vals.slice().sort(function(a,b){ return a.v-b.v })};
+  }
+  function draw(){
+    if(round>=NR){ gmEnd(c,score,NR,function(){ round=0; score=0; draw() }); return }
+    var st=make(), picked=0;
+    c.innerHTML='';
+    var top=document.createElement('div'); top.className='evTop';
+    top.innerHTML='<span>રાઉન્ડ '+(round+1)+' / '+NR+'</span><span>સાચા: '+score+'</span>';
+    c.appendChild(top);
+    var q=document.createElement('div');
+    q.style.cssText='text-align:center;font-family:var(--guj);font-size:17px;margin:10px 0';
+    q.textContent='નાનાથી મોટા ક્રમમાં દબાવો'+
+      (st.kind==='frac'?' (અપૂર્ણાંક)':st.kind==='dec'?' (દશાંશ)':'');
+    c.appendChild(q);
+    var g=document.createElement('div');
+    g.style.cssText='display:grid;grid-template-columns:repeat(5,1fr);gap:8px';
+    c.appendChild(g);
+    var wrong=false;
+    st.list.forEach(function(o){
+      var b=document.createElement('button');
+      b.style.cssText='padding:22px 6px;border-radius:13px;border:1px solid var(--line);'+
+        'background:#0b1220;color:var(--ink);font-family:var(--mono);font-size:21px;cursor:pointer';
+      b.textContent=o.lab;
+      b.onclick=function(){
+        if(b.disabled) return;
+        if(o.v===st.order[picked].v){
+          picked++; b.disabled=true; gmFlash(b,true); sndOK();
+          if(picked>=5){
+            if(!wrong) score++;
+            round++;
+            lessonTimeout(draw,500);
+          }
+        }else{ wrong=true; gmFlash(b,false); sndNO() }
+      };
+      g.appendChild(b);
+    });
+  }
+  draw();
+});
+
+/* ================= 🧠 જોડી શોધો ================= */
+definePage('g_pair','🧠 જોડી શોધો',function(body){
+  body.classList.add('mid');
+  var c=gmCard(body);
+  var BANK=[['1/2','0.5'],['1/4','0.25'],['3/4','0.75'],['1/5','0.2'],
+            ['2/5','0.4'],['1/10','0.1'],['3/10','0.3'],['1/8','0.125'],
+            ['5/2','2.5'],['3/5','0.6']];
+  function start(){
+    var pick=gmShuffle(BANK.slice()).slice(0,6), cards=[];
+    pick.forEach(function(p,i){
+      cards.push({id:i,txt:p[0]}); cards.push({id:i,txt:p[1]});
+    });
+    gmShuffle(cards);
+    var open=[], done=0, tries=0;
+    c.innerHTML='';
+    var top=document.createElement('div'); top.className='evTop';
+    top.innerHTML='<span>સરખી કિંમતવાળી જોડી શોધો</span><span id="pTry">પ્રયત્ન: 0</span>';
+    c.appendChild(top);
+    var g=document.createElement('div');
+    g.style.cssText='display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:12px';
+    c.appendChild(g);
+    cards.forEach(function(cd){
+      var b=document.createElement('button');
+      b.style.cssText='padding:26px 6px;border-radius:13px;border:1px solid var(--line);'+
+        'background:#111827;color:transparent;font-family:var(--mono);font-size:20px;cursor:pointer';
+      b.textContent=cd.txt;
+      b.onclick=function(){
+        if(b.disabled || open.length>=2 || open.indexOf(b)>=0) return;
+        b.style.color='var(--ink)'; b.style.background='#132441';
+        open.push(b); b.__cd=cd;
+        if(open.length===2){
+          tries++;
+          var t=document.getElementById('pTry'); if(t) t.textContent='પ્રયત્ન: '+tries;
+          var same=(open[0].__cd.id===open[1].__cd.id);
+          if(same){
+            open.forEach(function(x){ x.disabled=true; gmFlash(x,true) });
+            open=[]; done++; sndOK();
+            if(done>=6) lessonTimeout(function(){ gmEnd(c,6,tries,start) },600);
+          }else{
+            sndNO();
+            var pair=open; open=[];
+            lessonTimeout(function(){
+              pair.forEach(function(x){
+                x.style.color='transparent'; x.style.background='#111827';
+              });
+            },700);
+          }
+        }
+      };
+      g.appendChild(b);
+    });
+  }
+  start();
+});
+
+/* ================= 🔢 આગળ શું આવશે? ================= */
+definePage('g_next','🔢 આગળ શું આવશે?',function(body){
+  body.classList.add('mid');
+  var c=gmCard(body), round=0, score=0, NR=8;
+  function make(){
+    var kind=R2(0,2), a=R2(2,12), d, seq=[], ans;
+    if(kind===0){ d=R2(2,9); for(var i=0;i<5;i++) seq.push(a+d*i); ans=a+d*5 }
+    else if(kind===1){ d=R2(2,3); a=R2(1,4); for(var j=0;j<5;j++) seq.push(a*Math.pow(d,j)); ans=a*Math.pow(d,5) }
+    else { for(var k=1;k<=5;k++) seq.push(k*k); ans=36 }
+    var opts=[ans], guard=0;
+    while(opts.length<4 && guard++<80){
+      var o=ans+R2(-6,6)*(kind===1?2:1);
+      if(o>0 && opts.indexOf(o)<0) opts.push(o);
+    }
+    return {seq:seq, ans:ans, opts:gmShuffle(opts)};
+  }
+  function draw(){
+    if(round>=NR){ gmEnd(c,score,NR,function(){ round=0; score=0; draw() }); return }
+    var st=make();
+    c.innerHTML='';
+    var top=document.createElement('div'); top.className='evTop';
+    top.innerHTML='<span>'+(round+1)+' / '+NR+'</span><span>સાચા: '+score+'</span>';
+    c.appendChild(top);
+    c.appendChild(gmBig(st.seq.join('  ,  ')+'  ,  ?',30));
+    var g=gmGrid(c);
+    st.opts.forEach(function(o){
+      gmOpt(g,String(o),function(b){
+        if(o===st.ans){ score++; sndOK(); gmFlash(b,true) } else { sndNO(); gmFlash(b,false) }
+        round++;
+        lessonTimeout(draw,420);
+      });
+    });
+  }
+  draw();
+});
+
+/* ================= ⏱ ઘડિયા દોડ ================= */
+definePage('g_table','⏱ ઘડિયા દોડ',function(body){
+  body.classList.add('mid');
+  var c=gmCard(body), tab=0;
+  function menu(){
+    c.innerHTML='';
+    var q=document.createElement('div');
+    q.style.cssText='text-align:center;font-family:var(--guj);font-size:19px;margin-bottom:12px';
+    q.textContent='કયો ઘડિયો?';
+    c.appendChild(q);
+    var g=document.createElement('div');
+    g.style.cssText='display:grid;grid-template-columns:repeat(4,1fr);gap:9px';
+    c.appendChild(g);
+    for(var i=2;i<=20;i++)(function(n){
+      var b=document.createElement('button');
+      b.style.cssText='padding:19px 6px;border-radius:13px;border:1px solid var(--line);'+
+        'background:#0b1220;color:var(--ink);font-family:var(--mono);font-size:22px;cursor:pointer';
+      b.textContent=n;
+      b.onclick=function(){ tab=n; play() };
+      g.appendChild(b);
+    })(i);
+  }
+  function play(){
+    var i=1, score=0, t0=Date.now();
+    function step(){
+      if(i>10){
+        var secs=Math.round((Date.now()-t0)/1000);
+        c.innerHTML='';
+        c.appendChild(gmBig(score===10?'🌟':'👍',56));
+        var t=document.createElement('div');
+        t.style.cssText='text-align:center;font-family:var(--guj);font-size:20px';
+        t.textContent=tab+' નો ઘડિયો · '+score+'/10 સાચા · '+secs+' સેકન્ડ';
+        c.appendChild(t);
+        var b=document.createElement('button');
+        b.className='btn pri'; b.style.cssText+=';width:100%;padding:13px;margin-top:15px';
+        b.textContent='↻ બીજો ઘડિયો';
+        b.onclick=menu;
+        c.appendChild(b);
+        return;
+      }
+      var ans=tab*i, opts=[ans], guard=0;
+      while(opts.length<4 && guard++<60){
+        var o=tab*R2(1,12);
+        if(o!==ans && opts.indexOf(o)<0) opts.push(o);
+      }
+      gmShuffle(opts);
+      c.innerHTML='';
+      var top=document.createElement('div'); top.className='evTop';
+      top.innerHTML='<span>'+tab+' નો ઘડિયો</span><span>'+i+' / 10</span>';
+      c.appendChild(top);
+      c.appendChild(gmBig(tab+' × '+i));
+      var g=gmGrid(c);
+      opts.forEach(function(o){
+        gmOpt(g,String(o),function(b){
+          if(o===ans){ score++; sndOK(); gmFlash(b,true) } else { sndNO(); gmFlash(b,false) }
+          i++;
+          lessonTimeout(step,300);
+        });
+      });
+    }
+    step();
+  }
+  menu();
 });
 
 /* ==================================================================
@@ -10581,7 +11025,8 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
       (s.stu?('👦 '+esc(s.stu.roll+'. '+(s.stu.name||''))):'')+
       (s.tool?(' · '+(isNum(s.tool)?numName(s.tool):(isBesik2(s.tool)?'બેઝિક':TOOLNAME[s.tool]))):'')+
       (s.mode?(' · '+(s.mode==='P'?'✍ પ્રેક્ટિસ':'📝 કસોટી')):'')+'</span>'+
-      '<span id="'+sd+'clk"></span>';   /* આ બાજુની પોતાની ઘડિયાળ */
+      '<span id="'+sd+'clk"></span>'+    /* આ બાજુની પોતાની ઘડિયાળ */
+      '<span id="'+sd+'act"></span>';    /* ✔ તપાસો — કીપેડથી દૂર */
     var rb=document.createElement('button');
     rb.className='btn'; rb.style.padding='6px 12px'; rb.textContent='↺ બદલો';
     rb.onclick=function(){ reset(sd); draw(sd) };
@@ -10762,16 +11207,21 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
       e.style.color=ok?'#22c55e':'#f87171';
     });
   }
-  function padFor(sd,onKey,extra){
+  function padFor(sd,onKey,extra,wantDot){
     var c=document.createElement('div');
     c.style.cssText='display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:8px';
-    for(var k=0;k<=9;k++)(function(k2){
+    var KS=[]; for(var k=0;k<=9;k++) KS.push(String(k));
+    if(wantDot) KS.push('.');          /* દશાંશના દાખલામાં ચિહ્નની ચાવી */
+    KS.forEach(function(k2){
       var b=document.createElement('button');
-      b.style.cssText='height:46px;border-radius:10px;border:1px solid var(--line);'+
-        'background:#111827;color:var(--ink);font-size:20px;font-family:var(--mono);cursor:pointer';
-      b.textContent=k2; b.onclick=function(){ onKey(k2) };
+      var dot=(k2==='.');
+      b.style.cssText='height:46px;border-radius:10px;border:1px solid '+
+        (dot?'#be185d':'var(--line)')+';background:'+(dot?'#2a1020':'#111827')+
+        ';color:'+(dot?'#f472b6':'var(--ink)')+
+        ';font-size:'+(dot?24:20)+'px;font-family:var(--mono);cursor:pointer';
+      b.textContent=dot?'·':k2; b.onclick=function(){ onKey(k2) };
       c.appendChild(b);
-    })(k);
+    });
     hosts[sd].appendChild(c);
     if(extra){
       var e=document.createElement('div');
@@ -10979,6 +11429,7 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
     }
     function nextBtn(){
       if(P.clock){ P.clock.stop(); P.clock=null }
+      var as=document.getElementById(sd+'act'); if(as) as.innerHTML='';
       var nx=document.createElement('button');
       nx.className='btn pri'; nx.style.cssText+=';width:100%;padding:11px;margin-top:6px';
       nx.textContent=(g.p<NP)?'આગળનો દાખલો →':'પરિણામ 🏁';
@@ -11077,15 +11528,27 @@ definePage('fin2','👥 બે વિદ્યાર્થી · 2 STUDENTS',fun
         checkFree();
       });
     }
-    if(free) extra=[['✔ તપાસો',function(){ checkFree() },true],
-                    ['ભૂંસો',function(){
+    if(free){
+      /* ✔ તપાસો ઉપર જમણા ખૂણે મૂકીએ, કીપેડની બાજુમાં નહીં */
+      var aslot=document.getElementById(sd+'act');
+      if(aslot){
+        var cbx=document.createElement('button');
+        cbx.className='btn pri';
+        cbx.style.cssText+=';padding:6px 13px;border-radius:999px;font-size:13px';
+        cbx.textContent='✔ તપાસો';
+        cbx.onclick=function(){ checkFree() };
+        aslot.appendChild(cbx);
+      }
+    }
+    if(free) extra=[['ભૂંસો',function(){
                       if(!P.sel||P.checked) return;
                       P.free[P.sel]='';
                       var el=cell(P.sel); if(el) el.textContent='';
                       applyAdd();
                     }],
                     ];   /* ટેસ્ટમાં "નવો" નથી */
-    padFor(sd,key,extra);
+    padFor(sd,key,extra,
+      steps.some(function(s2){ return s2.exp==='.' }));
     setTimeout(mark,0);
   }
 });
