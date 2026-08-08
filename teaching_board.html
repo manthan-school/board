@@ -6475,7 +6475,7 @@ var EMO=['🍎','⭐','🌸','🐟','🥭','🦋','🎈','🍬'];
    Options include the mistakes students really make, so a wrong tap
    is a teaching moment.
    ================================================================== */
-var BOARD_BUILD='2026-08-04 · યાદશક્તિ · 2 ખેલાડી';
+var BOARD_BUILD='2026-08-04 · 13 રમતો';
 var GEN_TYPE='whole';     /* number type દાખલા બનાવો builds for */
 var DUAL_SCOPE='whole';   /* tools the 2-student page offers */
 window.__setScope=function(g,d){ if(g) GEN_TYPE=g; if(d) DUAL_SCOPE=d };
@@ -9123,7 +9123,12 @@ var GAMES=[
   ['g_table','⏱','ઘડિયા દોડ','ઘડિયા કેટલા ઝડપથી આવડે?','#ef4444','#2a1214'],
   ['g_span','🔢','અંક યાદ · 2 ખેલાડી','સંખ્યા જોઈ લો, પછી યાદથી લખો — સામસામે','#f472b6','#2a1020'],
   ['g_simon','🎨','ક્રમ યાદ · 2 ખેલાડી','રંગ કયા ક્રમે ઝબક્યા? — સામસામે','#14b8a6','#0c2422'],
-  ['g_gone','🔍','શું ગાયબ થયું? · 2 ખેલાડી','ધ્યાનથી જુઓ — પછી કહો કોણ ગયું','#8b5cf6','#1a1030']
+  ['g_gone','🔍','શું ગાયબ થયું? · 2 ખેલાડી','ધ્યાનથી જુઓ — પછી કહો કોણ ગયું','#8b5cf6','#1a1030'],
+  ['g_race','🏁','શબ્દ જોડી દોડ · સામસામે','25 પત્તાં · 12 જોડી — બંને એકસાથે, જે પહેલાં પૂરું કરે તે જીતે','#eab308','#2a2410'],
+  ['g_clock','🕐','ઘડિયાળ વાંચો','કાંટા જોઈને સમય કહો','#06b6d4','#0c2429'],
+  ['g_miss','⚖','ખૂટતો અંક','7 + ⬜ = 15 — ખાલી જગ્યા ભરો','#f97316','#2a1a0c'],
+  ['g_unit','📏','સાચો એકમ','શેનું માપ શેમાં? — મીટર · કિલો · લિટર','#84cc16','#1a2410'],
+  ['g_cap','🗺','રાજ્ય અને રાજધાની','ભારતનાં રાજ્યોની રાજધાની','#e11d48','#2a1018']
 ];
 
 /* ==================================================================
@@ -9324,6 +9329,374 @@ definePage('g_simon','🎨 ક્રમ યાદ · 2 ખેલાડી',funct
     }
     lessonTimeout(playSeq,700);
   });
+});
+
+/* ================= 🕐 ઘડિયાળ વાંચો ================= */
+definePage('g_clock','🕐 ઘડિયાળ વાંચો',function(body){
+  body.classList.add('mid');
+  var c=gmCard(body), round=0, score=0, NR=8;
+  function face(h,m){
+    var ha=(h%12)*30 + m*0.5, ma=m*6, t=[];
+    for(var i=0;i<12;i++){
+      var a=i*30*Math.PI/180, x1=100+72*Math.sin(a), y1=100-72*Math.cos(a);
+      var x2=100+82*Math.sin(a), y2=100-82*Math.cos(a);
+      t.push('<line x1="'+x1.toFixed(1)+'" y1="'+y1.toFixed(1)+'" x2="'+x2.toFixed(1)+
+        '" y2="'+y2.toFixed(1)+'" stroke="#64748b" stroke-width="3"/>');
+      var lx=100+62*Math.sin(a), ly=100-62*Math.cos(a);
+      t.push('<text x="'+lx.toFixed(1)+'" y="'+(ly+6).toFixed(1)+'" fill="#e5e7eb" '+
+        'font-size="16" text-anchor="middle" font-family="monospace">'+(i===0?12:i)+'</text>');
+    }
+    function hand(ang,len,wid,col){
+      var a=ang*Math.PI/180;
+      return '<line x1="100" y1="100" x2="'+(100+len*Math.sin(a)).toFixed(1)+
+        '" y2="'+(100-len*Math.cos(a)).toFixed(1)+'" stroke="'+col+
+        '" stroke-width="'+wid+'" stroke-linecap="round"/>';
+    }
+    return '<svg viewBox="0 0 200 200" style="width:min(74vw,270px);height:auto;display:block;margin:0 auto">'+
+      '<circle cx="100" cy="100" r="92" fill="#0b1220" stroke="#334155" stroke-width="4"/>'+
+      t.join('')+hand(ha,44,7,'#f472b6')+hand(ma,68,4,'#38bdf8')+
+      '<circle cx="100" cy="100" r="5" fill="#e5e7eb"/></svg>';
+  }
+  function draw(){
+    if(round>=NR){ gmEnd(c,score,NR,function(){ round=0; score=0; draw() }); return }
+    var h=R2(1,12), m=R2(0,11)*5;
+    var lab=function(H,M){ return H+':'+('0'+M).slice(-2) };
+    var ans=lab(h,m), opts=[ans], guard=0;
+    while(opts.length<4 && guard++<80){
+      var h2=h, m2=m;
+      if(R2(0,1)){ h2=R2(1,12) } else { m2=R2(0,11)*5 }
+      var o=lab(h2,m2);
+      if(opts.indexOf(o)<0) opts.push(o);
+    }
+    c.innerHTML='';
+    var top=document.createElement('div'); top.className='evTop';
+    top.innerHTML='<span>'+(round+1)+' / '+NR+'</span><span>સાચા: '+score+'</span>';
+    c.appendChild(top);
+    var box=document.createElement('div');
+    box.style.cssText='margin:12px 0';
+    box.innerHTML=face(h,m);
+    c.appendChild(box);
+    var q=document.createElement('div');
+    q.style.cssText='text-align:center;font-family:var(--guj);font-size:16px;color:var(--dim)';
+    q.innerHTML='<span style="color:#f472b6">જાડો કાંટો = કલાક</span> · '+
+      '<span style="color:#38bdf8">પાતળો = મિનિટ</span>';
+    c.appendChild(q);
+    var g=gmGrid(c);
+    gmShuffle(opts).forEach(function(o){
+      gmOpt(g,o,function(b){
+        if(o===ans){ score++; sndOK(); gmFlash(b,true) } else { sndNO(); gmFlash(b,false) }
+        round++; lessonTimeout(draw,480);
+      });
+    });
+  }
+  draw();
+});
+
+/* ================= ⚖ ખૂટતો અંક ================= */
+definePage('g_miss','⚖ ખૂટતો અંક',function(body){
+  body.classList.add('mid');
+  var c=gmCard(body), round=0, score=0, NR=10;
+  function make(){
+    var k=R2(0,3), a, b, r, txt;
+    if(k===0){ a=R2(3,40); b=R2(3,40); r=b; txt=a+' + ⬜ = '+(a+b) }
+    else if(k===1){ a=R2(20,90); b=R2(3,19); r=b; txt=a+' − ⬜ = '+(a-b) }
+    else if(k===2){ a=R2(2,12); b=R2(2,12); r=b; txt=a+' × ⬜ = '+(a*b) }
+    else { b=R2(2,9); r=b; a=b*R2(2,12); txt=a+' ÷ ⬜ = '+(a/b) }
+    var opts=[r], guard=0;
+    while(opts.length<4 && guard++<80){
+      var o=r+R2(-6,6);
+      if(o>0 && opts.indexOf(o)<0) opts.push(o);
+    }
+    return {txt:txt, ans:r, opts:gmShuffle(opts)};
+  }
+  function draw(){
+    if(round>=NR){ gmEnd(c,score,NR,function(){ round=0; score=0; draw() }); return }
+    var st=make();
+    c.innerHTML='';
+    var top=document.createElement('div'); top.className='evTop';
+    top.innerHTML='<span>'+(round+1)+' / '+NR+'</span><span>સાચા: '+score+'</span>';
+    c.appendChild(top);
+    c.appendChild(gmBig(st.txt,38));
+    var g=gmGrid(c);
+    st.opts.forEach(function(o){
+      gmOpt(g,String(o),function(b){
+        if(o===st.ans){ score++; sndOK(); gmFlash(b,true) } else { sndNO(); gmFlash(b,false) }
+        round++; lessonTimeout(draw,430);
+      });
+    });
+  }
+  draw();
+});
+
+/* ================= 📏 સાચો એકમ ================= */
+definePage('g_unit','📏 સાચો એકમ',function(body){
+  body.classList.add('mid');
+  var c=gmCard(body), round=0, score=0, NR=10;
+  var Q=[
+    ['📏 ઓરડાની લંબાઈ','મીટર'],['📐 પેન્સિલની લંબાઈ','સેન્ટિમીટર'],
+    ['🛣 બે ગામ વચ્ચેનું અંતર','કિલોમીટર'],['⚖ ઘઉંની થેલી','કિલોગ્રામ'],
+    ['💊 દવાની ગોળી','મિલિગ્રામ'],['🥛 દૂધ','લિટર'],
+    ['💧 દવાનું ટીપું','મિલિલિટર'],['⏱ દોડની ઝડપ','સેકન્ડ'],
+    ['🌡 તાવ','ડિગ્રી સેલ્સિયસ'],['🏠 ઘરની જમીન','ચોરસ મીટર'],
+    ['📦 પેટીની જગ્યા','ઘન મીટર'],['🕰 શાળાનો સમય','કલાક'],
+    ['🍚 ચોખાનું વજન','કિલોગ્રામ'],['📓 નોટબુકની જાડાઈ','મિલિમીટર']
+  ];
+  var UNITS=['મીટર','સેન્ટિમીટર','કિલોમીટર','કિલોગ્રામ','મિલિગ્રામ','લિટર',
+             'મિલિલિટર','સેકન્ડ','ડિગ્રી સેલ્સિયસ','ચોરસ મીટર','ઘન મીટર','કલાક','મિલિમીટર'];
+  var bag=gmShuffle(Q.slice());
+  function draw(){
+    if(round>=NR){ gmEnd(c,score,NR,function(){ round=0; score=0; bag=gmShuffle(Q.slice()); draw() }); return }
+    var q=bag[round%bag.length];
+    var opts=[q[1]], guard=0;
+    while(opts.length<4 && guard++<90){
+      var u=UNITS[R2(0,UNITS.length-1)];
+      if(opts.indexOf(u)<0) opts.push(u);
+    }
+    c.innerHTML='';
+    var top=document.createElement('div'); top.className='evTop';
+    top.innerHTML='<span>'+(round+1)+' / '+NR+'</span><span>સાચા: '+score+'</span>';
+    c.appendChild(top);
+    var h=document.createElement('div');
+    h.style.cssText='text-align:center;font-family:var(--guj);font-size:26px;margin:20px 0 6px';
+    h.textContent=q[0];
+    c.appendChild(h);
+    var sub=document.createElement('div');
+    sub.style.cssText='text-align:center;font-family:var(--guj);font-size:15px;color:var(--dim)';
+    sub.textContent='કયા એકમમાં માપીએ?';
+    c.appendChild(sub);
+    var g=gmGrid(c);
+    gmShuffle(opts).forEach(function(o){
+      var b=gmOpt(g,o,function(bt){
+        if(o===q[1]){ score++; sndOK(); gmFlash(bt,true) } else { sndNO(); gmFlash(bt,false) }
+        round++; lessonTimeout(draw,470);
+      });
+      b.style.fontFamily='var(--guj)'; b.style.fontSize='17px';
+    });
+  }
+  draw();
+});
+
+/* ================= 🗺 રાજ્ય અને રાજધાની ================= */
+definePage('g_cap','🗺 રાજ્ય અને રાજધાની',function(body){
+  body.classList.add('mid');
+  var c=gmCard(body), round=0, score=0, NR=10;
+  var ST=[['ગુજરાત','ગાંધીનગર'],['મહારાષ્ટ્ર','મુંબઈ'],['રાજસ્થાન','જયપુર'],
+    ['બિહાર','પટના'],['ઉત્તર પ્રદેશ','લખનૌ'],['મધ્ય પ્રદેશ','ભોપાલ'],
+    ['કર્ણાટક','બેંગલુરુ'],['તમિલનાડુ','ચેન્નઈ'],['કેરળ','તિરુવનંતપુરમ'],
+    ['પશ્ચિમ બંગાળ','કોલકાતા'],['ઓડિશા','ભુવનેશ્વર'],['આસામ','દિસપુર'],
+    ['ઝારખંડ','રાંચી'],['છત્તીસગઢ','રાયપુર'],['હિમાચલ પ્રદેશ','શિમલા'],
+    ['તેલંગાણા','હૈદરાબાદ'],['ગોવા','પણજી'],['મણિપુર','ઇમ્ફાલ'],
+    ['નાગાલૅન્ડ','કોહિમા'],['ત્રિપુરા','અગરતલા'],['મિઝોરમ','આઇઝોલ'],
+    ['મેઘાલય','શિલોંગ'],['સિક્કિમ','ગંગટોક'],['અરુણાચલ પ્રદેશ','ઇટાનગર']];
+  var bag=gmShuffle(ST.slice());
+  function draw(){
+    if(round>=NR){ gmEnd(c,score,NR,function(){ round=0; score=0; bag=gmShuffle(ST.slice()); draw() }); return }
+    var q=bag[round%bag.length];
+    var opts=[q[1]], guard=0;
+    while(opts.length<4 && guard++<90){
+      var o=ST[R2(0,ST.length-1)][1];
+      if(opts.indexOf(o)<0) opts.push(o);
+    }
+    c.innerHTML='';
+    var top=document.createElement('div'); top.className='evTop';
+    top.innerHTML='<span>'+(round+1)+' / '+NR+'</span><span>સાચા: '+score+'</span>';
+    c.appendChild(top);
+    var h=document.createElement('div');
+    h.style.cssText='text-align:center;font-family:var(--guj);font-size:15px;'+
+      'color:var(--dim);margin-top:16px';
+    h.textContent='આ રાજ્યની રાજધાની કઈ?';
+    c.appendChild(h);
+    var st2=document.createElement('div');
+    st2.style.cssText='text-align:center;font-family:var(--guj);font-size:31px;'+
+      'font-weight:700;margin:6px 0 4px;color:#fda4af';
+    st2.textContent=q[0];
+    c.appendChild(st2);
+    var g=gmGrid(c);
+    gmShuffle(opts).forEach(function(o){
+      var b=gmOpt(g,o,function(bt){
+        if(o===q[1]){ score++; sndOK(); gmFlash(bt,true) }
+        else { sndNO(); gmFlash(bt,false);
+          var t=document.createElement('div');
+          t.style.cssText='text-align:center;font-family:var(--guj);font-size:15px;'+
+            'color:#fbbf24;margin-top:9px';
+          t.textContent='સાચો જવાબ: '+q[1];
+          c.appendChild(t);
+        }
+        round++; lessonTimeout(draw,760);
+      });
+      b.style.fontFamily='var(--guj)'; b.style.fontSize='18px';
+    });
+  }
+  draw();
+});
+
+/* ==================================================================
+   🏁 શબ્દ જોડી દોડ — સ્ક્રીન બે ભાગમાં, બંને એકસાથે રમે
+   ------------------------------------------------------------------
+   દરેક બાજુ 25 પત્તાં: 12 જોડી + 1 એકલું પત્તું (જેની જોડ છે જ નહીં).
+   એ એકલું પત્તું જ રમતને અઘરી બનાવે છે — યાદ રાખવું પડે કે એ કયું છે.
+   બંને બાજુ પોતાની ઘડિયાળ ચાલે. જે પહેલાં 12 જોડી શોધે તે જીતે.
+   બંને વિદ્યાર્થી એકસાથે આંગળી મૂકે તો પણ ચાલે (multiTapFix).
+   ================================================================== */
+var RACE_WORDS=['ઘર','પાણી','ઝાડ','ફૂલ','પુસ્તક','શાળા','બાળક','સૂરજ',
+  'ચંદ્ર','નદી','પર્વત','પક્ષી','માછલી','ગાય','દૂધ','રોટલી','દીવો','વરસાદ',
+  'પવન','માટી','બીજ','પાન','મિત્ર','ગામ','રસ્તો','બારી','ખુરશી','કબાટ',
+  'સૂરજમુખી','તળાવ','હોડી','પતંગ','ઢોલ','કેરી','જામફળ','તુલસી'];
+
+definePage('g_race','🏁 શબ્દ જોડી દોડ · સામસામે',function(body){
+  body.classList.add('mid');
+  var wrap=document.createElement('div');
+  wrap.style.cssText='display:flex;gap:10px;width:100%;max-width:1700px;margin:0 auto;'+
+    'align-items:stretch;flex-wrap:nowrap';
+  body.appendChild(wrap);
+  multiTapFix(wrap);                    /* બંને એકસાથે દબાવે તો પણ ચાલે */
+
+  var S={}, done=[], over=false;
+  var banner=document.createElement('div');
+  banner.style.cssText='max-width:1700px;margin:0 auto 8px;text-align:center;'+
+    'font-family:var(--guj);font-size:16px;min-height:26px;color:var(--dim)';
+  banner.textContent='બંને તૈયાર? — પોતાની બાજુનું 🏁 શરૂ કરો દબાવો';
+  body.insertBefore(banner,wrap);
+
+  ['L','R'].forEach(function(sd){
+    var pane=document.createElement('div');
+    pane.style.cssText='flex:1 1 0;min-width:0;border:2px solid '+
+      (sd==='L'?'#f472b6':'#38bdf8')+';border-radius:16px;padding:9px;'+
+      'background:#0b1220;display:flex;flex-direction:column;touch-action:pan-y';
+    wrap.appendChild(pane);
+    S[sd]={pane:pane};
+    reset(sd);
+  });
+
+  function reset(sd){
+    var st=S[sd];
+    st.found=0; st.open=[]; st.tries=0; st.t0=0; st.clock=null; st.busy=false;
+    var pane=st.pane;
+    pane.innerHTML='';
+    var hd=document.createElement('div');
+    hd.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:7px;flex-wrap:wrap';
+    hd.innerHTML='<span style="font-family:var(--head);font-size:12px;letter-spacing:2px;color:'+
+      (sd==='L'?'#f472b6':'#38bdf8')+'">'+(sd==='L'?'ખેલાડી 1':'ખેલાડી 2')+'</span>'+
+      '<span style="flex:1"></span>'+
+      '<span id="rc'+sd+'" style="font-family:var(--mono);font-size:14px;color:#86efac">0 / 12</span>'+
+      '<span id="rt'+sd+'" style="font-family:var(--mono);font-size:14px;color:var(--dim)">0:00</span>';
+    pane.appendChild(hd);
+
+    var go=document.createElement('button');
+    go.className='btn pri';
+    go.style.cssText+=';width:100%;padding:12px;margin-bottom:7px';
+    go.textContent='🏁 શરૂ કરો';
+    pane.appendChild(go);
+
+    var g=document.createElement('div');
+    g.style.cssText='display:grid;grid-template-columns:repeat(5,1fr);gap:5px;flex:1';
+    pane.appendChild(g);
+    st.grid=g; st.go=go;
+
+    /* 12 જોડી + 1 એકલું = 25 પત્તાં */
+    var pick=gmShuffle(RACE_WORDS.slice()).slice(0,13);
+    var deck=[];
+    for(var i=0;i<12;i++){ deck.push(pick[i]); deck.push(pick[i]) }
+    deck.push(pick[12]);                /* એકલું પત્તું */
+    gmShuffle(deck);
+
+    deck.forEach(function(word){
+      var b=document.createElement('button');
+      b.__w=word;
+      b.style.cssText='aspect-ratio:1/1;min-height:44px;border-radius:9px;'+
+        'border:1px solid var(--line);background:#111827;color:transparent;'+
+        'font-family:var(--guj);font-size:13px;line-height:1.15;padding:2px;'+
+        'cursor:pointer;touch-action:manipulation;overflow:hidden';
+      b.textContent=word;
+      b.disabled=true;
+      b.onclick=function(){ flip(sd,b) };
+      g.appendChild(b);
+    });
+
+    go.onclick=function(){
+      go.style.display='none';
+      st.t0=Date.now();
+      [].forEach.call(g.children,function(x){ x.disabled=false });
+      tick(sd);
+      banner.textContent='રમત ચાલુ — જે પહેલાં 12 જોડી શોધે તે જીતે!';
+    };
+  }
+
+  function tick(sd){
+    var st=S[sd];
+    st.clock=lessonInterval(function(){
+      var e=document.getElementById('rt'+sd);
+      if(!e || !st.t0) return;
+      var s2=Math.floor((Date.now()-st.t0)/1000);
+      e.textContent=Math.floor(s2/60)+':'+('0'+s2%60).slice(-2);
+    },1000);
+  }
+
+  function flip(sd,b){
+    var st=S[sd];
+    if(over || st.busy || b.disabled || b.__done || st.open.indexOf(b)>=0) return;
+    b.style.color='var(--ink)'; b.style.background='#132441'; b.style.borderColor='#1d4ed8';
+    st.open.push(b);
+    if(st.open.length<2) return;
+    st.tries++;
+    var a=st.open[0], c=st.open[1];
+    if(a.__w===c.__w){
+      a.__done=c.__done=true;
+      [a,c].forEach(function(x){
+        x.style.background='#0d2818'; x.style.borderColor='#166534'; x.style.color='#86efac';
+      });
+      st.open=[];
+      st.found++;
+      var e=document.getElementById('rc'+sd);
+      if(e) e.textContent=st.found+' / 12';
+      sndOK();
+      if(st.found>=12) finish(sd);
+    }else{
+      st.busy=true;
+      sndNO();
+      var pair=st.open; st.open=[];
+      lessonTimeout(function(){
+        pair.forEach(function(x){
+          if(x.__done) return;
+          x.style.color='transparent'; x.style.background='#111827';
+          x.style.borderColor='var(--line)';
+        });
+        st.busy=false;
+      },650);
+    }
+  }
+
+  function finish(sd){
+    var st=S[sd];
+    try{ clearInterval(st.clock) }catch(e){}
+    var secs=Math.round((Date.now()-st.t0)/1000);
+    st.secs=secs; st.t0=0;
+    done.push(sd);
+    if(done.length===1){
+      over=true;                          /* પહેલો પૂરો કરે એટલે રમત પૂરી */
+      ['L','R'].forEach(function(x){
+        try{ clearInterval(S[x].clock) }catch(e){}
+        [].forEach.call(S[x].grid.children,function(b){ b.disabled=true });
+      });
+      var win=(sd==='L')?'ખેલાડી 1':'ખેલાડી 2';
+      var other=(sd==='L')?'R':'L';
+      banner.innerHTML='<b style="color:#22c55e;font-size:19px">🏆 '+win+' જીત્યા!</b>'+
+        ' &nbsp; <span style="color:var(--dim)">'+
+        Math.floor(secs/60)+':'+('0'+secs%60).slice(-2)+' માં 12 જોડી · '+
+        'સામેવાળાએ '+S[other].found+' જોડી શોધી</span>';
+      var again=document.createElement('button');
+      again.className='btn pri';
+      again.style.cssText+=';display:block;margin:10px auto 0;padding:11px 22px';
+      again.textContent='↻ ફરી રમો';
+      again.onclick=function(){
+        over=false; done=[];
+        banner.textContent='બંને તૈયાર? — પોતાની બાજુનું 🏁 શરૂ કરો દબાવો';
+        var old=banner.querySelector('button'); if(old) old.remove();
+        reset('L'); reset('R');
+      };
+      banner.appendChild(again);
+    }
+  }
 });
 
 /* ================= 🔍 શું ગાયબ થયું? ================= */
