@@ -9412,7 +9412,7 @@ function clockFace(h,m,size){
 }
 definePage('g_clock','🕐 ઘડિયાળ વાંચો · સામસામે',function(body){
   gmVs(body,{rounds:8,
-    tip:'જાડો કાંટો = કલાક · પાતળો = મિનિટ — બંનેને એક જ ઘડિયાળ મળે',
+    tip:'જાડો કાંટો = કલાક · પાતળો = મિનિટ — બંનેની ઘડિયાળ જુદી',
     make:function(){
       var h=R2(1,12), m=R2(0,11)*5;
       var lab=function(H,M){ return H+':'+('0'+M).slice(-2) };
@@ -9429,7 +9429,7 @@ definePage('g_clock','🕐 ઘડિયાળ વાંચો · સામસા
 
 /* ================= ⚖ ખૂટતો અંક ================= */
 definePage('g_miss','⚖ ખૂટતો અંક · સામસામે',function(body){
-  gmVs(body,{rounds:10, tip:'ખાલી ખાનામાં કયો અંક આવે? — બંનેને એક જ દાખલો',
+  gmVs(body,{rounds:10, tip:'ખાલી ખાનામાં કયો અંક આવે? — બંનેને જુદા દાખલા',
     make:function(){
       var k=R2(0,3), a, b, r, txt;
       if(k===0){ a=R2(3,40); b=R2(3,40); r=b; txt=a+' + ⬜ = '+(a+b) }
@@ -9456,10 +9456,11 @@ definePage('g_unit','📏 સાચો એકમ · સામસામે',funct
     ['🍚 ચોખાનું વજન','કિલોગ્રામ'],['📓 નોટબુકની જાડાઈ','મિલિમીટર']];
   var UNITS=['મીટર','સેન્ટિમીટર','કિલોમીટર','કિલોગ્રામ','મિલિગ્રામ','લિટર',
              'મિલિલિટર','સેકન્ડ','ડિગ્રી સેલ્સિયસ','ચોરસ મીટર','ઘન મીટર','કલાક','મિલિમીટર'];
-  var bag=gmShuffle(Q.slice());
-  gmVs(body,{rounds:10, tip:'શેનું માપ કયા એકમમાં? — બંનેને એક જ સવાલ',
-    make:function(i){
-      var q=bag[i%bag.length], opts=[q[1]], guard=0;
+  var bag={};
+  gmVs(body,{rounds:10, tip:'શેનું માપ કયા એકમમાં? — બંનેને જુદા સવાલ, અઘરાઈ સરખી',
+    make:function(i,sd){
+      if(!bag[sd]) bag[sd]=gmShuffle(Q.slice());
+      var q=bag[sd][i%bag[sd].length], opts=[q[1]], guard=0;
       while(opts.length<4 && guard++<90){
         var u=UNITS[R2(0,UNITS.length-1)];
         if(opts.indexOf(u)<0) opts.push(u);
@@ -9479,10 +9480,11 @@ definePage('g_cap','🗺 રાજ્ય અને રાજધાની · સ�
     ['તેલંગાણા','હૈદરાબાદ'],['ગોવા','પણજી'],['મણિપુર','ઇમ્ફાલ'],
     ['નાગાલૅન્ડ','કોહિમા'],['ત્રિપુરા','અગરતલા'],['મિઝોરમ','આઇઝોલ'],
     ['મેઘાલય','શિલોંગ'],['સિક્કિમ','ગંગટોક'],['અરુણાચલ પ્રદેશ','ઇટાનગર']];
-  var bag=gmShuffle(ST.slice());
-  gmVs(body,{rounds:10, tip:'આ રાજ્યની રાજધાની કઈ? — બંનેને એક જ રાજ્ય',
-    make:function(i){
-      var q=bag[i%bag.length], opts=[q[1]], guard=0;
+  var bag={};
+  gmVs(body,{rounds:10, tip:'આ રાજ્યની રાજધાની કઈ? — બંનેને જુદાં રાજ્ય, અઘરાઈ સરખી',
+    make:function(i,sd){
+      if(!bag[sd]) bag[sd]=gmShuffle(ST.slice());
+      var q=bag[sd][i%bag[sd].length], opts=[q[1]], guard=0;
       while(opts.length<4 && guard++<90){
         var o=ST[R2(0,ST.length-1)][1];
         if(opts.indexOf(o)<0) opts.push(o);
@@ -9804,11 +9806,16 @@ function gmTie(host,subText){
 function gmVs(body,cfg){
   body.classList.add('mid');
   var N=cfg.rounds||8;
-  var qs=[]; for(var i=0;i<N;i++) qs.push(cfg.make(i));
+  /* દરેક ખેલાડીને પોતાના જ સવાલ મળે — અઘરાઈ સરખી, સવાલ જુદા.
+     એટલે બાજુવાળાની સ્ક્રીન જોઈને નકલ કરી શકાય નહીં. */
+  var qs={L:[],R:[]};
+  ['L','R'].forEach(function(sd){
+    for(var i=0;i<N;i++) qs[sd].push(cfg.make(i,sd));
+  });
   var banner=document.createElement('div');
   banner.style.cssText='max-width:1700px;margin:0 auto 8px;text-align:center;'+
     'font-family:var(--guj);font-size:16px;min-height:24px;color:var(--dim)';
-  banner.textContent=cfg.tip||'બંને એકસાથે રમો — વધુ સાચા જવાબ આપનાર જીતે';
+  banner.textContent=cfg.tip||'બંને એકસાથે રમો — સવાલ જુદા, અઘરાઈ સરખી';
   body.appendChild(banner);
   var wrap=document.createElement('div');
   wrap.style.cssText='display:flex;gap:10px;width:100%;max-width:1700px;margin:0 auto;'+
@@ -9846,7 +9853,7 @@ function gmVs(body,cfg){
       p.appendChild(w2);
       return;
     }
-    var q=qs[st.i];
+    var q=qs[sd][st.i];
     var qb=document.createElement('div');
     qb.style.cssText='margin:8px 0';
     if(q.html) qb.innerHTML=q.html;
@@ -10180,7 +10187,7 @@ definePage('g_pair','🧠 જોડી શોધો · સામસામે',fu
 
 /* ================= 🔢 આગળ શું આવશે? ================= */
 definePage('g_next','🔢 આગળ શું આવશે? · સામસામે',function(body){
-  gmVs(body,{rounds:8, tip:'બંનેને એક જ ભાત મળે — વધુ સાચા આપનાર જીતે',
+  gmVs(body,{rounds:8, tip:'બંનેને જુદી ભાત મળે — અઘરાઈ સરખી',
     make:function(){
       var kind=R2(0,2), a=R2(2,12), d, seq=[], ans;
       if(kind===0){ d=R2(2,9); for(var i=0;i<5;i++) seq.push(a+d*i); ans=a+d*5 }
@@ -10227,9 +10234,12 @@ definePage('g_table','⏱ ઘડિયા દોડ · સામસામે',fu
     host.innerHTML='';
     var box=document.createElement('div');
     host.appendChild(box);
-    gmVs(box,{rounds:10, tip:tab+' નો ઘડિયો — બંને એકસાથે, વધુ સાચા આપનાર જીતે',
-      make:function(i){
-        var k=i+1, ans=tab*k, opts=[ans], guard=0;
+    var ord={};
+    gmVs(box,{rounds:10,
+      tip:tab+' નો ઘડિયો — બંનેને એ જ ઘડિયો, પણ ક્રમ જુદો',
+      make:function(i,sd){
+        if(!ord[sd]) ord[sd]=gmShuffle([1,2,3,4,5,6,7,8,9,10]);
+        var k=ord[sd][i], ans=tab*k, opts=[ans], guard=0;
         while(opts.length<4 && guard++<60){
           var o=tab*R2(1,12);
           if(o!==ans && opts.indexOf(o)<0) opts.push(o);
