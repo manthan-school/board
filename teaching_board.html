@@ -9168,6 +9168,7 @@ function gmDuel(body,title,turns,play){
      દરેકને પોતાનો સવાલ મળે એટલે સામેની બાજુ જોવાનો કોઈ ફાયદો નથી. */
   body.classList.add('mid');
   var lv=0, S={}, fin=0, ended=false;
+  var WIN=Math.floor(turns/2)+1;      /* પહેલાં આટલા સાચા આપનાર જીતે */
   var host=document.createElement('div');
   host.style.cssText='width:100%;max-width:1700px;margin:0 auto';
   body.appendChild(host);
@@ -9197,7 +9198,8 @@ function gmDuel(body,title,turns,play){
     var n=document.createElement('div'); n.className='note';
     n.style.marginTop='12px';
     n.innerHTML='બંને ખેલાડી <b>એકસાથે</b> રમશે — ડાબી બાજુ ખેલાડી 1, જમણી બાજુ ખેલાડી 2. '+
-      'દરેકને <b>'+turns+' વાર</b> મળે, અને દરેકનો સવાલ જુદો હોય છે.';
+      'દરેકનો સવાલ જુદો હોય છે. જે પહેલાં <b>'+WIN+' સાચા</b> આપે તે જીતે, '+
+      'અને રમત ત્યાં જ પૂરી થાય.';
     c.appendChild(n);
   }
 
@@ -9230,7 +9232,7 @@ function gmDuel(body,title,turns,play){
       hd.className='evTop';
       hd.innerHTML='<span style="color:'+(sd==='L'?'#f472b6':'#38bdf8')+'">👤 ખેલાડી '+
         (sd==='L'?'1':'2')+'</span><span>'+Math.min(st.r+1,turns)+' / '+turns+
-        '</span><span>સાચા: '+st.score+'</span>';
+        '</span><span>સાચા: '+st.score+' / '+WIN+'</span>';
       p.appendChild(hd);
       if(st.done){
         var d=document.createElement('div');
@@ -9252,8 +9254,11 @@ function gmDuel(body,title,turns,play){
         area.style.cssText='flex:1';
         p.appendChild(area);
         play(area, lv, st.r, function(ok){
+          if(ended) return;
           if(ok) st.score++;
           lessonTimeout(function(){
+            if(ended) return;
+            if(st.score>=WIN){ winNow(sd,banner); return }
             st.r++;
             if(st.r>=turns){ st.done=true; fin++; ready(sd); check(banner) }
             else ready(sd);
@@ -9263,6 +9268,24 @@ function gmDuel(body,title,turns,play){
       p.appendChild(b);
     }
 
+    /* લક્ષ્ય પૂરું — બંને બાજુ અટકી જાય */
+    function winNow(sd,banner2){
+      if(ended) return;
+      ended=true;
+      ['L','R'].forEach(function(x){
+        S[x].done=true;
+        [].forEach.call(S[x].pane.querySelectorAll('button'),function(b){ b.disabled=true });
+      });
+      banner2.innerHTML='';
+      gmCup(banner2,'ખેલાડી '+(sd==='L'?'1':'2')+' જીત્યા!',
+        'પહેલાં '+WIN+' સાચા · ખેલાડી 1 · '+S.L.score+'   ·   ખેલાડી 2 · '+S.R.score);
+      var ag=document.createElement('button');
+      ag.className='btn pri';
+      ag.style.cssText+=';display:block;margin:10px auto 0;padding:11px 24px';
+      ag.textContent='↻ ફરી રમો';
+      ag.onclick=pickLevel;
+      banner2.appendChild(ag);
+    }
     function check(banner2){
       if(ended || fin<2) return;
       ended=true;
@@ -9806,6 +9829,9 @@ function gmTie(host,subText){
 function gmVs(body,cfg){
   body.classList.add('mid');
   var N=cfg.rounds||8;
+  /* બહુમતી એટલે જીત — જે પહેલાં આટલા સાચા આપે તે જીતે અને રમત ત્યાં જ
+     પૂરી. ઝડપ સાથે સાચાપણું પણ જોઈએ, નહીંતર ગમે તેમ દબાવીને જીતાય. */
+  var WIN=Math.floor(N/2)+1;
   /* દરેક ખેલાડીને પોતાના જ સવાલ મળે — અઘરાઈ સરખી, સવાલ જુદા.
      એટલે બાજુવાળાની સ્ક્રીન જોઈને નકલ કરી શકાય નહીં. */
   var qs={L:[],R:[]};
@@ -9815,7 +9841,8 @@ function gmVs(body,cfg){
   var banner=document.createElement('div');
   banner.style.cssText='max-width:1700px;margin:0 auto 8px;text-align:center;'+
     'font-family:var(--guj);font-size:16px;min-height:24px;color:var(--dim)';
-  banner.textContent=cfg.tip||'બંને એકસાથે રમો — સવાલ જુદા, અઘરાઈ સરખી';
+  banner.textContent=(cfg.tip||'બંને એકસાથે રમો — સવાલ જુદા, અઘરાઈ સરખી')+
+    '  ·  પહેલાં '+WIN+' સાચા આપનાર જીતે';
   body.appendChild(banner);
   var wrap=document.createElement('div');
   wrap.style.cssText='display:flex;gap:10px;width:100%;max-width:1700px;margin:0 auto;'+
@@ -9842,7 +9869,7 @@ function gmVs(body,cfg){
     hd.innerHTML='<span style="color:'+(sd==='L'?'#f472b6':'#38bdf8')+'">👤 ખેલાડી '+
       (sd==='L'?'1':'2')+'</span>'+
       '<span>'+Math.min(st.i+1,N)+' / '+N+'</span>'+
-      '<span>સાચા: '+st.score+'</span>';
+      '<span>સાચા: '+st.score+' / '+WIN+'</span>';
     p.appendChild(hd);
     if(st.done){
       var w2=document.createElement('div');
@@ -9879,11 +9906,13 @@ function gmVs(body,cfg){
         'font-family:'+(q.gujOpt?'var(--guj)':'var(--mono)')+';font-size:'+(q.gujOpt?16:22)+'px';
       b.textContent=o;
       b.onclick=function(){
-        if(st.done) return;
+        if(st.done || ended) return;
         var ok=(String(o)===String(q.ans));
         if(ok){ st.score++; sndOK() } else sndNO();
         gmFlash(b,ok);
         [].forEach.call(g.children,function(x){ x.disabled=true });
+        /* લક્ષ્ય પૂરું — રમત તરત જ પૂરી, બીજાએ રાહ જોવાની જરૂર નથી */
+        if(st.score>=WIN){ lessonTimeout(function(){ finishNow(sd) },350); return }
         lessonTimeout(function(){
           st.i++;
           if(st.i>=N){ st.done=true; fin++; draw(sd); check() }
@@ -9893,6 +9922,22 @@ function gmVs(body,cfg){
       g.appendChild(b);
     });
   }
+  function stopAll(){
+    ['L','R'].forEach(function(x){
+      S[x].done=true;
+      [].forEach.call(S[x].pane.querySelectorAll('button'),function(b){ b.disabled=true });
+    });
+  }
+  /* એક જણ લક્ષ્યે પહોંચ્યો — રમત અહીં જ પૂરી */
+  function finishNow(sd){
+    if(ended) return;
+    ended=true;
+    stopAll();
+    banner.innerHTML='';
+    gmCup(banner,'ખેલાડી '+(sd==='L'?'1':'2')+' જીત્યા!',
+      'પહેલાં '+WIN+' સાચા · ખેલાડી 1 · '+S.L.score+'   ·   ખેલાડી 2 · '+S.R.score);
+    replay();
+  }
   function check(){
     if(ended || fin<2) return;
     ended=true;
@@ -9901,6 +9946,9 @@ function gmVs(body,cfg){
     if(a===b) gmTie(banner,'બંનેના '+a+' / '+N+' સાચા');
     else gmCup(banner,'ખેલાડી '+(a>b?'1':'2')+' જીત્યા!',
                'ખેલાડી 1 · '+a+'   ·   ખેલાડી 2 · '+b);
+    replay();
+  }
+  function replay(){
     var again=document.createElement('button');
     again.className='btn pri';
     again.style.cssText+=';display:block;margin:10px auto 0;padding:11px 24px';
