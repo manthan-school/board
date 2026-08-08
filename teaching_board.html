@@ -6475,7 +6475,7 @@ var EMO=['🍎','⭐','🌸','🐟','🥭','🦋','🎈','🍬'];
    Options include the mistakes students really make, so a wrong tap
    is a teaching moment.
    ================================================================== */
-var BOARD_BUILD='2026-08-04 · 🎮 રમતો વિભાગ';
+var BOARD_BUILD='2026-08-04 · યાદશક્તિ · 2 ખેલાડી';
 var GEN_TYPE='whole';     /* number type દાખલા બનાવો builds for */
 var DUAL_SCOPE='whole';   /* tools the 2-student page offers */
 window.__setScope=function(g,d){ if(g) GEN_TYPE=g; if(d) DUAL_SCOPE=d };
@@ -9120,8 +9120,269 @@ var GAMES=[
   ['g_order','🎯','ક્રમમાં ગોઠવો','નાનાથી મોટા — પૂર્ણ સંખ્યા · દશાંશ · અપૂર્ણાંક','#22c55e','#0d2818'],
   ['g_pair','🧠','જોડી શોધો','સરખી કિંમત જોડો — ½ અને 0.5 જેવી','#a855f7','#1e1030'],
   ['g_next','🔢','આગળ શું આવશે?','સંખ્યાની ભાત ઓળખો','#0ea5e9','#0c2233'],
-  ['g_table','⏱','ઘડિયા દોડ','ઘડિયા કેટલા ઝડપથી આવડે?','#ef4444','#2a1214']
+  ['g_table','⏱','ઘડિયા દોડ','ઘડિયા કેટલા ઝડપથી આવડે?','#ef4444','#2a1214'],
+  ['g_span','🔢','અંક યાદ · 2 ખેલાડી','સંખ્યા જોઈ લો, પછી યાદથી લખો — સામસામે','#f472b6','#2a1020'],
+  ['g_simon','🎨','ક્રમ યાદ · 2 ખેલાડી','રંગ કયા ક્રમે ઝબક્યા? — સામસામે','#14b8a6','#0c2422'],
+  ['g_gone','🔍','શું ગાયબ થયું? · 2 ખેલાડી','ધ્યાનથી જુઓ — પછી કહો કોણ ગયું','#8b5cf6','#1a1030']
 ];
+
+/* ==================================================================
+   🧠 યાદશક્તિની રમતો — બે ખેલાડી સામસામે
+   ------------------------------------------------------------------
+   ત્રણેય રમત એક જ ઢાંચા પર ચાલે છે: સહેલું · મધ્યમ · અઘરું પસંદ કરો,
+   પછી બંને ખેલાડી વારાફરતી પાંચ-પાંચ વાર રમે. દરેક સાચા જવાબનો
+   એક ગુણ. છેલ્લે વધુ ગુણવાળો જીતે — સરખા થાય તો બરાબરી.
+   ================================================================== */
+var GM_LV=[['સહેલું','#22c55e','#0d2818'],['મધ્યમ','#f59e0b','#2a2010'],
+           ['અઘરું','#ef4444','#2a1214']];
+
+function gmDuel(body,title,turns,play){
+  body.classList.add('mid');
+  var c=gmCard(body), lv=0, sc=[0,0], r=0, p=0;
+
+  function pickLevel(){
+    c.innerHTML='';
+    var h=document.createElement('div');
+    h.style.cssText='text-align:center;font-family:var(--guj);font-size:20px;margin-bottom:14px';
+    h.textContent=title+' — કેટલું અઘરું?';
+    c.appendChild(h);
+    var g=document.createElement('div');
+    g.style.cssText='display:grid;grid-template-columns:repeat(3,1fr);gap:10px';
+    c.appendChild(g);
+    GM_LV.forEach(function(L,i){
+      var b=document.createElement('button');
+      b.style.cssText='padding:22px 8px;border-radius:14px;cursor:pointer;color:var(--ink);'+
+        'font-family:var(--guj);font-size:18px;font-weight:700;'+
+        'border:1px solid '+L[1]+';background:'+L[2];
+      b.textContent=L[0];
+      b.onclick=function(){ lv=i; sc=[0,0]; r=0; p=0; ready() };
+      g.appendChild(b);
+    });
+    var n=document.createElement('div'); n.className='note';
+    n.style.marginTop='12px';
+    n.innerHTML='બંને ખેલાડી વારાફરતી <b>'+turns+'-'+turns+' વાર</b> રમશે. '+
+      'દરેક સાચા જવાબનો એક ગુણ.';
+    c.appendChild(n);
+  }
+  function bar(){
+    var d=document.createElement('div');
+    d.className='evTop';
+    d.innerHTML='<span style="color:'+(p===0?'#f472b6':'var(--dim)')+'">'+
+        '👤 ખેલાડી 1 · '+sc[0]+'</span>'+
+      '<span>રાઉન્ડ '+(r+1)+' / '+turns+'</span>'+
+      '<span style="color:'+(p===1?'#38bdf8':'var(--dim)')+'">'+
+        'ખેલાડી 2 · '+sc[1]+' 👤</span>';
+    return d;
+  }
+  function ready(){
+    if(r>=turns){ finish(); return }
+    c.innerHTML='';
+    c.appendChild(bar());
+    var h=document.createElement('div');
+    h.style.cssText='text-align:center;font-family:var(--guj);font-size:26px;margin:26px 0 6px;'+
+      'color:'+(p===0?'#f472b6':'#38bdf8');
+    h.textContent='ખેલાડી '+(p+1)+' નો વારો';
+    c.appendChild(h);
+    var b=document.createElement('button');
+    b.className='btn pri';
+    b.style.cssText+=';width:100%;padding:15px;margin-top:12px;font-size:17px';
+    b.textContent='તૈયાર ▶';
+    b.onclick=function(){
+      c.innerHTML='';
+      c.appendChild(bar());
+      play(c, lv, r, function(ok){
+        if(ok){ sc[p]++; sndOK() } else sndNO();
+        lessonTimeout(function(){
+          p++;
+          if(p>1){ p=0; r++ }
+          ready();
+        },900);
+      });
+    };
+    c.appendChild(b);
+  }
+  function finish(){
+    c.innerHTML='';
+    var win = sc[0]===sc[1] ? 0 : (sc[0]>sc[1] ? 1 : 2);
+    c.appendChild(gmBig(win===0?'🤝':'🏆',62));
+    var t=document.createElement('div');
+    t.style.cssText='text-align:center;font-family:var(--guj);font-size:22px;line-height:1.7';
+    t.innerHTML = win===0
+      ? 'બરાબરી! બંનેના '+sc[0]+' ગુણ'
+      : '<b>ખેલાડી '+win+' જીત્યા!</b><br>'+
+        '<span style="font-size:16px;color:var(--dim)">ખેલાડી 1 · '+sc[0]+
+        '   ·   ખેલાડી 2 · '+sc[1]+'</span>';
+    c.appendChild(t);
+    var b=document.createElement('button');
+    b.className='btn pri'; b.style.cssText+=';width:100%;padding:13px;margin-top:16px';
+    b.textContent='↻ ફરી રમો';
+    b.onclick=pickLevel;
+    c.appendChild(b);
+  }
+  pickLevel();
+}
+
+/* ================= 🔢 અંક યાદ ================= */
+definePage('g_span','🔢 અંક યાદ · 2 ખેલાડી',function(body){
+  gmDuel(body,'અંક યાદ',5,function(c,lv,r,done){
+    var len=[3,4,5][lv]+r;                      /* દર રાઉન્ડે એક અંક વધે */
+    var num=''; for(var i=0;i<len;i++) num+=R2(i===0?1:0,9);
+    var show=document.createElement('div');
+    show.style.cssText='text-align:center;font-family:var(--mono);font-size:52px;'+
+      'letter-spacing:9px;margin:26px 0';
+    show.textContent=num;
+    c.appendChild(show);
+    var tip=document.createElement('div');
+    tip.style.cssText='text-align:center;font-family:var(--guj);font-size:15px;color:#fbbf24';
+    tip.textContent='ધ્યાનથી જુઓ…';
+    c.appendChild(tip);
+    lessonTimeout(function(){
+      show.textContent='• • •';
+      show.style.letterSpacing='6px';
+      tip.textContent='હવે યાદથી લખો';
+      var typed='';
+      var out=document.createElement('div');
+      out.style.cssText='text-align:center;font-family:var(--mono);font-size:34px;'+
+        'letter-spacing:7px;margin:12px 0;min-height:42px;color:#86efac';
+      c.appendChild(out);
+      var pad=flnPad(function(k){
+        if(k==='⌫'){ typed=typed.slice(0,-1); out.textContent=typed; return }
+        if(k==='✔'){
+          var ok=(typed===num);
+          show.textContent=num;
+          show.style.color=ok?'#22c55e':'#f87171';
+          tip.textContent=ok?'✅ સાચું!':'❌ સાચો જવાબ ઉપર છે';
+          pad.style.pointerEvents='none'; pad.style.opacity='.4';
+          done(ok);
+          return;
+        }
+        if(typed.length<len){ typed+=k; out.textContent=typed }
+      });
+      pad.style.maxWidth='340px'; pad.style.margin='10px auto 0';
+      c.appendChild(pad);
+    }, 700+len*450);
+  });
+});
+
+/* ================= 🎨 ક્રમ યાદ ================= */
+definePage('g_simon','🎨 ક્રમ યાદ · 2 ખેલાડી',function(body){
+  gmDuel(body,'ક્રમ યાદ',5,function(c,lv,r,done){
+    var COL=[['#ef4444','લાલ'],['#22c55e','લીલો'],['#3b82f6','વાદળી'],
+             ['#f59e0b','પીળો'],['#a855f7','જાંબલી'],['#14b8a6','લીલોછમ'],
+             ['#ec4899','ગુલાબી'],['#84cc16','આછો લીલો'],['#f97316','નારંગી']];
+    var n=[4,6,9][lv], len=[3,4,4][lv]+r;
+    var seq=[]; for(var i=0;i<len;i++) seq.push(R2(0,n-1));
+    var tip=document.createElement('div');
+    tip.style.cssText='text-align:center;font-family:var(--guj);font-size:16px;'+
+      'color:#fbbf24;margin:8px 0';
+    tip.textContent='ધ્યાનથી જુઓ — કયા ક્રમે ઝબકે છે?';
+    c.appendChild(tip);
+    var g=document.createElement('div');
+    g.style.cssText='display:grid;grid-template-columns:repeat('+(n>4?3:2)+',1fr);'+
+      'gap:10px;max-width:420px;margin:14px auto 0';
+    c.appendChild(g);
+    var tiles=[];
+    for(var k=0;k<n;k++)(function(ix){
+      var b=document.createElement('button');
+      b.style.cssText='height:82px;border-radius:15px;border:2px solid '+COL[ix][0]+';'+
+        'background:'+COL[ix][0]+'22;cursor:pointer;transition:background .12s';
+      b.disabled=true;
+      tiles.push(b); g.appendChild(b);
+    })(k);
+    tiles.forEach(function(b,ix){ g.appendChild(b) });
+    function flash(ix,cb){
+      var b=tiles[ix];
+      b.style.background=COL[ix][0];
+      lessonTimeout(function(){ b.style.background=COL[ix][0]+'22'; cb&&cb() },420);
+    }
+    var si=0;
+    function playSeq(){
+      if(si>=seq.length){
+        tip.textContent='હવે એ જ ક્રમે દબાવો';
+        tiles.forEach(function(b){ b.disabled=false });
+        var pi=0;
+        tiles.forEach(function(b,ix){
+          b.onclick=function(){
+            if(ix===seq[pi]){
+              flash(ix); pi++;
+              if(pi>=seq.length){
+                tiles.forEach(function(x){ x.disabled=true });
+                tip.textContent='✅ સાચું!'; tip.style.color='#22c55e';
+                done(true);
+              }
+            }else{
+              tiles.forEach(function(x){ x.disabled=true });
+              tip.textContent='❌ ખોટો ક્રમ'; tip.style.color='#f87171';
+              done(false);
+            }
+          };
+        });
+        return;
+      }
+      var ix=seq[si++];
+      flash(ix,function(){ lessonTimeout(playSeq,190) });
+    }
+    lessonTimeout(playSeq,700);
+  });
+});
+
+/* ================= 🔍 શું ગાયબ થયું? ================= */
+definePage('g_gone','🔍 શું ગાયબ થયું? · 2 ખેલાડી',function(body){
+  gmDuel(body,'શું ગાયબ થયું?',5,function(c,lv,r,done){
+    var POOL=['🍎','🌳','🐟','⭐','🌸','🚲','🏠','🐘','☂️','🥭','🦋','🪁',
+              '🧵','🔔','🥁','🪔','🧺','🐄','🌙','🍋','🪷','🐓','🚂','🧊'];
+    var n=[6,9,12][lv];
+    var items=gmShuffle(POOL.slice()).slice(0,n);
+    var tip=document.createElement('div');
+    tip.style.cssText='text-align:center;font-family:var(--guj);font-size:16px;'+
+      'color:#fbbf24;margin:8px 0';
+    tip.textContent='બધું ધ્યાનથી જોઈ લો…';
+    c.appendChild(tip);
+    var g=document.createElement('div');
+    g.style.cssText='display:grid;grid-template-columns:repeat('+(n>9?4:3)+',1fr);'+
+      'gap:9px;max-width:460px;margin:12px auto 0';
+    c.appendChild(g);
+    function paint(list){
+      g.innerHTML='';
+      list.forEach(function(it){
+        var d=document.createElement('div');
+        d.style.cssText='height:72px;border-radius:13px;border:1px solid var(--line);'+
+          'background:#0b1220;display:flex;align-items:center;justify-content:center;font-size:35px';
+        d.textContent=it;
+        g.appendChild(d);
+      });
+    }
+    paint(items);
+    lessonTimeout(function(){
+      var goneIx=R2(0,items.length-1), gone=items[goneIx];
+      var rest=items.slice(); rest.splice(goneIx,1);
+      paint(gmShuffle(rest.slice()));
+      tip.textContent='કયું ગાયબ થયું?';
+      var opts=[gone];
+      var others=gmShuffle(rest.slice()).slice(0,3);
+      opts=gmShuffle(opts.concat(others));
+      var og=document.createElement('div');
+      og.style.cssText='display:grid;grid-template-columns:repeat(4,1fr);gap:9px;'+
+        'max-width:460px;margin:14px auto 0';
+      c.appendChild(og);
+      opts.forEach(function(o){
+        var b=document.createElement('button');
+        b.style.cssText='height:66px;border-radius:13px;border:1px solid var(--line);'+
+          'background:#111827;font-size:31px;cursor:pointer';
+        b.textContent=o;
+        b.onclick=function(){
+          [].forEach.call(og.children,function(x){ x.disabled=true });
+          var ok=(o===gone);
+          gmFlash(b,ok);
+          tip.textContent=ok?'✅ સાચું!':('❌ ગાયબ હતું: '+gone);
+          tip.style.color=ok?'#22c55e':'#f87171';
+          done(ok);
+        };
+        og.appendChild(b);
+      });
+    }, 1400+n*260);
+  });
+});
 definePage('games','🎮 રમતો · GAMES',function(body){
   body.classList.add('mid');
   var w=document.createElement('div');
