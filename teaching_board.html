@@ -98,6 +98,18 @@ html,body{height:100%;overflow:hidden;background:#000;color:var(--ink);
 .bk:active{background:#2d3d55;transform:scale(.96)}
 .bk svg{width:19px;height:19px;flex-shrink:0}
 .pgBody{flex:1;overflow-y:auto;padding:18px;-webkit-overflow-scrolling:touch}
+/* ---- પહોળું પાનું: PDF જેવાં પાનાં માટે આખી સ્ક્રીન ----
+   ઉપરની પટ્ટી પાતળી થાય, ખૂણાની જગ્યા જાય, અને પાનું જાતે ઊંચાઈ સંભાળે. */
+.pg.wide .pgTop{padding:4px 8px;gap:7px}
+.pg.wide .pgTop h2{font-size:13.5px}
+.pg.wide .pgTop .bk{height:32px;padding:0 12px;font-size:12.5px;border-radius:16px}
+.pg.wide .pgTop .bk svg{width:15px;height:15px}
+.pg.wide .pgTop .zmBox{padding:2px}
+.pg.wide .pgTop .zmB{width:30px;height:30px;font-size:17px;border-radius:15px}
+.pg.wide .pgBody{padding:0;overflow:hidden}
+.pg.wide .pgZoom{height:100%;min-height:0}
+/* ⛶ આખી સ્ક્રીન — ઉપરની પટ્ટી પણ ગાયબ */
+.pg.bare .pgTop{display:none}
 /* everything a page draws lives inside .pgZoom, so 🔍 can shrink or grow the
    work without touching the header — handy when the keypad falls off the
    bottom of the panel in ટેસ્ટ mode. The header stays full size so the zoom
@@ -489,6 +501,26 @@ body.pageOpen #pnlDot, body.pageOpen #pnlPanel{display:none !important}
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">
       <path d="M12 6.5C10.2 4.9 7.6 4.2 3.5 4.3v13.4c4.1-.1 6.7.6 8.5 2.2 1.8-1.6 4.4-2.3 8.5-2.2V4.3c-4.1-.1-6.7.6-8.5 2.2Z"/>
       <path d="M12 6.5v13.4"/></svg></button>
+
+  <!-- 2b. question mark -> two PDFs side by side -->
+  <button class="tbtn" data-go="twopdf" data-tip="બે ચોપડી સાથે &middot; 2 PDF">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+      stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="9.3"/>
+      <path d="M9.3 9.1a2.8 2.8 0 0 1 5.4.9c0 1.9-2.7 2.4-2.7 4"/>
+      <path d="M12 17.3h.01"/>
+    </svg></button>
+
+  <!-- 3a. brain -> Memory training -->
+  <button class="tbtn" data-go="memory" data-tip="યાદશક્તિ &middot; Memory">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+      stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 3.4a2.9 2.9 0 0 0-2.9 2.9 2.6 2.6 0 0 0-1.8 4.3 2.7 2.7 0 0 0 .5 3.9
+               2.8 2.8 0 0 0 2.6 3.4 2.7 2.7 0 0 0 4.6 1.8V4.6A2.6 2.6 0 0 0 9 3.4Z"/>
+      <path d="M15 3.4a2.9 2.9 0 0 1 2.9 2.9 2.6 2.6 0 0 1 1.8 4.3 2.7 2.7 0 0 1-.5 3.9
+               2.8 2.8 0 0 1-2.6 3.4 2.7 2.7 0 0 1-4.6 1.8V4.6A2.6 2.6 0 0 1 15 3.4Z"/>
+      <path d="M12 20.6v1.2"/>
+    </svg></button>
 
   <!-- 3b. dice -> Games -->
   <button class="tbtn" data-go="games" data-tip="રમતો &middot; Games">
@@ -1950,11 +1982,24 @@ function loadConfig(cb){
       /* SHOW GAMES પણ શીટમાંથી જ આવે છે — એને પણ સાચવો */
       var keepG=(MAIN.cfg && MAIN.cfg.showFrom==='sheet' && MAIN.cfg.show &&
                  MAIN.cfg.show.games!==undefined) ? MAIN.cfg.show.games : undefined;
+      var keepM=(MAIN.cfg && MAIN.cfg.showFrom==='sheet' && MAIN.cfg.show &&
+                 MAIN.cfg.show.memory!==undefined) ? MAIN.cfg.show.memory : undefined;
+      var keepR={};
+      if(MAIN.cfg && MAIN.cfg.showFrom==='sheet' && MAIN.cfg.show){
+        ['explain','pdf','twopdf','youtube','gshala','settings',
+         'allview','tview','sixcam'].forEach(function(k2){
+          if(MAIN.cfg.show[k2]!==undefined) keepR[k2]=MAIN.cfg.show[k2];
+        });
+      }
       MAIN.cfg=d;
       if(keep){ MAIN.cfg.allow=keep; MAIN.cfg.allowFrom='sheet' }
-      if(keepG!==undefined){
+      var anyKeep=(keepG!==undefined)||(keepM!==undefined);
+      for(var kk in keepR) if(keepR.hasOwnProperty(kk)) anyKeep=true;
+      if(anyKeep){
         MAIN.cfg.show=MAIN.cfg.show||{};
-        MAIN.cfg.show.games=keepG;
+        if(keepG!==undefined) MAIN.cfg.show.games=keepG;
+        if(keepM!==undefined) MAIN.cfg.show.memory=keepM;
+        for(var k3 in keepR) if(keepR.hasOwnProperty(k3)) MAIN.cfg.show[k3]=keepR[k3];
         MAIN.cfg.showFrom='sheet';
       }
       store.set('vrd_main_cfg',MAIN.cfg);
@@ -1982,12 +2027,29 @@ function loadAllowFromSheet(cb){
         if(k==='ALLOW FLN TEST')        got.flnTest =!off;
         /* 🎮 રમતોનું બટન — શીટમાંથી જ ચાલુ/બંધ. જૂની સ્ક્રિપ્ટ બદલવાની
            જરૂર નથી, કારણ કે બોર્ડ SETTINGS પાનું સીધું વાંચે છે. */
-        if(k==='SHOW GAMES' || k==='રમતો') got.games=!off;
+        /* જમણી પટ્ટીનું દરેક બટન શીટમાંથી ચાલુ/બંધ */
+        if(k==='SHOW GAMES'    || k==='રમતો')      got.games=!off;
+        if(k==='SHOW MEMORY'   || k==='યાદશક્તિ')  got.memory=!off;
+        if(k==='SHOW EXPLAIN'  || k==='સમજાવો')    got.explain=!off;
+        if(k==='SHOW PDF'      || k==='ચોપડી')     got.pdf=!off;
+        if(k==='SHOW 2PDF'     || k==='બે ચોપડી')  got.twopdf=!off;
+        if(k==='SHOW YOUTUBE')                     got.youtube=!off;
+        if(k==='SHOW GSHALA'   || k==='જી શાળા')   got.gshala=!off;
+        if(k==='SHOW SETTINGS' || k==='સેટિંગ')    got.settings=!off;
+        if(k==='SHOW ALL CLASSES')                 got.allview=!off;
+        if(k==='SHOW TEACHER VIEW')                got.tview=!off;
+        if(k==='SHOW SIX CAMERA')                  got.sixcam=!off;
       });
-      if(got.games!==undefined){
+      var anyShow=false;
+      for(var gk in got) if(got.hasOwnProperty(gk) &&
+        gk!=='evalTest' && gk!=='flnTest') anyShow=true;
+      if(anyShow){
         MAIN.cfg=MAIN.cfg||{};
         var sh=MAIN.cfg.show||{};
-        sh.games=got.games;
+        ['games','memory','explain','pdf','twopdf','youtube','gshala',
+         'settings','allview','tview','sixcam'].forEach(function(k2){
+          if(got[k2]!==undefined) sh[k2]=got[k2];
+        });
         MAIN.cfg.show=sh;
         MAIN.cfg.showFrom='sheet';
         store.set('vrd_main_cfg',MAIN.cfg);
@@ -2079,6 +2141,18 @@ function applyRemote(cfg){
   railShow('[data-go="monitor"]', show.monitor);
   railShow('[data-go="report"]', show.reports);
   railShow('[data-go="games"]', show.games);
+  railShow('[data-go="memory"]', show.memory);
+  railShow('[data-go="explain"]', show.explain);
+  railShow('[data-go="pdf"]', show.pdf);
+  railShow('[data-go="twopdf"]', show.twopdf);
+  railShow('[data-go="youtube"]', show.youtube);
+  railShow('[data-go="gshala"]', show.gshala);
+  /* ⚙ સેટિંગ ત્યારે જ છુપાય જ્યારે શીટ સાથે જોડાણ હોય — નહીંતર
+     બોર્ડ પાછું જોડવાનો કોઈ રસ્તો જ ન રહે */
+  railShow('[data-go="settings"]', (MAIN.url && show.settings===false) ? false : true);
+  if(show.allview===false) railShow('[data-go="allview"]', false);
+  if(show.tview===false)   railShow('[data-go="tview"]', false);
+  if(show.sixcam===false)  railShow('[data-go="sixcam"]', false);
   /* 4. lock every board from the sheet */
   if(cfg.lockAll){
     var lk=document.getElementById('lock');
@@ -9132,6 +9206,801 @@ definePage('sixcam','🎥 6 કૅમેરા · બધા વર્ગ',functi
 });
 
 /* ==================================================================
+   ❓ બે ચોપડી સાથે · 2 PDF — સ્ક્રીન બે ભાગમાં
+   ------------------------------------------------------------------
+   ડાબે એક PDF, જમણે બીજું. બંને એ જ Drive ફોલ્ડરમાંથી ખૂલે છે જે
+   📕 ચોપડી બટન વાપરે છે (SETTINGS → PDF FOLDER), એટલે અલગ કંઈ
+   ગોઠવવાનું નથી. પ્રશ્નપત્ર અને જવાબ, કે પાઠ અને સ્વાધ્યાય —
+   બંને એકસાથે જોઈ શકાય.
+   દરેક બાજુનું પોતાનું ડાર્ક/લાઇટ બટન, પહોળાઈ અને નવી ટૅબ.
+   ================================================================== */
+definePage('twopdf','❓ બે ચોપડી સાથે · 2 PDF',function(body,pg){
+  /* આખી સ્ક્રીન વાપરવી છે — પાતળી પટ્ટી, કોઈ હાંસિયો નહીં */
+  if(pg) pg.classList.add('wide');
+  var wrap=document.createElement('div');
+  wrap.style.cssText='display:flex;gap:5px;width:100%;height:100%;'+
+    'align-items:stretch;flex-wrap:nowrap;padding:5px;box-sizing:border-box';
+  body.appendChild(wrap);
+
+  /* ⛶ આખી સ્ક્રીન — ઉપરની પટ્ટી પણ છુપાય, ને નાનું પાછળ બટન દેખાય */
+  var fsWrap=document.createElement('div');
+  fsWrap.style.cssText='position:absolute;right:8px;top:8px;z-index:5;display:none;gap:6px';
+  var fsBack=document.createElement('button');
+  fsBack.className='jtFB';
+  fsBack.style.cssText+=';min-width:34px;height:32px;font-size:14px;'+
+    'background:#0d1320;border-color:#334155;opacity:.82';
+  fsBack.innerHTML='←';
+  fsBack.title='પાછળ';
+  fsBack.onclick=function(){ NAV.back() };
+  var fsOut=document.createElement('button');
+  fsOut.className='jtFB';
+  fsOut.style.cssText+=';min-width:34px;height:32px;font-size:14px;'+
+    'background:#0d1320;border-color:#334155;opacity:.82';
+  fsOut.innerHTML='⛶';
+  fsOut.title='પટ્ટી પાછી લાવો';
+  fsOut.onclick=function(){ bare(false) };
+  fsWrap.appendChild(fsBack); fsWrap.appendChild(fsOut);
+  body.appendChild(fsWrap);
+  function bare(on){
+    if(pg) pg.classList.toggle('bare',on);
+    fsWrap.style.display=on?'flex':'none';
+  }
+  var FOLD=store.get('vrd_pdffolders',null)||[];   /* 📕 ચોપડી બટન સાથે વહેંચાયેલી યાદી */
+  var FILES={};
+
+  ['L','R'].forEach(function(sd){ half(sd) });
+
+  function half(sd){
+    var col=document.createElement('div');
+    col.style.cssText='flex:1 1 0;min-width:0;display:flex;flex-direction:column;'+
+      'border:1px solid '+(sd==='L'?'#1d4ed8':'#7c3aed')+';border-radius:14px;'+
+      'overflow:hidden;background:#0d1320';
+    wrap.appendChild(col);
+
+    var bar=document.createElement('div');
+    bar.style.cssText='display:flex;gap:5px;align-items:center;padding:7px 8px;'+
+      'background:#111827;border-bottom:1px solid var(--line);flex-wrap:nowrap;overflow:hidden';
+    col.appendChild(bar);
+
+    var nm=document.createElement('span');
+    nm.style.cssText='flex:1;min-width:0;font-family:var(--guj);font-size:12.5px;'+
+      'color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+    nm.textContent=(sd==='L'?'ડાબી બાજુ':'જમણી બાજુ')+' — ચોપડી ખોલો';
+    bar.appendChild(nm);
+
+    function tb(txt,title,fn,extra){
+      var b=document.createElement('button');
+      b.className='jtFB';
+      b.style.cssText+=';min-width:32px;height:31px;font-size:13.5px'+(extra||'');
+      b.innerHTML=txt; b.title=title||'';
+      b.onclick=fn;
+      bar.appendChild(b);
+      return b;
+    }
+
+    var box=document.createElement('div');
+    box.style.cssText='flex:1;position:relative;min-height:0;background:#000';
+    col.appendChild(box);
+
+    var fr=document.createElement('iframe');
+    fr.title='PDF '+sd;
+    fr.style.cssText='width:100%;height:100%;border:0;display:none;background:#fff';
+    box.appendChild(fr);
+
+    var empty=document.createElement('div');
+    empty.style.cssText='position:absolute;inset:0;display:flex;align-items:center;'+
+      'justify-content:center;text-align:center;padding:20px;font-family:var(--guj);'+
+      'font-size:14px;color:var(--dim);line-height:2';
+    empty.innerHTML='📁 <b>Drive</b> દબાવીને શાળાની ચોપડી ખોલો<br>'+
+      'કે 📂 <b>ફાઇલ</b> દબાવીને આ કમ્પ્યુટરમાંથી ખોલો';
+    box.appendChild(empty);
+
+    /* ---- ફોલ્ડર/ફાઇલ યાદી — આ જ બાજુ ઉપર ખૂલે ---- */
+    var list=document.createElement('div');
+    list.style.cssText='position:absolute;inset:0;display:none;overflow-y:auto;'+
+      'padding:10px;background:#0b1220;-webkit-overflow-scrolling:touch';
+    box.appendChild(list);
+
+    var localUrl=null, cur=null, folder=null;
+    var fileIn=document.createElement('input');
+    fileIn.type='file'; fileIn.accept='application/pdf'; fileIn.style.display='none';
+    col.appendChild(fileIn);
+    fileIn.onchange=function(){
+      var f=fileIn.files&&fileIn.files[0]; fileIn.value='';
+      if(!f) return;
+      if(localUrl) URL.revokeObjectURL(localUrl);
+      localUrl=URL.createObjectURL(f);
+      cur=localUrl+'#view=FitH';
+      fr.src=cur; fr.style.display='';
+      empty.style.display='none'; list.style.display='none';
+      nm.textContent=f.name;
+    };
+
+    tb('📁','Drive ફોલ્ડરમાંથી',function(){ folder=null; draw(); list.style.display='block' });
+    tb('📂','આ કમ્પ્યુટરમાંથી',function(){ fileIn.click() });
+    tb('⤢','પહોળાઈમાં બેસાડો',function(){
+      if(!cur) return;
+      var base=cur.split('#')[0];
+      cur=base+'#view=FitH';
+      fr.src=cur;
+    });
+    var dk=tb('🌙','ડાર્ક · લાઇટ',function(){
+      var on=fr.style.filter ? '' : 'invert(1) hue-rotate(180deg)';
+      fr.style.filter=on;
+      dk.classList.toggle('on',!!on);
+      dk.innerHTML=on?'☀':'🌙';
+      dk.title=on?'લાઇટ કરો':'ડાર્ક કરો';
+    });
+    tb('↗','નવી ટૅબમાં',function(){
+      if(!cur){ csToast&&csToast('પહેલાં ચોપડી ખોલો','#2a2010'); return }
+      openTab(cur.split('#')[0]);
+    });
+    tb('✕','બંધ કરો',function(){
+      fr.src='about:blank'; fr.style.display='none';
+      empty.style.display=''; list.style.display='none';
+      cur=null; nm.textContent=(sd==='L'?'ડાબી બાજુ':'જમણી બાજુ')+' — ચોપડી ખોલો';
+    });
+
+    function msg(t){
+      var d=document.createElement('div');
+      d.style.cssText='color:#94a3b8;font-size:13.5px;line-height:2;text-align:center;'+
+        'padding:16px 8px;font-family:var(--guj)';
+      d.innerHTML=t; list.appendChild(d);
+    }
+    function item(ic,title,fn){
+      var b=document.createElement('button');
+      b.style.cssText='display:flex;align-items:center;gap:10px;width:100%;margin-bottom:7px;'+
+        'padding:11px 12px;border-radius:11px;border:1px solid var(--line);background:#111827;'+
+        'color:var(--ink);font-family:var(--guj);font-size:13.5px;font-weight:600;'+
+        'cursor:pointer;text-align:left;touch-action:manipulation';
+      b.innerHTML='<span style="font-size:17px;flex-shrink:0">'+ic+'</span>'+
+        '<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+
+        esc(title)+'</span>';
+      b.onclick=fn; list.appendChild(b);
+    }
+    function openPdf(f){
+      cur=f.url;
+      fr.src=cur; fr.style.display='';
+      empty.style.display='none'; list.style.display='none';
+      nm.textContent=f.name;
+    }
+    function draw(){
+      list.innerHTML='';
+      var sb=document.createElement('button');
+      sb.style.cssText='width:100%;padding:10px;margin-bottom:9px;background:#0d1f16;'+
+        'border:1px solid #166534;border-radius:11px;color:var(--ink);font-weight:700;'+
+        'font-size:13px;font-family:var(--guj);cursor:pointer';
+      sb.textContent='↻ SYNC · PDF ફોલ્ડર';
+      sb.onclick=function(){
+        sb.textContent='⏳ Sync…';
+        contentApi('pdffolders',{},function(d){
+          if(d&&d.ok){ FOLD=d.folders||[]; store.set('vrd_pdffolders',FOLD) }
+          draw();
+        },function(){ draw() });
+      };
+      list.appendChild(sb);
+      var cl=document.createElement('button');
+      cl.style.cssText='width:100%;padding:9px;margin-bottom:9px;background:#111827;'+
+        'border:1px solid var(--line);border-radius:11px;color:var(--dim);'+
+        'font-size:12.5px;font-family:var(--guj);cursor:pointer';
+      cl.textContent='✕ યાદી બંધ કરો';
+      cl.onclick=function(){ list.style.display='none' };
+      list.appendChild(cl);
+
+      if(!contentUrl()){ msg('પહેલાં ⚙ Settings માં શાળા શીટ જોડો'); return }
+      if(!folder){
+        if(!FOLD.length){
+          msg('ફોલ્ડર યાદી ખાલી.<br>શાળા શીટ → SETTINGS માં <b>PDF FOLDER</b> ભરો,<br>'+
+              'પછી ઉપર <b>↻ SYNC</b> દબાવો.');
+          return;
+        }
+        FOLD.forEach(function(fo){
+          item('📁', fo.name, function(){
+            folder=fo; draw();
+            if(FILES[fo.folderId]===undefined){
+              contentApi('pdfs',{folder:fo.folderId},function(d){
+                FILES[fo.folderId]=(d&&d.ok)?(d.files||[]):[];
+                FILES[fo.folderId+'_err']=(d&&d.ok)?'':((d&&d.error)||'error');
+                if(folder && folder.folderId===fo.folderId) draw();
+              },function(e){
+                FILES[fo.folderId]=[]; FILES[fo.folderId+'_err']=e;
+                if(folder && folder.folderId===fo.folderId) draw();
+              });
+            }
+          });
+        });
+      }else{
+        item('↑', folder.name+' — ઉપર જાઓ', function(){ folder=null; draw() });
+        var fs=FILES[folder.folderId];
+        if(fs===undefined){ msg('લોડ થાય છે…'); return }
+        var er=FILES[folder.folderId+'_err'];
+        if(er){ msg('❌ '+esc(String(er))); return }
+        if(!fs.length){ msg('આ ફોલ્ડરમાં કોઈ PDF નથી'); return }
+        fs.forEach(function(f){ item('📕', f.name, function(){ openPdf(f) }) });
+      }
+    }
+  }
+
+  /* ઉપરની પટ્ટીમાં ⛶ — આખી સ્ક્રીન કરવા */
+  if(pg){
+    var top=pg.querySelector('.pgTop');
+    if(top && !top.querySelector('[data-fs]')){
+      var fb=document.createElement('button');
+      fb.className='bk';
+      fb.setAttribute('data-fs','1');
+      fb.style.cssText+=';padding:0 12px';
+      fb.innerHTML='⛶';
+      fb.title='આખી સ્ક્રીન';
+      fb.onclick=function(){ bare(true) };
+      top.insertBefore(fb, top.lastElementChild);
+    }
+  }
+});
+
+/* ==================================================================
+   🧠 યાદશક્તિ · MEMORY — શીખો · મહાવરો · રમો
+   ------------------------------------------------------------------
+   ત્રણ ભાગ: પહેલાં રીત શીખવી, પછી એ રીતનો મહાવરો, અને છેલ્લે રમત.
+   રીતો બધી અજમાવેલી છે — ટુકડા પાડવા, ચિત્ર બનાવવું, વાર્તા જોડવી,
+   સ્થાનની રીત, અંતરે અંતરે ઉજાળવું અને જાતે યાદ કરવું.
+   ================================================================== */
+var MEM_GAMES=[
+  ['g_span','🔢','અંક યાદ · સામસામે','સંખ્યા જોઈ લો, પછી યાદથી લખો','#f472b6','#2a1020'],
+  ['g_simon','🎨','ક્રમ યાદ · સામસામે','રંગ કયા ક્રમે ઝબક્યા?','#14b8a6','#0c2422'],
+  ['g_gone','🔍','શું ગાયબ થયું? · સામસામે','ધ્યાનથી જુઓ — પછી કહો કોણ ગયું','#8b5cf6','#1a1030'],
+  ['g_race','🏁','શબ્દ જોડી દોડ · સામસામે','25 પત્તાં · 12 જોડી','#eab308','#2a2410'],
+  ['g_pair','🧠','જોડી શોધો · સામસામે','½ = 0.5 જોડો','#a855f7','#1e1030']
+];
+/* દરેક રીત: ટૂંકમાં · શા માટે ચાલે · પગલાં · શાળાનો દાખલો · સામાન્ય ભૂલ */
+var MEM_WAYS=[
+ ['👀','ધ્યાન પહેલું','જે જોયું જ નથી તે યાદ કેમ રહે?',
+  'યાદશક્તિ નબળી હોવાની ફરિયાદ મોટે ભાગે ધ્યાનની ફરિયાદ હોય છે. મગજ એક જ વખતે '+
+  'એક જ વસ્તુ પર પૂરું ધ્યાન આપી શકે છે. ટીવી ચાલુ રાખીને વાંચેલું અડધું જ પકડાય છે.',
+  ['વાંચતાં પહેલાં મોબાઇલ બીજા ઓરડામાં મૂકો — ખિસ્સામાં નહીં.',
+   'એક વખતે એક જ વિષય. વચ્ચે બીજું ખોલવું નહીં.',
+   '25 મિનિટ વાંચો, 5 મિનિટ ઊભા થાઓ. પછી ફરી 25.',
+   'વાંચતાં પહેલાં મનમાં પૂછો: "આમાંથી મારે શું યાદ રાખવાનું છે?"'],
+  'વિજ્ઞાનનો પાઠ વાંચતાં પહેલાં પ્રશ્નો પર નજર નાખો. પછી વાંચો — હવે મગજ '+
+  'જવાબ શોધતું શોધતું વાંચશે, એટલે ધ્યાન આપોઆપ ટકશે.',
+  'એકસાથે બે કામ — ગીત સાંભળતાં ગણિત. લાગે છે કે બંને થાય છે, પણ બંને અડધાં થાય છે.'],
+
+ ['✂️','ટુકડા પાડો · Chunking','લાંબું એકસાથે નહીં, ટુકડામાં',
+  'મગજ એકસાથે આશરે ચાર જ વસ્તુ પકડી શકે છે. પણ ટુકડો પોતે એક "વસ્તુ" ગણાય — '+
+  'એટલે 9 છૂટા આંકડા અઘરા, ત્રણ ટુકડા સહેલા.',
+  ['લાંબી માહિતીને 3 થી 4 ના ટુકડામાં વહેંચો.',
+   'દરેક ટુકડાને એક નામ કે લય આપો.',
+   'પહેલાં ટુકડા અલગ અલગ પાકા કરો, પછી જોડો.',
+   'બોલીને ગોખો — ટુકડા વચ્ચે અટકીને.'],
+  '૯૪૨૭૬૩૧૮૫ → ૯૪૨ · ૭૬૩ · ૧૮૫. એ જ રીતે ઇતિહાસની સાલ, ગણિતનાં સૂત્ર અને '+
+  'લાંબા શબ્દો — બધું ટુકડામાં.',
+  'ટુકડા બહુ મોટા પાડવા. પાંચથી વધુ આંકડાનો ટુકડો ફરી અઘરો બની જાય છે.'],
+
+ ['🖼','ચિત્ર બનાવો · Visualisation','શબ્દને મનમાં જોઈ લો',
+  'મગજમાં શબ્દ અને ચિત્ર બે જુદા રસ્તે સચવાય છે. બંને રસ્તે સાચવો તો યાદ '+
+  'કરવાના બે રસ્તા મળે — એક ભૂલાય તો બીજો કામ આપે.',
+  ['શબ્દ વાંચો અને આંખ બંધ કરીને એ વસ્તુ મનમાં જુઓ.',
+   'ચિત્ર મોટું, રંગીન અને હાલતું-ચાલતું બનાવો — ઝાંખું નહીં.',
+   'બને તો અવાજ અને ગંધ પણ ઉમેરો.',
+   'નોટબુકમાં નાનું ચિત્ર દોરો — દોરવાથી વધુ પાકું થાય.'],
+  'પાચનતંત્ર યાદ રાખવા આખો રસ્તો મનમાં જુઓ — કોળિયો મોંમાં, પછી નળીમાં, '+
+  'પછી હોજરીમાં. ફક્ત નામ ગોખવા કરતાં આ કાયમ ટકે છે.',
+  'ઝાંખું ચિત્ર બનાવવું. ચિત્ર જેટલું વિચિત્ર અને સ્પષ્ટ, એટલું વધુ ચોંટે.'],
+
+ ['🔗','વાર્તા જોડો · Story method','છૂટું ભુલાય, જોડાયેલું રહે',
+  'મગજ છૂટી માહિતી ભૂલી જાય છે પણ વાર્તા ભૂલતું નથી. વાર્તામાં એક વસ્તુ '+
+  'બીજીને ખેંચી લાવે છે — સાંકળની જેમ.',
+  ['યાદીના પહેલા બે શબ્દોને એક રમૂજી દૃશ્યમાં જોડો.',
+   'બીજા અને ત્રીજાને જોડો, પછી ત્રીજા-ચોથાને — સાંકળ બનાવો.',
+   'દૃશ્ય જેટલું અટપટું અને હસવા જેવું, એટલું વધુ યાદ રહે.',
+   'એક વાર આખી વાર્તા મનમાં ફરીથી ચલાવો.'],
+  'ઝાડ · દીવો · માછલી · છત્રી → "ઝાડ પર દીવો સળગ્યો, માછલી જોવા આવી અને '+
+  'છત્રી ઓઢીને બેસી ગઈ."',
+  'સાદી વાર્તા બનાવવી. "ઝાડ પાસે દીવો હતો" જેવું સામાન્ય વાક્ય ભુલાઈ જાય છે.'],
+
+ ['🏠','સ્થાનની રીત · Memory palace','ઘરમાં મુદ્દા મૂકી દો',
+  'આપણને પોતાના ઘરનો રસ્તો કદી ભુલાતો નથી. એ પાકા રસ્તા પર માહિતી મૂકી દઈએ '+
+  'તો માહિતી પણ એ રસ્તા સાથે યાદ આવે છે. હજારો વર્ષ જૂની રીત છે.',
+  ['ઘરની 5-6 જગ્યા નક્કી કરો — બારણું, રસોડું, ખાટલો, બારી…',
+   'હંમેશાં એ જ ક્રમે ફરો.',
+   'દરેક જગ્યાએ એક મુદ્દાનું ચિત્ર મૂકો.',
+   'યાદ કરતી વખતે મનમાં ઘરમાં ફરો અને મુદ્દા ઉપાડતા જાઓ.'],
+  'નિબંધના મુદ્દા આ રીતે ગોઠવો — પરીક્ષામાં ઘરમાં ફરી લેશો એટલે એકેય મુદ્દો '+
+  'છૂટશે નહીં અને ક્રમ પણ સાચો રહેશે.',
+  'દર વખતે નવું ઘર કે નવો ક્રમ વાપરવો. એક જ રસ્તો વારંવાર વાપરો.'],
+
+ ['📅','અંતરે અંતરે ઉજાળો · Spacing','એક દિવસ નહીં, પાંચ દિવસ',
+  'આ સૌથી મજબૂત રીત છે. એક જ દિવસે પાંચ કલાક વાંચવા કરતાં પાંચ દિવસ એક-એક કલાક '+
+  'વાંચવાથી કેટલાય ગણું વધુ ટકે છે — સમય એટલો જ, પણ પરિણામ જુદું.',
+  ['આજે નવું શીખો.',
+   'કાલે 10 મિનિટ ઉજાળો.',
+   'ત્રણ દિવસ પછી ફરી ઉજાળો.',
+   'એક અઠવાડિયે, પછી એક મહિને — દર વખતે ઓછો સમય લાગશે.'],
+  'એકમ કસોટીના આગલા દિવસે આખું ગોખવાને બદલે, પાઠ પૂરો થાય એ જ દિવસથી '+
+  'નાના નાના ટુકડે ઉજાળતા રહો.',
+  'આગલી રાતે બધું ગોખવું. પરીક્ષા સુધી ટકે, પણ અઠવાડિયામાં ભુલાઈ જાય.'],
+
+ ['🙈','જાતે યાદ કરો · Retrieval','ચોપડી બંધ કરીને બોલો',
+  'ફરી ફરી વાંચવાથી લાગે છે કે આવડી ગયું, પણ એ ભ્રમ છે. જાતે યાદ કરવાની મહેનત '+
+  'જ યાદશક્તિને મજબૂત કરે છે. મહેનત વગર પાકું થતું નથી.',
+  ['એક ફકરો કે એક મુદ્દો વાંચો.',
+   'ચોપડી બંધ કરો.',
+   'જે યાદ છે તે મોટેથી બોલો કે કાગળ પર લખો.',
+   'હવે ચોપડી ખોલીને તપાસો — શું છૂટી ગયું?'],
+  'પાઠના અંતના પ્રશ્નો પહેલાં જાતે લખો, પછી ચોપડીમાં જુઓ. ખોટા પડો તો પણ '+
+  'ફાયદો થાય છે — ભૂલ સુધારેલી વધુ યાદ રહે છે.',
+  'ફક્ત વારંવાર વાંચવું કે લીટી દોરવી. બંનેમાં મહેનત નથી, એટલે ફાયદો પણ ઓછો.'],
+
+ ['🔤','ટૂંકાક્ષર · Mnemonics','પહેલા અક્ષરોનું વાક્ય',
+  'ક્રમમાં યાદ રાખવાની વસ્તુઓ માટે પહેલા અક્ષરો ભેગા કરીને એક નવો શબ્દ કે '+
+  'વાક્ય બનાવો. લાંબી યાદી એક ટૂંકા વાક્યમાં સમાઈ જાય છે.',
+  ['દરેક મુદ્દાનો પહેલો અક્ષર લખો.',
+   'એ અક્ષરોનું એક રમૂજી વાક્ય બનાવો.',
+   'વાક્ય જાતે બનાવો — બીજાનું બનાવેલું ઓછું ટકે છે.',
+   'વાક્ય બોલીને પાકું કરો.'],
+  'ગ્રહોનો ક્રમ, મેઘધનુષના રંગ, વ્યાકરણના પ્રકાર — બધા માટે તમારા વર્ગનું '+
+  'પોતાનું વાક્ય બનાવો.',
+  'એટલા બધા ટૂંકાક્ષર બનાવવા કે ટૂંકાક્ષર જ યાદ ન રહે. ફક્ત ક્રમવાળી યાદી માટે વાપરો.'],
+
+ ['🔀','ભેળવીને મહાવરો · Interleaving','એક જ પ્રકાર નહીં, ભેળવો',
+  'સળંગ વીસ સરવાળા કરવા સહેલા લાગે છે, પણ પરીક્ષામાં પ્રશ્નો ભેગા આવે છે. '+
+  'ભેળવીને મહાવરો કરવાથી "કઈ રીત વાપરવી" એ પણ શીખાય છે.',
+  ['એક જ પ્રકારના દસ દાખલા સાથે ન કરો.',
+   'સરવાળો · બાદબાકી · ગુણાકાર ભેગા કરો.',
+   'શરૂઆતમાં અઘરું લાગશે — એ જ નિશાની છે કે કામ થઈ રહ્યું છે.',
+   'બે-ત્રણ પ્રકરણ ભેગાં કરીને ઉજાળો.'],
+  'ગણિતના મહાવરામાં દરેક પ્રકારના બે-બે દાખલા ભેગા લો. પરીક્ષા પણ એ જ રીતે આવે છે.',
+  'સહેલું લાગે એ માટે એક જ પ્રકાર કરતા રહેવું. સહેલું લાગવું એ શીખવાની નિશાની નથી.'],
+
+ ['🗣','જાતે સમજાવો · Teach it','બીજાને સમજાવો એટલે પાકું',
+  'સમજાવતી વખતે જ ખબર પડે છે કે ક્યાં ગાબડું છે. મનમાં લાગે કે આવડે છે, પણ '+
+  'બોલવા જાઓ ત્યારે અટકી જવાય — એ અટકવું જ શીખવે છે.',
+  ['પાઠ વાંચી લો.',
+   'નાના ભાઈ-બહેનને કે દીવાલને સાદી ભાષામાં સમજાવો.',
+   'જ્યાં અટકો ત્યાં નિશાની કરો — એ ભાગ ફરી વાંચો.',
+   'ફરી સમજાવો, હવે અટક્યા વગર.'],
+  'વિજ્ઞાનનો પ્રયોગ ઘરે માને સમજાવો. જો મા સમજી જાય તો તમને ખરેખર આવડે છે.',
+  'ચોપડીના શબ્દો એમના એમ બોલવા. પોતાના શબ્દોમાં આવે તો જ સમજાયું કહેવાય.'],
+
+ ['✍️','હાથે લખો · Write it','લખવાથી વધુ ટકે',
+  'હાથે લખતી વખતે ધીમે લખાય છે, એટલે લખતાં પહેલાં વિચારવું પડે છે. એ વિચારવું '+
+  'જ યાદશક્તિમાં ઊંડું ઉતારે છે.',
+  ['સાંભળેલું કે વાંચેલું પોતાના શબ્દોમાં લખો.',
+   'ચોપડીમાંથી જેમનું તેમ ઉતારો નહીં.',
+   'મુદ્દા ટૂંકા રાખો — આખાં વાક્ય નહીં.',
+   'બાજુમાં નાનું ચિત્ર કે તીર દોરો.'],
+  'વર્ગમાં સાંભળેલું ઘરે આવીને પોતાના શબ્દોમાં અડધા પાનામાં લખો. બીજા દિવસે '+
+  'એ અડધું પાનું જ ઉજાળવા પૂરતું છે.',
+  'આખું પ્રકરણ ઉતારી નાખવું. એમાં હાથ ચાલે છે, મગજ નહીં.'],
+
+ ['😴','ઊંઘ પૂરી કરો · Sleep','ઊંઘમાં જ પાકું થાય',
+  'દિવસે શીખેલું રાત્રે ઊંઘમાં મગજ ગોઠવીને કાયમી બનાવે છે. ઓછી ઊંઘ એટલે '+
+  'ગોઠવણ અધૂરી — વાંચ્યું હોય તોય યાદ ન રહે.',
+  ['રોજ 8-9 કલાક ઊંઘ.',
+   'સૂતાં પહેલાં 10 મિનિટ ઉજાળો — એ ભાગ સૌથી સારો સચવાય છે.',
+   'પરીક્ષાની આગલી રાતે જાગવા કરતાં ઊંઘવું વધુ કામનું.',
+   'સૂતાં પહેલાં મોબાઇલ બંધ — સ્ક્રીનથી ઊંઘ મોડી આવે છે.'],
+  'આખી રાત જાગીને પરીક્ષા આપનાર કરતાં પૂરી ઊંઘ લેનાર વધુ સારું લખે છે — '+
+  'એ જ કારણથી.',
+  '"એક રાત જાગી લઈશ" — એ રાતે વાંચેલું સવારે અડધું જ મળે છે.']
+];
+
+/* ❌ ખોટી માન્યતાઓ — આ ન માનવું */
+var MEM_MYTH=[
+ ['"મારી યાદશક્તિ જ નબળી છે"',
+  'યાદશક્તિ કાયમી નથી — રીતથી સુધરે છે. જેમને "તેજ યાદશક્તિ" કહીએ છીએ તે '+
+  'મોટે ભાગે સારી રીતો વાપરે છે, બસ.'],
+ ['"વારંવાર વાંચવાથી યાદ રહે"',
+  'વારંવાર વાંચવાથી ફક્ત "ઓળખાણ" થાય છે — લાગે કે આવડે છે. ચોપડી બંધ કરીને '+
+  'જાતે યાદ કરવાથી જ ખરેખર પાકું થાય છે.'],
+ ['"લીટી દોરવાથી યાદ રહે"',
+  'લીટી દોરવામાં મહેનત નથી. લીટી દોરેલું પાનું ફરી વાંચવા કરતાં એના પર '+
+  'પ્રશ્નો બનાવીને જાતે જવાબ આપો.'],
+ ['"આગલી રાતે બધું ગોખી લઈશ"',
+  'ગોખેલું પરીક્ષા સુધી ટકે, પણ અઠવાડિયામાં ભુલાય. વાર્ષિક પરીક્ષામાં '+
+  'એ જ ભાગ ફરી ગોખવો પડે — બમણી મહેનત.'],
+ ['"મને જોઈને જ યાદ રહે, સાંભળીને નહીં"',
+  'આવા "પ્રકાર" સાચા નથી. બધાને જોવું, સાંભળવું અને કરવું — ત્રણેય ભેગું '+
+  'કરવાથી વધુ યાદ રહે છે.'],
+ ['"ગણિતમાં યાદશક્તિનું કામ નથી"',
+  'ઘડિયા, સૂત્રો અને રીતો પાકાં હોય તો જ નવો દાખલો સહેલો પડે. પાયો યાદ '+
+  'હોવો જ જોઈએ.']
+];
+
+/* 📅 ઉજાળવાનું સમયપત્રક */
+var MEM_PLAN=[
+ ['આજે','પાઠ પહેલી વાર વાંચો · મુદ્દા પોતાના શબ્દોમાં લખો','#22c55e'],
+ ['કાલે','10 મિનિટ — ચોપડી બંધ કરીને મુદ્દા બોલો','#84cc16'],
+ ['3 દિવસે','5 મિનિટ — ફક્ત જે ભુલાયું હોય તે','#eab308'],
+ ['1 અઠવાડિયે','પ્રશ્નો જાતે લખીને જવાબ આપો','#f59e0b'],
+ ['1 મહિને','બીજા પ્રકરણ સાથે ભેળવીને ઉજાળો','#f97316'],
+ ['પરીક્ષા પહેલાં','ફક્ત નજર — બધું પહેલેથી પાકું હશે','#ef4444']
+];
+
+definePage('memory','🧠 યાદશક્તિ · MEMORY',function(body){
+  body.classList.add('mid');
+  var w=document.createElement('div');
+  w.style.cssText='width:100%;max-width:860px;margin:0 auto';
+  var n=document.createElement('div'); n.className='note';
+  n.style.cssText+=';margin-bottom:12px';
+  n.innerHTML='<b>યાદશક્તિ જન્મથી નથી મળતી — કેળવાય છે.</b> પહેલાં રીત શીખો, '+
+    'પછી એનો મહાવરો કરો, અને છેલ્લે રમતથી પાકું કરો.';
+  w.appendChild(n);
+  [['m_learn','📖','યાદ રાખવાની 12 રીતો','દરેક રીત: શા માટે ચાલે · પગલાં · શાળાનો દાખલો · ભૂલ','#22c55e','#0d2818'],
+   ['m_plan','📅','ઉજાળવાનું સમયપત્રક','ક્યારે ક્યારે ઉજાળવું — આજથી પરીક્ષા સુધી','#f97316','#2a1a0c'],
+   ['m_myth','❌','ખોટી માન્યતાઓ','જે માનીએ છીએ પણ સાચું નથી','#e11d48','#2a1018'],
+   ['m_chunk','✂️','મહાવરો: ટુકડા પાડો','લાંબી સંખ્યા ટુકડામાં વહેંચીને યાદ રાખો','#f59e0b','#2a2010'],
+   ['m_story','🔗','મહાવરો: વાર્તા જોડો','શબ્દોને વાર્તામાં પરોવીને યાદ રાખો','#0ea5e9','#0c2233'],
+   ['m_play','🎮','યાદશક્તિની રમતો','5 રમત — બંને વિદ્યાર્થી સામસામે','#a855f7','#1e1030']
+  ].forEach(function(t){
+    var b=document.createElement('button');
+    b.style.cssText='display:flex;gap:13px;align-items:center;width:100%;margin-bottom:10px;'+
+      'padding:16px;border-radius:15px;cursor:pointer;text-align:left;'+
+      'border:1px solid '+t[4]+';background:'+t[5]+';color:var(--ink)';
+    b.innerHTML='<span style="font-size:28px">'+t[1]+'</span>'+
+      '<span style="flex:1"><span style="display:block;font-family:var(--guj);'+
+      'font-size:18px;font-weight:700">'+esc(t[2])+'</span>'+
+      '<span style="display:block;font-family:var(--guj);font-size:12.5px;'+
+      'color:var(--dim)">'+esc(t[3])+'</span></span>'+
+      '<span style="font-size:19px;color:'+t[4]+'">▶</span>';
+    b.onclick=function(){ NAV.go(t[0]) };
+    w.appendChild(b);
+  });
+  body.appendChild(w);
+});
+
+/* ---------- 📖 રીતો ---------- */
+definePage('m_learn','📖 યાદ રાખવાની 12 રીતો',function(body){
+  var w=document.createElement('div');
+  w.style.cssText='width:100%;max-width:900px;margin:0 auto';
+  var lead=document.createElement('div'); lead.className='note';
+  lead.style.cssText+=';margin-bottom:11px';
+  lead.innerHTML='દરેક રીત ખોલીને વાંચો. અંદર ચાર ભાગ છે — <b>શા માટે ચાલે છે</b>, '+
+    '<b>પગલાં</b>, <b>શાળાનો દાખલો</b> અને <b>સામાન્ય ભૂલ</b>. '+
+    'એકસાથે બધી નહીં — અઠવાડિયે એક રીત અજમાવો.';
+  w.appendChild(lead);
+
+  MEM_WAYS.forEach(function(m,i){
+    var card=document.createElement('div');
+    card.style.cssText='border:1px solid var(--line);border-radius:14px;margin-bottom:9px;'+
+      'background:#0d1320;overflow:hidden';
+    var hd=document.createElement('button');
+    hd.style.cssText='display:flex;gap:12px;align-items:center;width:100%;padding:14px;'+
+      'background:none;border:0;color:var(--ink);cursor:pointer;text-align:left';
+    hd.innerHTML='<span style="font-size:25px">'+m[0]+'</span>'+
+      '<span style="flex:1"><span style="display:block;font-family:var(--guj);'+
+      'font-size:17px;font-weight:700">'+(i+1)+'. '+esc(m[1])+'</span>'+
+      '<span style="display:block;font-family:var(--guj);font-size:12.5px;color:var(--dim)">'+
+      esc(m[2])+'</span></span>'+
+      '<span class="cv" style="font-size:15px;color:var(--dim)">▶</span>';
+    var bd=document.createElement('div');
+    bd.style.cssText='display:none;padding:0 15px 15px 15px;font-family:var(--guj);'+
+      'font-size:14.5px;line-height:1.9';
+    var steps='';
+    m[4].forEach(function(x,k){
+      steps+='<div style="display:flex;gap:9px;margin-bottom:5px">'+
+        '<span style="flex:0 0 22px;height:22px;border-radius:50%;background:#132441;'+
+        'color:#93c5fd;font-family:var(--mono);font-size:12px;display:flex;'+
+        'align-items:center;justify-content:center">'+(k+1)+'</span>'+
+        '<span style="flex:1">'+esc(x)+'</span></div>';
+    });
+    bd.innerHTML=
+      '<div style="padding:11px 13px;border-radius:11px;background:#0b1220;'+
+        'border-left:3px solid #38bdf8"><b style="color:#38bdf8">શા માટે ચાલે છે</b><br>'+
+        esc(m[3])+'</div>'+
+      '<div style="margin-top:11px"><b style="color:#93c5fd">પગલાં</b>'+
+        '<div style="margin-top:7px">'+steps+'</div></div>'+
+      '<div style="margin-top:9px;padding:11px 13px;border-radius:11px;background:#0d1f16;'+
+        'border-left:3px solid #22c55e"><b style="color:#86efac">શાળાનો દાખલો</b><br>'+
+        esc(m[5])+'</div>'+
+      '<div style="margin-top:9px;padding:11px 13px;border-radius:11px;background:#2a1214;'+
+        'border-left:3px solid #ef4444"><b style="color:#fca5a5">સામાન્ય ભૂલ</b><br>'+
+        esc(m[6])+'</div>';
+    hd.onclick=function(){
+      var on=(bd.style.display==='none');
+      bd.style.display=on?'block':'none';
+      hd.querySelector('.cv').textContent=on?'▼':'▶';
+    };
+    card.appendChild(hd); card.appendChild(bd);
+    w.appendChild(card);
+  });
+
+  var tip=document.createElement('div'); tip.className='note';
+  tip.style.marginTop='12px';
+  tip.innerHTML='<b>જો ફક્ત બે જ રીત વાપરવી હોય તો:</b> '+
+    '<b style="color:#fbbf24">6. અંતરે અંતરે ઉજાળો</b> અને '+
+    '<b style="color:#fbbf24">7. જાતે યાદ કરો</b>. '+
+    'આ બે સૌથી વધુ કામ આપે છે; બાકીની રીતો એમની મદદ કરે છે.';
+  w.appendChild(tip);
+  body.appendChild(w);
+});
+
+/* ---------- 📅 ઉજાળવાનું સમયપત્રક ---------- */
+definePage('m_plan','📅 ઉજાળવાનું સમયપત્રક',function(body){
+  var w=document.createElement('div');
+  w.style.cssText='width:100%;max-width:820px;margin:0 auto';
+  var lead=document.createElement('div'); lead.className='note';
+  lead.style.cssText+=';margin-bottom:12px';
+  lead.innerHTML='એક પાઠ શીખ્યા પછી <b>ક્યારે ક્યારે</b> ઉજાળવો તેનું સમયપત્રક. '+
+    'દર વખતે ઓછો સમય લાગશે, અને પરીક્ષા વખતે ગોખવું નહીં પડે.';
+  w.appendChild(lead);
+  MEM_PLAN.forEach(function(p,i){
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;gap:12px;align-items:center;margin-bottom:8px;'+
+      'padding:13px 15px;border-radius:13px;background:#0d1320;'+
+      'border:1px solid var(--line);border-left:4px solid '+p[2];
+    row.innerHTML='<span style="flex:0 0 34px;height:34px;border-radius:50%;'+
+      'background:'+p[2]+'22;color:'+p[2]+';font-family:var(--mono);font-size:15px;'+
+      'display:flex;align-items:center;justify-content:center">'+(i+1)+'</span>'+
+      '<span style="flex:0 0 118px;font-family:var(--guj);font-size:16px;'+
+      'font-weight:700;color:'+p[2]+'">'+esc(p[0])+'</span>'+
+      '<span style="flex:1;font-family:var(--guj);font-size:14px">'+esc(p[1])+'</span>';
+    w.appendChild(row);
+  });
+  var why=document.createElement('div');
+  why.style.cssText='margin-top:14px;padding:14px;border-radius:13px;background:#0b1220;'+
+    'border-left:3px solid #38bdf8;font-family:var(--guj);font-size:14.5px;line-height:1.9';
+  why.innerHTML='<b style="color:#38bdf8">શા માટે અંતરે અંતરે?</b><br>'+
+    'શીખ્યા પછી ભૂલવાનું શરૂ થાય છે. જ્યારે થોડું ભુલાવા આવ્યું હોય ત્યારે જ ઉજાળીએ '+
+    'તો મગજને મહેનત પડે છે — અને એ મહેનત જ યાદને મજબૂત કરે છે. તરત ઉજાળીએ તો '+
+    'મહેનત જ ન પડે, અને બહુ મોડું કરીએ તો બધું ફરી શીખવું પડે.';
+  w.appendChild(why);
+  var ex=document.createElement('div');
+  ex.style.cssText='margin-top:11px;padding:14px;border-radius:13px;background:#0d1f16;'+
+    'border-left:3px solid #22c55e;font-family:var(--guj);font-size:14.5px;line-height:1.9';
+  ex.innerHTML='<b style="color:#86efac">સરખામણી</b><br>'+
+    '<b>ક</b>: પરીક્ષાની આગલી રાતે 5 કલાક — પરીક્ષામાં ચાલશે, અઠવાડિયામાં ભુલાશે.<br>'+
+    '<b>ખ</b>: પાંચ દિવસ રોજ 1 કલાક — એટલો જ સમય, પણ મહિનાઓ સુધી ટકશે.<br>'+
+    'મહેનત સરખી, પરિણામ જુદું.';
+  w.appendChild(ex);
+  body.appendChild(w);
+});
+
+/* ---------- ❌ ખોટી માન્યતાઓ ---------- */
+definePage('m_myth','❌ ખોટી માન્યતાઓ',function(body){
+  var w=document.createElement('div');
+  w.style.cssText='width:100%;max-width:820px;margin:0 auto';
+  var lead=document.createElement('div'); lead.className='note';
+  lead.style.cssText+=';margin-bottom:12px';
+  lead.innerHTML='આ વાતો ઘણી વાર સંભળાય છે, પણ સાચી નથી. '+
+    'ખોટી માન્યતા છોડવી એ પણ શીખવાનું જ પગલું છે.';
+  w.appendChild(lead);
+  MEM_MYTH.forEach(function(m){
+    var card=document.createElement('div');
+    card.style.cssText='border:1px solid var(--line);border-radius:14px;margin-bottom:9px;'+
+      'background:#0d1320;padding:14px 16px';
+    card.innerHTML=
+      '<div style="display:flex;gap:9px;align-items:flex-start">'+
+        '<span style="font-size:19px">❌</span>'+
+        '<span style="flex:1;font-family:var(--guj);font-size:16px;font-weight:700;'+
+        'color:#fca5a5">'+esc(m[0])+'</span></div>'+
+      '<div style="display:flex;gap:9px;align-items:flex-start;margin-top:9px">'+
+        '<span style="font-size:19px">✅</span>'+
+        '<span style="flex:1;font-family:var(--guj);font-size:14.5px;line-height:1.9">'+
+        esc(m[1])+'</span></div>';
+    w.appendChild(card);
+  });
+  body.appendChild(w);
+});
+
+/* ---------- ✂️ મહાવરો: ટુકડા પાડો ---------- */
+definePage('m_chunk','✂️ મહાવરો · ટુકડા પાડો',function(body){
+  body.classList.add('mid');
+  var c=gmCard(body), len=6, round=0, score=0;
+  function intro(){
+    c.innerHTML='';
+    var h=document.createElement('div');
+    h.style.cssText='font-family:var(--guj);font-size:15px;line-height:1.9';
+    h.innerHTML='<b style="font-size:18px">રીત:</b> લાંબી સંખ્યાને ત્રણ-ત્રણના '+
+      'ટુકડામાં વહેંચી નાખો, પછી દરેક ટુકડો અલગથી બોલો.<br>'+
+      '<div style="margin:10px 0;padding:12px;border-radius:12px;background:#0b1220;'+
+      'text-align:center;font-family:var(--mono);font-size:26px;letter-spacing:3px">'+
+      '૯૪૨૭૬૩૧૮૫<br><span style="color:#22c55e">૯૪૨ · ૭૬૩ · ૧૮૫</span></div>'+
+      'હવે અજમાવો — સંખ્યા <b>ટુકડામાં</b> જ દેખાશે. દર વખતે એક આંકડો વધશે.';
+    c.appendChild(h);
+    var b=document.createElement('button');
+    b.className='btn pri'; b.style.cssText+=';width:100%;padding:14px;margin-top:14px';
+    b.textContent='શરૂ કરો ▶';
+    b.onclick=function(){ len=6; round=0; score=0; play() };
+    c.appendChild(b);
+  }
+  function chunks(num){
+    var out=[], t=num;
+    while(t.length){ out.push(t.slice(0,3)); t=t.slice(3) }
+    return out;
+  }
+  function play(){
+    if(round>=5){
+      c.innerHTML='';
+      c.appendChild(gmBig(score>=4?'🌟':'💪',56));
+      var t=document.createElement('div');
+      t.style.cssText='text-align:center;font-family:var(--guj);font-size:19px;line-height:1.7';
+      t.innerHTML=score+' / 5 સાચા<br><span style="font-size:14px;color:var(--dim)">'+
+        'સૌથી લાંબી સંખ્યા: '+(len-1)+' આંકડા</span>';
+      c.appendChild(t);
+      var b2=document.createElement('button');
+      b2.className='btn pri'; b2.style.cssText+=';width:100%;padding:13px;margin-top:14px';
+      b2.textContent='↻ ફરી મહાવરો';
+      b2.onclick=intro;
+      c.appendChild(b2);
+      return;
+    }
+    var num=''; for(var i=0;i<len;i++) num+=R2(i===0?1:0,9);
+    c.innerHTML='';
+    var top=document.createElement('div'); top.className='evTop';
+    top.innerHTML='<span>'+(round+1)+' / 5</span><span>'+len+' આંકડા</span>'+
+      '<span>સાચા: '+score+'</span>';
+    c.appendChild(top);
+    var show=document.createElement('div');
+    show.style.cssText='text-align:center;font-family:var(--mono);font-size:40px;'+
+      'letter-spacing:4px;margin:22px 0;color:#86efac';
+    show.textContent=chunks(num).join(' · ');
+    c.appendChild(show);
+    var tip=document.createElement('div');
+    tip.style.cssText='text-align:center;font-family:var(--guj);font-size:15px;color:#fbbf24';
+    tip.textContent='દરેક ટુકડો મનમાં બોલો…';
+    c.appendChild(tip);
+    lessonTimeout(function(){
+      show.textContent='• • •';
+      show.style.color='var(--dim)';
+      tip.textContent='હવે આખી સંખ્યા લખો';
+      var typed='';
+      var out=document.createElement('div');
+      out.style.cssText='text-align:center;font-family:var(--mono);font-size:30px;'+
+        'letter-spacing:5px;margin:10px 0;min-height:38px;color:#e5e7eb';
+      c.appendChild(out);
+      var pad=flnPad(function(k){
+        if(k==='⌫'){ typed=typed.slice(0,-1); out.textContent=typed; return }
+        if(k==='✔'){
+          var ok=(typed===num);
+          show.textContent=chunks(num).join(' · ');
+          show.style.color=ok?'#22c55e':'#f87171';
+          tip.textContent=ok?'✅ સાચું!':'❌ સાચી સંખ્યા ઉપર છે';
+          if(ok){ score++; len++; sndOK() } else sndNO();
+          pad.style.pointerEvents='none'; pad.style.opacity='.4';
+          round++;
+          lessonTimeout(play,1500);
+          return;
+        }
+        if(typed.length<len){ typed+=k; out.textContent=typed }
+      });
+      pad.style.maxWidth='340px'; pad.style.margin='8px auto 0';
+      c.appendChild(pad);
+    }, 900+len*430);
+  }
+  intro();
+});
+
+/* ---------- 🔗 મહાવરો: વાર્તા જોડો ---------- */
+definePage('m_story','🔗 મહાવરો · વાર્તા જોડો',function(body){
+  body.classList.add('mid');
+  var POOL=['ઝાડ','દીવો','માછલી','પતંગ','ઘડિયાળ','છત્રી','ચાવી','હોડી','ઢોલ','કેરી',
+    'સાયકલ','પુસ્તક','ચંપલ','તારો','બિલાડી','ડોલ','પંખો','દર્પણ','સાવરણી','ટોપી'];
+  var c=gmCard(body), N=6, score=0, round=0;
+  function intro(){
+    c.innerHTML='';
+    var h=document.createElement('div');
+    h.style.cssText='font-family:var(--guj);font-size:15px;line-height:1.9';
+    h.innerHTML='<b style="font-size:18px">રીત:</b> છૂટા શબ્દ ભુલાઈ જાય. '+
+      'બધા શબ્દોને એક <b>રમૂજી વાર્તા</b>માં પરોવી દો — વાર્તા યાદ રહેશે એટલે શબ્દો પણ.'+
+      '<div style="margin:10px 0;padding:12px;border-radius:12px;background:#0b1220;'+
+      'border-left:3px solid #0ea5e9">ઝાડ · દીવો · માછલી →<br>'+
+      '<b>"ઝાડ પર દીવો સળગ્યો ને માછલી જોવા આવી."</b></div>'+
+      'હવે '+N+' શબ્દ દેખાશે. વાર્તા બનાવો, પછી ઓળખો કે કયા શબ્દ હતા.';
+    c.appendChild(h);
+    var b=document.createElement('button');
+    b.className='btn pri'; b.style.cssText+=';width:100%;padding:14px;margin-top:14px';
+    b.textContent='શરૂ કરો ▶';
+    b.onclick=function(){ round=0; score=0; play() };
+    c.appendChild(b);
+  }
+  function play(){
+    if(round>=4){
+      c.innerHTML='';
+      c.appendChild(gmBig(score>=3?'🌟':'💪',56));
+      var t=document.createElement('div');
+      t.style.cssText='text-align:center;font-family:var(--guj);font-size:19px';
+      t.textContent=score+' / 4 રાઉન્ડ પૂરા સાચા';
+      c.appendChild(t);
+      var b2=document.createElement('button');
+      b2.className='btn pri'; b2.style.cssText+=';width:100%;padding:13px;margin-top:14px';
+      b2.textContent='↻ ફરી મહાવરો';
+      b2.onclick=intro;
+      c.appendChild(b2);
+      return;
+    }
+    var words=gmShuffle(POOL.slice()).slice(0,N);
+    c.innerHTML='';
+    var top=document.createElement('div'); top.className='evTop';
+    top.innerHTML='<span>'+(round+1)+' / 4</span><span>સાચા: '+score+'</span>';
+    c.appendChild(top);
+    var tip=document.createElement('div');
+    tip.style.cssText='text-align:center;font-family:var(--guj);font-size:16px;'+
+      'color:#fbbf24;margin:10px 0';
+    tip.textContent='આ શબ્દોની એક વાર્તા મનમાં બનાવો…';
+    c.appendChild(tip);
+    var g=document.createElement('div');
+    g.style.cssText='display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:8px';
+    words.forEach(function(x){
+      var d=document.createElement('div');
+      d.style.cssText='padding:18px 6px;border-radius:12px;background:#0b1220;'+
+        'border:1px solid var(--line);text-align:center;font-family:var(--guj);font-size:18px';
+      d.textContent=x;
+      g.appendChild(d);
+    });
+    c.appendChild(g);
+    lessonTimeout(function(){
+      var extra=gmShuffle(POOL.filter(function(x){ return words.indexOf(x)<0 })).slice(0,N);
+      var all=gmShuffle(words.concat(extra));
+      var picked=[];
+      c.innerHTML='';
+      c.appendChild(top);
+      var t2=document.createElement('div');
+      t2.style.cssText='text-align:center;font-family:var(--guj);font-size:16px;'+
+        'color:#fbbf24;margin:10px 0';
+      t2.textContent='કયા '+N+' શબ્દ હતા? — બધા દબાવો';
+      c.appendChild(t2);
+      var g2=document.createElement('div');
+      g2.style.cssText='display:grid;grid-template-columns:repeat(3,1fr);gap:9px';
+      c.appendChild(g2);
+      all.forEach(function(x){
+        var b=document.createElement('button');
+        b.style.cssText='padding:16px 5px;border-radius:12px;border:1px solid var(--line);'+
+          'background:#111827;color:var(--ink);font-family:var(--guj);font-size:16px;cursor:pointer';
+        b.textContent=x;
+        b.onclick=function(){
+          if(b.disabled) return;
+          b.disabled=true;
+          var ok=(words.indexOf(x)>=0);
+          gmFlash(b,ok);
+          if(ok){ picked.push(x); sndOK() } else sndNO();
+          if(picked.length>=N || !ok){
+            [].forEach.call(g2.children,function(z2){ z2.disabled=true });
+            var all2=(picked.length>=N);
+            if(all2) score++;
+            t2.textContent=all2?'✅ બધા સાચા!':'❌ એક ખોટો — સાચા લીલા છે';
+            t2.style.color=all2?'#22c55e':'#f87171';
+            [].forEach.call(g2.children,function(z2){
+              if(words.indexOf(z2.textContent)>=0) gmFlash(z2,true);
+            });
+            round++;
+            lessonTimeout(play,1800);
+          }
+        };
+        g2.appendChild(b);
+      });
+    }, 1200+N*700);
+  }
+  intro();
+});
+
+/* ---------- 🎮 યાદશક્તિની રમતો ---------- */
+definePage('m_play','🎮 યાદશક્તિની રમતો',function(body){
+  body.classList.add('mid');
+  var w=document.createElement('div');
+  w.style.cssText='width:100%;max-width:860px;margin:0 auto';
+  var n=document.createElement('div'); n.className='note';
+  n.style.cssText+=';margin-bottom:12px';
+  n.innerHTML='શીખેલી રીતો અહીં અજમાવો — <b>ટુકડા પાડો</b>, <b>ચિત્ર બનાવો</b> '+
+    'અને <b>વાર્તા જોડો</b>. બધી રમત બે વિદ્યાર્થી સામસામે રમે.';
+  w.appendChild(n);
+  MEM_GAMES.forEach(function(gm){
+    var b=document.createElement('button');
+    b.style.cssText='display:flex;gap:13px;align-items:center;width:100%;margin-bottom:10px;'+
+      'padding:15px 16px;border-radius:15px;cursor:pointer;text-align:left;'+
+      'border:1px solid '+gm[4]+';background:'+gm[5]+';color:var(--ink)';
+    b.innerHTML='<span style="font-size:28px">'+gm[1]+'</span>'+
+      '<span style="flex:1"><span style="display:block;font-family:var(--guj);'+
+      'font-size:18px;font-weight:700">'+esc(gm[2])+'</span>'+
+      '<span style="display:block;font-family:var(--guj);font-size:12.5px;'+
+      'color:var(--dim)">'+esc(gm[3])+'</span></span>'+
+      '<span style="font-size:19px;color:'+gm[4]+'">▶</span>';
+    b.onclick=function(){ NAV.go(gm[0]) };
+    w.appendChild(b);
+  });
+  body.appendChild(w);
+});
+
+/* ==================================================================
    🎮 રમતો · GAMES
    ------------------------------------------------------------------
    ટૂંકી, ઝડપી, એકલા રમાય એવી શૈક્ષણિક રમતો. પરિણામ શીટમાં જતું નથી —
@@ -9140,13 +10009,8 @@ definePage('sixcam','🎥 6 કૅમેરા · બધા વર્ગ',functi
 var GAMES=[
   ['g_speed','⚡','ઝડપી ગણતરી · સામસામે','15 દાખલા — બંને એકસાથે, વધુ સાચા આપનાર જીતે','#f59e0b','#2a2010'],
   ['g_order','🎯','ક્રમમાં ગોઠવો · સામસામે','નાનાથી મોટા — બંને એકસાથે','#22c55e','#0d2818'],
-  ['g_pair','🧠','જોડી શોધો · સામસામે','½ = 0.5 જોડો — બંને એકસાથે','#a855f7','#1e1030'],
   ['g_next','🔢','આગળ શું આવશે? · સામસામે','સંખ્યાની ભાત ઓળખો — બંને એકસાથે','#0ea5e9','#0c2233'],
   ['g_table','⏱','ઘડિયા દોડ · સામસામે','એક જ ઘડિયો, બંને એકસાથે','#ef4444','#2a1214'],
-  ['g_span','🔢','અંક યાદ · સામસામે','સંખ્યા જોઈ લો, પછી યાદથી લખો — બંને એકસાથે','#f472b6','#2a1020'],
-  ['g_simon','🎨','ક્રમ યાદ · સામસામે','રંગ કયા ક્રમે ઝબક્યા? — બંને એકસાથે','#14b8a6','#0c2422'],
-  ['g_gone','🔍','શું ગાયબ થયું? · સામસામે','ધ્યાનથી જુઓ — બંને એકસાથે','#8b5cf6','#1a1030'],
-  ['g_race','🏁','શબ્દ જોડી દોડ · સામસામે','25 પત્તાં · 12 જોડી — બંને એકસાથે, જે પહેલાં પૂરું કરે તે જીતે','#eab308','#2a2410'],
   ['g_clock','🕐','ઘડિયાળ વાંચો · સામસામે','કાંટા જોઈને સમય કહો — બંને એકસાથે','#06b6d4','#0c2429'],
   ['g_miss','⚖','ખૂટતો અંક · સામસામે','7 + ⬜ = 15 — બંને એકસાથે','#f97316','#2a1a0c'],
   ['g_unit','📏','સાચો એકમ · સામસામે','શેનું માપ શેમાં? — બંને એકસાથે','#84cc16','#1a2410'],
