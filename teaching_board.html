@@ -502,6 +502,18 @@ body.pageOpen #pnlDot, body.pageOpen #pnlPanel{display:none !important}
       <path d="M12 6.5C10.2 4.9 7.6 4.2 3.5 4.3v13.4c4.1-.1 6.7.6 8.5 2.2 1.8-1.6 4.4-2.3 8.5-2.2V4.3c-4.1-.1-6.7.6-8.5 2.2Z"/>
       <path d="M12 6.5v13.4"/></svg></button>
 
+  <!-- 2a. robot -> AI section -->
+  <button class="tbtn" data-go="ai" data-tip="AI &middot; કૃત્રિમ બુદ્ધિ">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+      stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="7.5" width="16" height="12" rx="3.5"/>
+      <path d="M12 3.2v4.3M8.6 3.2h6.8"/>
+      <circle cx="9.2" cy="13" r="1.35" fill="currentColor" stroke="none"/>
+      <circle cx="14.8" cy="13" r="1.35" fill="currentColor" stroke="none"/>
+      <path d="M9.6 16.6h4.8"/>
+      <path d="M1.8 11.5v4M22.2 11.5v4"/>
+    </svg></button>
+
   <!-- 2b. question mark -> two PDFs side by side -->
   <button class="tbtn" data-go="twopdf" data-tip="બે ચોપડી સાથે &middot; 2 PDF">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
@@ -1986,7 +1998,7 @@ function loadConfig(cb){
                  MAIN.cfg.show.memory!==undefined) ? MAIN.cfg.show.memory : undefined;
       var keepR={};
       if(MAIN.cfg && MAIN.cfg.showFrom==='sheet' && MAIN.cfg.show){
-        ['explain','pdf','twopdf','youtube','gshala','settings',
+        ['ai','explain','pdf','twopdf','youtube','gshala','settings',
          'allview','tview','sixcam'].forEach(function(k2){
           if(MAIN.cfg.show[k2]!==undefined) keepR[k2]=MAIN.cfg.show[k2];
         });
@@ -2030,6 +2042,7 @@ function loadAllowFromSheet(cb){
         /* જમણી પટ્ટીનું દરેક બટન શીટમાંથી ચાલુ/બંધ */
         if(k==='SHOW GAMES'    || k==='રમતો')      got.games=!off;
         if(k==='SHOW MEMORY'   || k==='યાદશક્તિ')  got.memory=!off;
+        if(k==='SHOW AI'       || k==='AI')        got.ai=!off;
         if(k==='SHOW EXPLAIN'  || k==='સમજાવો')    got.explain=!off;
         if(k==='SHOW PDF'      || k==='ચોપડી')     got.pdf=!off;
         if(k==='SHOW 2PDF'     || k==='બે ચોપડી')  got.twopdf=!off;
@@ -2046,7 +2059,7 @@ function loadAllowFromSheet(cb){
       if(anyShow){
         MAIN.cfg=MAIN.cfg||{};
         var sh=MAIN.cfg.show||{};
-        ['games','memory','explain','pdf','twopdf','youtube','gshala',
+        ['games','memory','ai','explain','pdf','twopdf','youtube','gshala',
          'settings','allview','tview','sixcam'].forEach(function(k2){
           if(got[k2]!==undefined) sh[k2]=got[k2];
         });
@@ -2142,6 +2155,7 @@ function applyRemote(cfg){
   railShow('[data-go="report"]', show.reports);
   railShow('[data-go="games"]', show.games);
   railShow('[data-go="memory"]', show.memory);
+  railShow('[data-go="ai"]', show.ai);
   railShow('[data-go="explain"]', show.explain);
   railShow('[data-go="pdf"]', show.pdf);
   railShow('[data-go="twopdf"]', show.twopdf);
@@ -3040,7 +3054,7 @@ function jWatchUrl(cls,cam){ return csJitsiUrl(cls,cam,false,false,'Teacher') }
 var JIT_ALLOW='camera *; microphone *; autoplay; fullscreen; display-capture; speaker-selection';
 
 /* ---------- session state ---------- */
-var CS={on:false,cls:'',cams:1,rec:false,streams:[],canvas:null,raf:0,tick:0,
+var CS={on:false,cls:'',cams:1,rec:false,streams:[],canvas:null,raf:0,tick:0,watch:0,
         mr:null,chunks:[],t0:0,tm:null,wake:null,out:null,mime:'',
         jvid:false,jcam:1,view:'jitsi'};
 
@@ -3125,7 +3139,8 @@ function csToast(t,col){
     'box-shadow:0 8px 24px rgba(0,0,0,.6)';
   p.textContent=t;
   document.body.appendChild(p);
-  setTimeout(function(){ p.remove() },5000);
+  /* લાંબો સંદેશ હોય તો વાંચવાનો સમય આપો */
+  setTimeout(function(){ p.remove() }, t.length>60 ? 9000 : 5000);
 }
 function csSave(blob,name){
   var url=URL.createObjectURL(blob);
@@ -3164,14 +3179,17 @@ function csUsedId(stream){
   }catch(e){ return '' }
 }
 /* Android-safe constraint ladder — each rung is looser than the last */
-function csVList(prefId){
+function csVList(prefId,small){
+  /* રેકોર્ડિંગ માટે 640×480 માંગીએ છીએ — 720p પેનલ પર ભારે પડે છે અને
+     વર્ગખંડના વિડિયો માટે 480p પૂરતું છે. Jitsi માટે મોટું ચાલે. */
+  var W=small?640:1280, H=small?480:720;
   var L=[];
   if(prefId){
-    L.push({deviceId:{exact:prefId},width:{ideal:1280},height:{ideal:720}});
+    L.push({deviceId:{exact:prefId},width:{ideal:W},height:{ideal:H},frameRate:{ideal:15}});
     L.push({deviceId:{exact:prefId}});
     L.push({deviceId:prefId});
   }
-  L.push({width:{ideal:1280},height:{ideal:720}});
+  L.push({width:{ideal:W},height:{ideal:H},frameRate:{ideal:15}});
   L.push({facingMode:{ideal:'environment'}});
   L.push({facingMode:{ideal:'user'}});
   L.push({width:{ideal:640},height:{ideal:480}});
@@ -3278,6 +3296,10 @@ function csFloat(){
     '<div id="csSt" class="csStg" style="background:'+(CS.rec?'#1c0f10':'#0d1f16')+';'+
       'color:'+(CS.rec?'#fca5a5':'#86efac')+'"></div>'+
     '<div style="padding:0 10px 10px">'+
+      '<button class="csBig" id="csJitOn" style="display:none;border-color:#166534;'+
+        'background:#0d2818">📡 વર્ગ લાઇવ પણ બતાવો — Jitsi ચાલુ કરો<br>'+
+        '<span style="font-size:11.5px;color:#94a3b8">⚠ કેટલીક પેનલમાં આથી '+
+        'રેકોર્ડિંગ અટકી શકે છે</span></button>'+
       '<button class="csBig" id="csLogin" style="display:none;border-color:#b45309;'+
         'background:#2a2010">🔑 Jitsi માં એક વાર Log-in કરો (Google)</button>'+
       '<button class="csBig" id="csTabBrowser" style="display:none">'+
@@ -3299,9 +3321,22 @@ function csFloat(){
   var tv=f.querySelector('#csTabV'), tj=f.querySelector('#csTabJ');
   if(tv) tv.onclick=function(){ csShowView('cam') };
   if(tj && tj.tagName==='BUTTON') tj.onclick=function(){ csShowView('jitsi') };
-  f.querySelector('#csB1').onclick=function(){ csLoadJitsi(1,true); csShowView('jitsi') };
-  f.querySelector('#csB2').onclick=function(){ csLoadJitsi(2,true); csShowView('jitsi') };
+  function jitWarn(){
+    /* રેકોર્ડિંગ ચાલુ હોય ત્યારે Jitsi ખોલવું જોખમી છે — પૂછી લઈએ */
+    if(!CS.rec || !CS.mr) return true;
+    return confirm('રેકોર્ડિંગ ચાલુ છે.\n\nJitsi એ જ કૅમેરો માંગશે, અને '+
+      'કેટલીક પેનલમાં એથી રેકોર્ડિંગ અટકી જાય છે.\n\nચાલુ રાખવું?');
+  }
+  f.querySelector('#csB1').onclick=function(){
+    if(!jitWarn()) return;
+    csLoadJitsi(1,true); csShowView('jitsi');
+  };
+  f.querySelector('#csB2').onclick=function(){
+    if(!jitWarn()) return;
+    csLoadJitsi(2,true); csShowView('jitsi');
+  };
   f.querySelector('#csVid').onclick=function(){
+    if(!CS.jvid && !jitWarn()) return;
     CS.jvid=!CS.jvid;
     csLoadJitsi(CS.jcam,true);
     csShowView('jitsi');
@@ -3318,6 +3353,13 @@ function csFloat(){
   f.querySelector('#csLogin').onclick=function(){
     openTab(jPlainUrl(CS.cls,CS.jcam));
     csStatus('નવી ટૅબમાં Log-in → Google → પછી અહીં 📡 ફરી દબાવો','#fbbf24');
+  };
+  f.querySelector('#csJitOn').onclick=function(){
+    this.style.display='none';
+    csLoadJitsi(CS.jcam||1,true);
+    csShowView('jitsi');
+    csStatus('📡 Jitsi ચાલુ કર્યું — રેકોર્ડિંગ અટકે તો ✕ દબાવીને ફરી શરૂ કરો',
+             '#fbbf24');
   };
   var c2=f.querySelector('#csCam2Tab');
   if(c2) c2.onclick=function(){ openTab(csJitsiUrl(CS.cls,2,true,true)) };
@@ -3365,10 +3407,11 @@ function classSession(cls, cams, record){
   var env=csEnv();
   CS.on=true; CS.cls=String(cls); CS.cams=(Number(cams)===2?2:1); CS.rec=!!record;
   CS.chunks=[]; CS.streams=[]; CS.jcam=1;
-  /* one tap must start BOTH: the file and the live stream. Chrome can hand
-     the same camera to the board and to the Jitsi frame, so we ask for video
-     even while recording — the 🎥 button turns it off if a panel refuses. */
-  CS.jvid=true;
+  /* એક ટૅપે બંને ચાલુ થાય. પણ *રેકોર્ડિંગ* વખતે Jitsi નો વિડિયો બંધ રાખીએ
+     છીએ — નહીંતર પેનલે એક જ સમયે બે વાર વિડિયો એન્કોડ કરવો પડે (એક ફાઇલ
+     માટે, એક Jitsi માટે) અને નબળી પેનલ થીજી જાય. વર્ગ જોવો હોય તો
+     વિન્ડોમાં 🎥 દબાવીને ચાલુ કરી શકાય. ફક્ત Jitsi મોડમાં વિડિયો ચાલુ જ છે. */
+  CS.jvid=!record;
   csFloat();
 
   /* ---------- 📡 Jitsi only ---------- */
@@ -3403,7 +3446,7 @@ function classSession(cls, cams, record){
   }
   csShowView('cam');
   csStatus('કૅમેરો ખૂલે છે… (Allow દબાવો)','#fbbf24');
-  csOpen(csVList(camPref(1)),true).then(function(first){
+  csOpen(csVList(camPref(1),true),true).then(function(first){
     if(!CS.on){ try{ first.getTracks().forEach(function(t){t.stop()}) }catch(e){} return null }
     CS.streams=[first];
     if(CS.cams<2){ csStart(); return null }
@@ -3450,31 +3493,55 @@ function csStart(){
       try{ v.play() }catch(e){}
       return v;
     });
+    /* કૅનવાસ નાનું રાખ્યું છે — પેનલનું CPU/GPU થાકે નહીં એટલે.
+       960×360 વર્ગખંડ માટે પૂરતું છે અને અડધું કામ કરે છે. */
     var c=document.createElement('canvas');
-    c.width=1280; c.height=480;
+    c.width=960; c.height=360;
     CS.canvas=c;
     var x=c.getContext('2d');
-    function draw(){
-      if(!CS.on) return;
+    var HW=c.width/2, HH=c.height;
+
+    /* ⚠ અહીં પહેલાં પેનલ થીજી જવાનું કારણ હતું:
+       સ્ક્રીન ઝાંખી થાય ત્યારે requestAnimationFrame ચાલતું નથી, પણ
+       કૉલબૅક કતારમાં ભેગા થાય છે. જૂનો કોડ દર 66ms એ *નવી* rAF સાંકળ
+       શરૂ કરતો — એટલે દસ મિનિટમાં હજારો સાંકળો ભેગી થઈ જતી, અને સ્ક્રીન
+       પાછી ચાલુ થતાં બધી એકસાથે દોડતી → પેનલ જ અટકી જતું.
+       હવે એક જ સાંકળ ચાલે છે; ઘડિયાળ ફક્ત *દોરે* છે, નવી સાંકળ શરૂ કરતી નથી. */
+    var lastPaint=0;
+    function paint(){
       x.fillStyle='#000'; x.fillRect(0,0,c.width,c.height);
-      vids.forEach(function(v,ix){
+      for(var ix=0;ix<vids.length && ix<2;ix++){
+        var v=vids[ix], ox=ix*HW;
         if(v.videoWidth){
-          var w=640,h=480,ox=ix*640;
-          var vr=v.videoWidth/v.videoHeight, cr=w/h, dw=w, dh=h;
-          if(vr>cr) dh=w/vr; else dw=h*vr;
-          x.drawImage(v, ox+(w-dw)/2, (h-dh)/2, dw, dh);
+          var vr=v.videoWidth/v.videoHeight, cr=HW/HH, dw=HW, dh=HH;
+          if(vr>cr) dh=HW/vr; else dw=HH*vr;
+          x.drawImage(v, ox+(HW-dw)/2, (HH-dh)/2, dw, dh);
         }
-        x.fillStyle='rgba(0,0,0,.55)'; x.fillRect(ix*640,0,110,26);
-        x.fillStyle='#fff'; x.font='15px sans-serif';
-        x.fillText('CAM '+(ix+1), ix*640+10, 18);
-      });
-      CS.raf=requestAnimationFrame(draw);
+        x.fillStyle='rgba(0,0,0,.55)'; x.fillRect(ox,0,92,22);
+        x.fillStyle='#fff'; x.font='13px sans-serif';
+        x.fillText('CAM '+(ix+1), ox+8, 16);
+      }
+      lastPaint=Date.now();
     }
-    draw();
+    function loop(){
+      if(!CS.on){ CS.raf=0; return }
+      paint();
+      CS.raf=requestAnimationFrame(loop);      /* એક જ સાંકળ, હંમેશાં */
+    }
+    try{ cancelAnimationFrame(CS.raf) }catch(e){}
+    CS.raf=requestAnimationFrame(loop);
     clearInterval(CS.tick);
-    /* rAF stops when the panel screen sleeps — this keeps the mix alive */
-    CS.tick=setInterval(function(){ if(CS.on && document.hidden) draw() },66);
-    out=c.captureStream(20);
+    /* સ્ક્રીન ઝાંખી હોય ત્યારે rAF ઊંઘે છે — ત્યારે આ ફક્ત એક ચિત્ર દોરે,
+       નવી સાંકળ શરૂ કરે નહીં. એટલે કતાર ભેગી થતી નથી. */
+    CS.tick=setInterval(function(){
+      if(!CS.on) return;
+      if(Date.now()-lastPaint>400) paint();
+    },300);
+    window.__fcTick=function(){        /* test hook — same body as the timer */
+      if(!CS.on) return;
+      if(Date.now()-lastPaint>400) paint();
+    };
+    out=c.captureStream(12);          /* 20 → 12 fps: પેનલ પર ઘણું હળવું */
     var at=streams[0].getAudioTracks();
     if(at.length) out.addTrack(at[0]);
   }else{
@@ -3495,10 +3562,31 @@ function csStart(){
   for(var i=0;i<mimes.length;i++){
     try{ if(window.MediaRecorder && MediaRecorder.isTypeSupported(mimes[i])){ chosen=mimes[i]; break } }catch(e){}
   }
-  try{ CS.mr = chosen ? new MediaRecorder(out,{mimeType:chosen}) : new MediaRecorder(out) }
-  catch(e){ csFail('રેકોર્ડર શરૂ ન થયો — 📡 ફક્ત Jitsi વાપરો'); return }
+  /* બિટરેટ બાંધ્યો છે: રેકોર્ડિંગ પેનલની RAM માં જ સચવાય છે, એટલે
+     ખુલ્લું છોડીએ તો લાંબા વર્ગમાં મેમરી ભરાઈ જાય અને પેનલ અટકે. */
+  var opt={videoBitsPerSecond:700000, audioBitsPerSecond:64000};
+  if(chosen) opt.mimeType=chosen;
+  try{ CS.mr=new MediaRecorder(out,opt) }
+  catch(e1){
+    try{ CS.mr = chosen ? new MediaRecorder(out,{mimeType:chosen}) : new MediaRecorder(out) }
+    catch(e2){ csFail('રેકોર્ડર શરૂ ન થયો — 📡 ફક્ત Jitsi વાપરો'); return }
+  }
   CS.mime=chosen||'video/webm';
-  CS.mr.ondataavailable=function(ev){ if(ev.data&&ev.data.size) CS.chunks.push(ev.data) };
+  CS.bytes=0;
+  var CAP=180*1024*1024;            /* ~180 MB — પછી જાતે સેવ થઈ જાય */
+  CS.mr.ondataavailable=function(ev){
+    if(!ev.data || !ev.data.size) return;
+    CS.chunks.push(ev.data);
+    CS.bytes+=ev.data.size;
+    if(CS.bytes>CAP*0.85 && !CS.warned){
+      CS.warned=true;
+      csToast('⚠ રેકોર્ડિંગ લાંબું થયું — થોડી વારમાં જાતે સેવ થશે','#2a2010');
+    }
+    if(CS.bytes>CAP){               /* મેમરી ભરાય એ પહેલાં સલામત રીતે બંધ */
+      csToast('⏹ મેમરી ભરાવા આવી — રેકોર્ડિંગ સેવ કરીને બંધ કર્યું','#2a2010');
+      csStop();
+    }
+  };
   CS.mr.onerror=function(){ csFail('રેકોર્ડિંગમાં ભૂલ — ✕ દબાવીને જેટલું થયું તે સેવ કરો') };
   CS.mr.onstop=function(){
     if(!CS.chunks.length){ csToast('રેકોર્ડિંગ ખાલી રહ્યું','#2a2010'); return }
@@ -3518,25 +3606,75 @@ function csStart(){
   clearInterval(CS.tm);
   function csTickNow(){
     var s=Math.floor((Date.now()-CS.t0)/1000);
-    csStatus('🔴 રેકોર્ડિંગ + 📡 લાઇવ · '+(CS.cams>1?'2 કૅમેરા · ':'1 કૅમેરો · ')+
-      Math.floor(s/60)+':'+('0'+s%60).slice(-2),'#f87171');
+    var jOn=!!(document.getElementById('csJit')||{}).src;
+    csStatus('🔴 રેકોર્ડિંગ · '+(CS.cams>1?'2 કૅમેરા · ':'1 કૅમેરો · ')+
+      Math.floor(s/60)+':'+('0'+s%60).slice(-2)+
+      (jOn?' + 📡 Jitsi':' · ફક્ત ફાઇલ સેવ થાય છે'),'#f87171');
     var m=document.getElementById('csMLbl');
     if(m) m.textContent='REC '+Math.floor(s/60)+':'+('0'+s%60).slice(-2);
   }
   csTickNow();                       /* show 🔴 at once, not after a second */
   CS.tm=setInterval(csTickNow,1000);
-  /* stream starts together with the recording — no join tap needed */
-  csLoadJitsi(1,true);
+  /* ⚠ અહીં પહેલાં Jitsi આપોઆપ ચાલુ થતું હતું — અને એ જ રેકોર્ડિંગ બંધ
+     પાડતું હતું. Jitsi જોડાય ત્યારે એ *એ જ કૅમેરો* માંગે છે; મોટા ભાગની
+     Android પેનલમાં એક જ સમયે એક જ ઍપ કૅમેરો પકડી શકે છે, એટલે
+     રેકોર્ડિંગનો કૅમેરો છીનવાઈ જતો, ટ્રૅક બંધ થતો અને રેકોર્ડિંગ
+     થોડી સેકન્ડમાં જ અટકી જતું.
+     હવે રેકોર્ડિંગ વખતે Jitsi જાતે ચાલુ થતું નથી — જોઈએ તો 📡 દબાવો. */
+  csRecWatch();
+  var jb=document.getElementById('csJitOn');
+  if(jb) jb.style.display='';
   csLoginHint();
   setTimeout(function(){ if(CS.on) csMini(true) },3000);
+}
+
+/* ---- કૅમેરો કોઈ છીનવી લે તો ચૂપચાપ અટકવાને બદલે કારણ કહો ---- */
+function csRecWatch(){
+  (CS.streams||[]).forEach(function(st){
+    try{
+      st.getTracks().forEach(function(t){
+        t.addEventListener && t.addEventListener('ended',function(){
+          if(!CS.on) return;
+          csStop();                       /* પહેલાં સેવ કરો */
+          csToast('⏹ કૅમેરો બીજા ઍપ કે ટૅબે લઈ લીધો — રેકોર્ડિંગ ત્યાં જ '+
+                  'અટક્યું અને જેટલું થયું તે સેવ થયું.','#2a1214');
+        });
+      });
+    }catch(e){}
+  });
+  clearInterval(CS.watch);
+  CS.watch=lessonInterval(function(){
+    if(!CS.on){ clearInterval(CS.watch); CS.watch=0; return }
+    var dead=false;
+    (CS.streams||[]).forEach(function(st){
+      try{
+        st.getVideoTracks().forEach(function(t){
+          if(t.readyState==='ended') dead=true;
+        });
+      }catch(e){}
+    });
+    if(dead || (CS.mr && CS.mr.state==='inactive')){
+      clearInterval(CS.watch); CS.watch=0;
+      if(CS.on){
+        csStop();
+        csToast('⏹ રેકોર્ડિંગ અટકી ગયું — કૅમેરો બીજે વપરાતો હોય એવું લાગે છે. '+
+                'જેટલું થયું તે સેવ થયું.','#2a1214');
+      }
+    }
+  },2000);
 }
 
 /* ---- stop everything cleanly ---- */
 function csStop(){
   if(!CS.on) return;
   CS.on=false;
-  clearInterval(CS.tm); clearInterval(CS.tick);
+  /* ક્રમ અગત્યનો છે: પહેલાં દોરવાનું બંધ, પછી કૅમેરા, પછી બાકીનું.
+     એકેય લૂપ ચાલુ રહી જાય તો પેનલ પર ભાર રહી જાય છે. */
+  clearInterval(CS.tm); clearInterval(CS.tick); clearInterval(CS.watch);
+  CS.tm=0; CS.tick=0; CS.watch=0;
   try{ cancelAnimationFrame(CS.raf) }catch(e){}
+  CS.raf=0;
+  CS.bytes=0; CS.warned=false;
   /* stop the recorder first so its onstop can save the file */
   try{ if(CS.mr && CS.mr.state==='recording') CS.mr.stop() }catch(e){}
   (CS.streams||[]).forEach(function(s){
@@ -6571,7 +6709,7 @@ var EMO=['🍎','⭐','🌸','🐟','🥭','🦋','🎈','🍬'];
    Options include the mistakes students really make, so a wrong tap
    is a teaching moment.
    ================================================================== */
-var BOARD_BUILD='2026-08-04 · SHOW GAMES શીટમાંથી';
+var BOARD_BUILD='2026-09-09 · રેકોર્ડિંગ ટકે છે + AI';
 var GEN_TYPE='whole';     /* number type દાખલા બનાવો builds for */
 var DUAL_SCOPE='whole';   /* tools the 2-student page offers */
 window.__setScope=function(g,d){ if(g) GEN_TYPE=g; if(d) DUAL_SCOPE=d };
@@ -10322,6 +10460,775 @@ definePage('fc_plan','📅 રોજનો મહાવરો · 8 અઠવા�
 });
 
 /* ==================================================================
+   🤖 AI · કૃત્રિમ બુદ્ધિ
+   ------------------------------------------------------------------
+   બોર્ડનો બાકીનો બધો ભાગ *નિયમો* પર ચાલે છે — દાખલા સૂત્રથી બને છે,
+   રમતો યાદચ્છિક આંકડાથી. આ વિભાગ જુદો છે: અહીં ત્રણ વસ્તુ ખરેખર
+   શીખે છે કે ઓળખે છે.
+     1. ✍️ અંક ઓળખ — સાચું ન્યુરલ નેટવર્ક, વર્ગમાં જ તાલીમ પામે છે
+     2. 🎤 વાંચન તપાસ — સ્પીચ રેકગ્નિશન, ગુજરાતી
+     3. 🎯 અનુકૂળ મહાવરો — બાળકના જૂના પરિણામ જોઈને શું કરાવવું તે નક્કી કરે
+   વિજ્ઞાન મેળા માટે: 1 અને 2 ખરેખર AI છે; 3 નિર્ણય-અલ્ગોરિધમ છે —
+   એ પ્રામાણિકતાથી કહેવું.
+   ================================================================== */
+
+/* ============ નાનું ન્યુરલ નેટવર્ક — 64 → 24 → 10 ============
+   કોઈ બહારની લાઇબ્રેરી નથી. વજન (weights) અહીં જ શીખાય છે અને
+   પેનલમાં સચવાય છે. બાળકો પોતે તાલીમ આપે — એ જ આખો દેખાડો છે. */
+function nnNew(nIn,nHid,nOut){
+  function mat(r,c,scale){
+    var m=[];
+    for(var i=0;i<r;i++){ var row=[];
+      for(var j=0;j<c;j++) row.push((Math.random()*2-1)*scale);
+      m.push(row); }
+    return m;
+  }
+  return {nIn:nIn,nHid:nHid,nOut:nOut,
+    w1:mat(nHid,nIn,Math.sqrt(2/nIn)), b1:new Array(nHid).fill(0),
+    w2:mat(nOut,nHid,Math.sqrt(2/nHid)), b2:new Array(nOut).fill(0),
+    seen:0};
+}
+function nnForward(n,x){
+  var h=new Array(n.nHid), i,j,sum;
+  for(i=0;i<n.nHid;i++){
+    sum=n.b1[i];
+    for(j=0;j<n.nIn;j++) sum+=n.w1[i][j]*x[j];
+    h[i]=sum>0?sum:0;                       /* ReLU */
+  }
+  var o=new Array(n.nOut), mx=-1e9;
+  for(i=0;i<n.nOut;i++){
+    sum=n.b2[i];
+    for(j=0;j<n.nHid;j++) sum+=n.w2[i][j]*h[j];
+    o[i]=sum; if(sum>mx) mx=sum;
+  }
+  var tot=0;
+  for(i=0;i<n.nOut;i++){ o[i]=Math.exp(o[i]-mx); tot+=o[i] }   /* softmax */
+  for(i=0;i<n.nOut;i++) o[i]/=tot;
+  return {h:h,o:o};
+}
+function nnTrain(n,x,label,lr){
+  var f=nnForward(n,x), h=f.h, o=f.o, i,j;
+  var dOut=new Array(n.nOut);
+  for(i=0;i<n.nOut;i++) dOut[i]=o[i]-(i===label?1:0);
+  var dHid=new Array(n.nHid).fill(0);
+  for(i=0;i<n.nOut;i++){
+    for(j=0;j<n.nHid;j++){
+      dHid[j]+=dOut[i]*n.w2[i][j];
+      n.w2[i][j]-=lr*dOut[i]*h[j];
+    }
+    n.b2[i]-=lr*dOut[i];
+  }
+  for(j=0;j<n.nHid;j++){
+    if(h[j]<=0) continue;                   /* ReLU નું ઢાળ */
+    for(i=0;i<n.nIn;i++) n.w1[j][i]-=lr*dHid[j]*x[i];
+    n.b1[j]-=lr*dHid[j];
+  }
+  n.seen++;
+  return -Math.log(Math.max(1e-9,o[label]));
+}
+
+/* ---------- લખેલા ચિત્રમાંથી 8×8 ના 64 આંકડા ---------- */
+function inkGrid(pts,size){
+  var G=8, g=new Array(G*G).fill(0);
+  if(!pts.length) return g;
+  var minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
+  pts.forEach(function(p){
+    if(p.x<minX)minX=p.x; if(p.x>maxX)maxX=p.x;
+    if(p.y<minY)minY=p.y; if(p.y>maxY)maxY=p.y;
+  });
+  var w=Math.max(1,maxX-minX), h=Math.max(1,maxY-minY);
+  var sc=Math.max(w,h);                     /* આકાર બગડે નહીં એટલે એક જ સ્કેલ */
+  var offX=(sc-w)/2, offY=(sc-h)/2;
+  pts.forEach(function(p){
+    var gx=Math.floor(((p.x-minX+offX)/sc)*(G-0.001));
+    var gy=Math.floor(((p.y-minY+offY)/sc)*(G-0.001));
+    if(gx<0)gx=0; if(gx>G-1)gx=G-1;
+    if(gy<0)gy=0; if(gy>G-1)gy=G-1;
+    g[gy*G+gx]=1;
+    /* આજુબાજુ થોડી શાહી — રેખા પાતળી હોય તો ખાનું ખાલી ન રહે */
+    [[1,0],[-1,0],[0,1],[0,-1]].forEach(function(d){
+      var nx=gx+d[0], ny=gy+d[1];
+      if(nx>=0&&nx<G&&ny>=0&&ny<G) g[ny*G+nx]=Math.max(g[ny*G+nx],0.45);
+    });
+  });
+  return g;
+}
+
+/* ---------- આંગળીથી લખવાનું ખાનું ---------- */
+function inkPad(host,size,onEnd){
+  var box=document.createElement('div');
+  box.style.cssText='position:relative;width:'+size+'px;height:'+size+'px;'+
+    'border-radius:14px;background:#0b1220;border:2px solid #334155;'+
+    'touch-action:none;margin:0 auto';
+  var cv=document.createElement('canvas');
+  cv.width=size; cv.height=size;
+  cv.style.cssText='width:100%;height:100%;display:block;border-radius:12px;cursor:crosshair';
+  box.appendChild(cv);
+  host.appendChild(box);
+  var x=cv.getContext('2d');
+  x.lineWidth=Math.max(10,size/14); x.lineCap='round'; x.lineJoin='round';
+  x.strokeStyle='#e5e7eb';
+  var pts=[], drawing=false, last=null;
+  function pos(e){
+    var r=cv.getBoundingClientRect();
+    return {x:(e.clientX-r.left)*(size/r.width), y:(e.clientY-r.top)*(size/r.height)};
+  }
+  cv.addEventListener('pointerdown',function(e){
+    e.preventDefault(); drawing=true; last=pos(e); pts.push(last);
+    try{ cv.setPointerCapture(e.pointerId) }catch(er){}
+  });
+  cv.addEventListener('pointermove',function(e){
+    if(!drawing) return;
+    e.preventDefault();
+    var p=pos(e);
+    x.beginPath(); x.moveTo(last.x,last.y); x.lineTo(p.x,p.y); x.stroke();
+    pts.push(p); last=p;
+  });
+  function up(){ if(!drawing) return; drawing=false; onEnd&&onEnd() }
+  cv.addEventListener('pointerup',up);
+  cv.addEventListener('pointercancel',up);
+  cv.addEventListener('pointerleave',up);
+  return {
+    el:box,
+    clear:function(){ x.clearRect(0,0,size,size); pts=[] },
+    grid:function(){ return inkGrid(pts,size) },
+    empty:function(){ return pts.length<4 }
+  };
+}
+
+/* ---------- 8×8 ખાનું બતાવે — બાળક જુએ કે મશીન શું જુએ છે ---------- */
+function gridSVG(g,px){
+  px=px||14;
+  var out=[], G=8;
+  for(var i=0;i<64;i++){
+    var v=g[i]||0;
+    var c=Math.round(v*255);
+    out.push('<rect x="'+((i%G)*px)+'" y="'+(Math.floor(i/G)*px)+'" '+
+      'width="'+(px-1)+'" height="'+(px-1)+'" rx="2" '+
+      'fill="rgb('+c+','+c+','+c+')" stroke="#1e293b" stroke-width="0.5"/>');
+  }
+  return '<svg viewBox="0 0 '+(G*px)+' '+(G*px)+'" '+
+    'style="width:'+(G*px)+'px;height:'+(G*px)+'px;display:block;margin:0 auto">'+
+    out.join('')+'</svg>';
+}
+
+/* ================= AI હબ ================= */
+definePage('ai','🤖 AI · કૃત્રિમ બુદ્ધિ',function(body){
+  body.classList.add('mid');
+  var w=fcWrap(body);
+  fcLead(w,'<b>બોર્ડનો બાકીનો ભાગ AI નથી</b> — ત્યાં દાખલા સૂત્રથી બને છે. '+
+    'આ વિભાગમાં ત્રણ વસ્તુ જુદી છે: પહેલી <b>શીખે</b> છે, બીજી <b>સાંભળે</b> છે, '+
+    'ત્રીજી <b>નક્કી</b> કરે છે.');
+  fcTile(w,'ai_digit','✍️','1. અંક ઓળખ — શીખતું મશીન',
+    'સાચું ન્યુરલ નેટવર્ક · વર્ગમાં જ તાલીમ આપો','#a855f7','#1e1030');
+  fcTile(w,'ai_read','🎤','2. વાંચન તપાસ — સાંભળતું મશીન',
+    'ગુજરાતી બોલો, બોર્ડ સાચા-ખોટા શબ્દ ઓળખે','#22c55e','#0d2818');
+  fcTile(w,'ai_adapt','🎯','3. અનુકૂળ મહાવરો — નક્કી કરતું મશીન',
+    'જૂનાં પરિણામ જોઈને શું કરાવવું તે પસંદ કરે','#0ea5e9','#0c2233');
+  fcTile(w,'ai_about','📖','AI એટલે શું? — મેળા માટે સમજૂતી',
+    'ન્યુરલ નેટવર્ક કેવી રીતે શીખે · શું AI છે, શું નથી','#eab308','#2a2410');
+});
+
+/* ================= 1. અંક ઓળખ ================= */
+var AI_NET=null, AI_DATA=[];
+window.__ai=function(){ return {net:AI_NET,data:AI_DATA} };   /* test hook */
+function aiLoad(){
+  if(AI_NET) return;
+  var sv=store.get('vrd_ai_net',null);
+  if(sv && sv.w1 && sv.w1.length===24){ AI_NET=sv }
+  else AI_NET=nnNew(64,24,10);
+  AI_DATA=store.get('vrd_ai_data',[])||[];
+}
+function aiSave(){
+  try{ store.set('vrd_ai_net',AI_NET); store.set('vrd_ai_data',AI_DATA) }catch(e){}
+}
+definePage('ai_digit','✍️ અંક ઓળખ — શીખતું મશીન',function(body){
+  aiLoad();
+  var w=fcWrap(body);
+  var lead=document.createElement('div'); lead.className='note';
+  lead.style.cssText+=';margin-bottom:11px';
+  lead.innerHTML='આ મશીન કશું જાણતું નથી — <b>તમે શીખવશો</b>. અંક લખો, '+
+    'કયો અંક છે તે કહો, અને "શીખો" દબાવો. થોડા દાખલા પછી એ જાતે ઓળખવા લાગશે.';
+  w.appendChild(lead);
+
+  var lay=document.createElement('div');
+  lay.style.cssText='display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start';
+  w.appendChild(lay);
+
+  /* ---- ડાબે: લખવાનું ખાનું ---- */
+  var L=document.createElement('div');
+  L.style.cssText='flex:1 1 300px;min-width:270px';
+  lay.appendChild(L);
+  var pad=inkPad(L,260,function(){ predict() });
+  var padBtns=document.createElement('div');
+  padBtns.style.cssText='display:flex;gap:7px;margin-top:9px;justify-content:center';
+  L.appendChild(padBtns);
+  function pb(t,fn,col){
+    var b=document.createElement('button');
+    b.style.cssText='padding:9px 15px;border-radius:11px;cursor:pointer;'+
+      'border:1px solid '+(col||'var(--line)')+';background:#0b1220;color:var(--ink);'+
+      'font-family:var(--guj);font-size:13.5px';
+    b.textContent=t; b.onclick=fn; padBtns.appendChild(b); return b;
+  }
+  pb('ભૂંસો',function(){ pad.clear(); predict() },'#7f1d1d');
+
+  /* મશીન શું જુએ છે */
+  var seeBox=document.createElement('div');
+  seeBox.style.cssText='margin-top:11px;text-align:center';
+  seeBox.innerHTML='<div style="font-family:var(--guj);font-size:12.5px;color:var(--dim);'+
+    'margin-bottom:6px">મશીન આ 64 ખાનાં જુએ છે</div>';
+  var seeSVG=document.createElement('div');
+  seeBox.appendChild(seeSVG);
+  L.appendChild(seeBox);
+
+  /* ---- જમણે: જવાબ અને તાલીમ ---- */
+  var Rt=document.createElement('div');
+  Rt.style.cssText='flex:1 1 300px;min-width:270px';
+  lay.appendChild(Rt);
+
+  var guess=document.createElement('div');
+  guess.style.cssText='text-align:center;padding:14px;border-radius:14px;'+
+    'background:#0d1320;border:1px solid var(--line);margin-bottom:10px';
+  Rt.appendChild(guess);
+
+  var bars=document.createElement('div');
+  bars.style.cssText='margin-bottom:11px';
+  Rt.appendChild(bars);
+
+  var tLab=document.createElement('div');
+  tLab.style.cssText='font-family:var(--guj);font-size:14px;margin-bottom:7px;color:#fbbf24';
+  tLab.textContent='આ કયો અંક છે? — દબાવીને શીખવો';
+  Rt.appendChild(tLab);
+  var tg=document.createElement('div');
+  tg.style.cssText='display:grid;grid-template-columns:repeat(5,1fr);gap:6px';
+  Rt.appendChild(tg);
+  for(var d=0;d<10;d++)(function(dd){
+    var b=document.createElement('button');
+    b.style.cssText='padding:13px 0;border-radius:11px;border:1px solid var(--line);'+
+      'background:#111827;color:var(--ink);font-family:var(--mono);font-size:21px;cursor:pointer';
+    b.textContent=dd;
+    b.onclick=function(){ teach(dd,b) };
+    tg.appendChild(b);
+  })(d);
+
+  var stat=document.createElement('div');
+  stat.style.cssText='font-family:var(--guj);font-size:13px;color:var(--dim);'+
+    'margin-top:11px;line-height:1.9';
+  Rt.appendChild(stat);
+
+  var ctl=document.createElement('div');
+  ctl.style.cssText='display:flex;gap:7px;flex-wrap:wrap;margin-top:9px';
+  Rt.appendChild(ctl);
+  function cb(t,fn,col){
+    var b=document.createElement('button');
+    b.style.cssText='padding:9px 13px;border-radius:11px;cursor:pointer;flex:1;'+
+      'border:1px solid '+(col||'var(--line)')+';background:#0b1220;color:var(--ink);'+
+      'font-family:var(--guj);font-size:13px';
+    b.textContent=t; b.onclick=fn; ctl.appendChild(b); return b;
+  }
+  cb('🔁 ફરી ઘૂંટો (100 વાર)',function(){ retrain(100) },'#1d4ed8');
+  cb('🗑 બધું ભૂલી જાઓ',function(){
+    if(!confirm('મશીન જે શીખ્યું છે તે બધું ભૂંસાઈ જશે. ચાલુ રાખવું?')) return;
+    AI_NET=nnNew(64,24,10); AI_DATA=[]; aiSave(); refresh(); predict();
+  },'#7f1d1d');
+
+  function refresh(){
+    var byD={}, i;
+    AI_DATA.forEach(function(s2){ byD[s2.y]=(byD[s2.y]||0)+1 });
+    var have=[];
+    for(i=0;i<10;i++) have.push(i+':'+(byD[i]||0));
+    var acc=aiAccuracy();
+    stat.innerHTML='શીખેલા દાખલા: <b>'+AI_DATA.length+'</b> · '+
+      'તાલીમના ફેરા: <b>'+AI_NET.seen+'</b><br>'+
+      'પોતાના દાખલા પર સાચા: <b style="color:'+(acc>=80?'#22c55e':acc>=50?'#fbbf24':'#f87171')+
+      '">'+(AI_DATA.length? acc+'%' : '—')+'</b><br>'+
+      '<span style="font-family:var(--mono);font-size:11px">'+have.join(' · ')+'</span>';
+  }
+  function aiAccuracy(){
+    if(!AI_DATA.length) return 0;
+    var ok=0;
+    AI_DATA.forEach(function(s2){
+      var o=nnForward(AI_NET,s2.x).o, best=0;
+      for(var i=1;i<10;i++) if(o[i]>o[best]) best=i;
+      if(best===s2.y) ok++;
+    });
+    return Math.round(ok*100/AI_DATA.length);
+  }
+  function predict(){
+    var g=pad.grid();
+    seeSVG.innerHTML=gridSVG(g);
+    if(pad.empty()){
+      guess.innerHTML='<div style="font-family:var(--guj);font-size:15px;color:var(--dim)">'+
+        'ડાબે ખાનામાં આંગળીથી અંક લખો</div>';
+      bars.innerHTML='';
+      return;
+    }
+    var o=nnForward(AI_NET,g).o, best=0, i;
+    for(i=1;i<10;i++) if(o[i]>o[best]) best=i;
+    var conf=Math.round(o[best]*100);
+    var trained=(AI_DATA.length>=10);
+    guess.innerHTML=
+      '<div style="font-family:var(--guj);font-size:13px;color:var(--dim)">મશીન કહે છે</div>'+
+      '<div style="font-family:var(--mono);font-size:62px;line-height:1.1;color:'+
+        (trained?(conf>60?'#22c55e':'#fbbf24'):'#64748b')+'">'+best+'</div>'+
+      '<div style="font-family:var(--guj);font-size:13px;color:var(--dim)">ખાતરી '+conf+'%'+
+        (trained?'':' — હજી શીખ્યું નથી, અટકળ છે')+'</div>';
+    var html='';
+    for(i=0;i<10;i++){
+      var pc=Math.round(o[i]*100);
+      html+='<div style="display:flex;align-items:center;gap:7px;margin-bottom:3px">'+
+        '<span style="flex:0 0 16px;font-family:var(--mono);font-size:12px;color:'+
+          (i===best?'#e5e7eb':'#64748b')+'">'+i+'</span>'+
+        '<span style="flex:1;height:9px;border-radius:5px;background:#111827;overflow:hidden">'+
+        '<span style="display:block;height:100%;width:'+pc+'%;background:'+
+          (i===best?'#a855f7':'#334155')+'"></span></span>'+
+        '<span style="flex:0 0 34px;text-align:right;font-family:var(--mono);font-size:11px;'+
+          'color:var(--dim)">'+pc+'%</span></div>';
+    }
+    bars.innerHTML=html;
+  }
+  function teach(dd,btn){
+    if(pad.empty()){ csToast('પહેલાં અંક લખો','#2a2010'); return }
+    var g=pad.grid();
+    AI_DATA.push({x:g,y:dd});
+    if(AI_DATA.length>400) AI_DATA.shift();      /* પેનલની મેમરી સાચવો */
+    for(var k=0;k<24;k++) nnTrain(AI_NET,g,dd,0.06);
+    /* જૂના દાખલા પણ થોડા ઘૂંટો, નહીંતર મશીન છેલ્લું જ યાદ રાખે */
+    for(k=0;k<40 && AI_DATA.length>1;k++){
+      var s2=AI_DATA[R2(0,AI_DATA.length-1)];
+      nnTrain(AI_NET,s2.x,s2.y,0.04);
+    }
+    aiSave(); refresh();
+    gmFlash(btn,true); sndOK();
+    lessonTimeout(function(){
+      btn.style.background='#111827'; btn.style.borderColor='var(--line)';
+      pad.clear(); predict();
+    },420);
+  }
+  function retrain(rounds){
+    if(AI_DATA.length<2){ csToast('પહેલાં થોડા દાખલા શીખવો','#2a2010'); return }
+    for(var r=0;r<rounds;r++){
+      var order=AI_DATA.slice();
+      for(var i=order.length-1;i>0;i--){
+        var j=Math.floor(Math.random()*(i+1)), t=order[i]; order[i]=order[j]; order[j]=t;
+      }
+      order.forEach(function(s2){ nnTrain(AI_NET,s2.x,s2.y,0.05) });
+    }
+    aiSave(); refresh(); predict();
+    csToast('✔ ફરી ઘૂંટ્યું — હવે સાચા '+aiAccuracy()+'%');
+  }
+  refresh(); predict();
+
+  var how=document.createElement('button');
+  how.className='btn';
+  how.style.cssText+=';width:100%;padding:12px;margin-top:13px';
+  how.textContent='📖 આ કેવી રીતે કામ કરે છે? →';
+  how.onclick=function(){ NAV.go('ai_about') };
+  w.appendChild(how);
+});
+
+/* ================= 2. વાંચન તપાસ — સાંભળતું મશીન ================= */
+/* ગુજરાતી લખાણ સરખાવવા માટે — માત્રા/વિરામચિહ્ન કાઢી નાખીએ છીએ,
+   કારણ કે સ્પીચ રેકગ્નિશન એ બરાબર પકડતું નથી. */
+function rdNorm(t){
+  return String(t||'')
+    .replace(/[.,!?;:'"()\[\]।॥\u2018\u2019\u201c\u201d–—-]/g,' ')
+    .replace(/\s+/g,' ').trim();
+}
+function rdWords(t){
+  var a=rdNorm(t).split(' ');
+  return a.filter(function(x){ return x.length>0 });
+}
+/* બે શબ્દ કેટલા મળતા આવે — સ્પીચમાં એકાદ અક્ષર આઘોપાછો થાય એ ચલાવી લઈએ */
+function rdClose(a,b){
+  if(a===b) return true;
+  if(!a||!b) return false;
+  if(Math.abs(a.length-b.length)>2) return false;
+  var m=a.length, n=b.length, prev=[], cur=[], i, j;
+  for(j=0;j<=n;j++) prev[j]=j;
+  for(i=1;i<=m;i++){
+    cur[0]=i;
+    for(j=1;j<=n;j++){
+      cur[j]=Math.min(prev[j]+1, cur[j-1]+1,
+        prev[j-1]+(a.charAt(i-1)===b.charAt(j-1)?0:1));
+    }
+    prev=cur.slice();
+  }
+  var d=prev[n];
+  return d<=(a.length>=5?2:1);
+}
+/* બોલેલા શબ્દોને લખાણ સાથે ક્રમમાં ગોઠવો */
+function rdMatch(text,said){
+  var W=rdWords(text), S=rdWords(said), out=[], si=0;
+  W.forEach(function(w){
+    var hit=false;
+    for(var k=si;k<Math.min(S.length,si+4);k++){
+      if(rdClose(w,S[k])){ hit=true; si=k+1; break }
+    }
+    out.push({w:w, ok:hit});
+  });
+  return out;
+}
+definePage('ai_read','🎤 વાંચન તપાસ — સાંભળતું મશીન',function(body){
+  var w=fcWrap(body);
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){
+    var bad=document.createElement('div');
+    bad.className='evCard';
+    bad.style.cssText+=';text-align:center;font-family:var(--guj);font-size:15px;line-height:2';
+    bad.innerHTML='⚠ <b>આ બ્રાઉઝર સાંભળી શકતું નથી.</b><br>'+
+      'વાંચન તપાસ માટે પેનલમાં <b>Chrome</b> થી બોર્ડ ખોલો, અને બોર્ડ '+
+      '<b>https</b> લિંકથી ખૂલેલું હોવું જોઈએ.<br>'+
+      '<span style="color:var(--dim);font-size:13px">Firefox માં હજી આ સુવિધા નથી.</span>';
+    w.appendChild(bad);
+    return;
+  }
+  var PASS=[
+    'અમારી શાળા ગામની વચ્ચે આવેલી છે. શાળામાં મોટું મેદાન છે.',
+    'સૂરજ પૂર્વ દિશામાં ઊગે છે અને પશ્ચિમમાં આથમે છે.',
+    'નદીનું પાણી ખેતરમાં જાય છે. ખેડૂત ખેતરમાં કામ કરે છે.',
+    'મને પુસ્તક વાંચવું ગમે છે. પુસ્તકમાંથી નવું શીખવા મળે છે.',
+    'વરસાદ પડે ત્યારે ધરતી લીલી થઈ જાય છે અને પક્ષી ગીત ગાય છે.'
+  ];
+  try{
+    var gv=store.get('vrd_gujarati',null);
+    if(gv && gv.passage && gv.passage.length)
+      PASS=gv.passage.map(function(p){ return p.t }).filter(Boolean).concat(PASS);
+  }catch(e){}
+
+  var idx=0, rec=null, t0=0, running=false;
+  fcLead(w,'બાળક લખાણ મોટેથી વાંચે. બોર્ડ સાંભળીને <b>કયા શબ્દ સાચા વંચાયા</b> '+
+    'તે બતાવે છે, અને એક મિનિટમાં કેટલા શબ્દ વંચાયા તે ગણે છે. '+
+    'આ ખરેખર AI છે — <b>સ્પીચ રેકગ્નિશન</b>.');
+
+  var card=document.createElement('div');
+  card.className='evCard';
+  card.style.cssText+=';margin:0 0 11px';
+  w.appendChild(card);
+
+  var ptxt=document.createElement('div');
+  ptxt.style.cssText='font-family:var(--guj);font-size:23px;line-height:2.1;'+
+    'padding:14px;border-radius:13px;background:#0b1220;min-height:90px';
+  card.appendChild(ptxt);
+
+  var st=document.createElement('div');
+  st.style.cssText='text-align:center;font-family:var(--guj);font-size:14.5px;'+
+    'margin-top:11px;min-height:24px;color:var(--dim)';
+  card.appendChild(st);
+
+  var res=document.createElement('div');
+  res.style.cssText='margin-top:9px';
+  card.appendChild(res);
+
+  var row=document.createElement('div');
+  row.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin-top:11px';
+  card.appendChild(row);
+  function rb(t,fn,cls){
+    var b=document.createElement('button');
+    b.className='btn'+(cls?' '+cls:'');
+    b.style.cssText+=';flex:1;min-width:120px;padding:13px';
+    b.textContent=t; b.onclick=fn; row.appendChild(b); return b;
+  }
+  var micB=rb('🎤 વાંચવાનું શરૂ કરો',function(){ running?stop():start() },'pri');
+  rb('↻ બીજું લખાણ',function(){ idx=(idx+1)%PASS.length; show() });
+
+  function show(){
+    ptxt.innerHTML=rdWords(PASS[idx]).map(function(x){
+      return '<span style="margin-right:7px">'+esc(x)+'</span>';
+    }).join('');
+    res.innerHTML='';
+    st.textContent='તૈયાર થાઓ, પછી 🎤 દબાવો';
+  }
+  function paint(marks,partial){
+    ptxt.innerHTML=marks.map(function(m){
+      var col=m.ok?'#22c55e':(partial?'var(--ink)':'#f87171');
+      var bg =m.ok?'#0d2818':(partial?'transparent':'#2a1214');
+      return '<span style="margin-right:7px;padding:1px 5px;border-radius:6px;'+
+        'color:'+col+';background:'+bg+'">'+esc(m.w)+'</span>';
+    }).join('');
+  }
+  function start(){
+    try{
+      rec=new SR();
+      rec.lang='gu-IN'; rec.continuous=true; rec.interimResults=true;
+      rec.maxAlternatives=1;
+    }catch(e){ st.textContent='શરૂ થઈ શક્યું નહીં'; return }
+    var heard='';
+    rec.onresult=function(ev){
+      var live='';
+      for(var i=0;i<ev.results.length;i++) live+=' '+ev.results[i][0].transcript;
+      heard=live;
+      paint(rdMatch(PASS[idx],heard),true);
+    };
+    rec.onerror=function(ev){
+      st.textContent='⚠ '+(ev.error==='not-allowed'
+        ? 'માઇકની પરવાનગી નથી — Chrome માં Allow દબાવો'
+        : ev.error==='no-speech' ? 'અવાજ સંભળાયો નહીં — નજીક આવીને બોલો'
+        : 'ભૂલ: '+ev.error);
+      stop(true);
+    };
+    rec.onend=function(){ if(running) finish(heard) };
+    try{ rec.start() }catch(e){ st.textContent='માઇક ચાલુ ન થયો'; return }
+    running=true; t0=Date.now();
+    micB.textContent='⏹ પૂરું થયું';
+    st.innerHTML='<b style="color:#f87171">● સાંભળી રહ્યું છે</b> — મોટેથી અને '+
+      'ધીમે વાંચો';
+    res.innerHTML='';
+  }
+  function stop(silent){
+    running=false;
+    micB.textContent='🎤 વાંચવાનું શરૂ કરો';
+    try{ rec && rec.stop() }catch(e){}
+    if(silent) return;
+  }
+  function finish(heard){
+    running=false;
+    micB.textContent='🎤 ફરી વાંચો';
+    var marks=rdMatch(PASS[idx],heard);
+    paint(marks,false);
+    var tot=marks.length, ok=marks.filter(function(m){ return m.ok }).length;
+    var secs=Math.max(1,Math.round((Date.now()-t0)/1000));
+    var wpm=Math.round(ok*60/secs);
+    var pc=Math.round(ok*100/tot);
+    st.textContent='';
+    res.innerHTML=
+      '<div style="display:flex;gap:9px;flex-wrap:wrap">'+
+      box('સાચા શબ્દ',ok+' / '+tot, pc>=80?'#22c55e':pc>=50?'#fbbf24':'#f87171')+
+      box('શુદ્ધતા',pc+'%', pc>=80?'#22c55e':pc>=50?'#fbbf24':'#f87171')+
+      box('ઝડપ',wpm+' શબ્દ/મિનિટ','#93c5fd')+
+      box('સમય',secs+' સેકન્ડ','#94a3b8')+'</div>'+
+      '<div style="margin-top:9px;font-family:var(--guj);font-size:13.5px;'+
+        'color:var(--dim);line-height:1.9">'+
+      (pc>=80?'✔ સરસ વાંચ્યું. હવે થોડું ઝડપથી અજમાવો.'
+       :pc>=50?'લાલ શબ્દો ફરી બોલાવો, પછી આખું લખાણ ફરી વાંચો.'
+       :'ધીમે અને મોટેથી વાંચો. લાલ શબ્દો પહેલાં અલગથી બોલાવો.')+
+      '</div>';
+    function box(a,b,c){
+      return '<div style="flex:1;min-width:110px;padding:11px;border-radius:12px;'+
+        'background:#0b1220;border:1px solid var(--line);text-align:center">'+
+        '<div style="font-family:var(--guj);font-size:12px;color:var(--dim)">'+a+'</div>'+
+        '<div style="font-family:var(--mono);font-size:21px;color:'+c+'">'+b+'</div></div>';
+    }
+  }
+  show();
+
+  var n2=document.createElement('div'); n2.className='note';
+  n2.innerHTML='<b>ધ્યાનમાં રાખો:</b> આ ઓળખ સંપૂર્ણ નથી. ઘોંઘાટમાં કે બહુ '+
+    'ધીમે બોલવાથી સાચો શબ્દ પણ લાલ થઈ શકે. શિક્ષકની જગ્યા આ લેતું નથી — '+
+    'ઝડપથી નજર નાખવાનું સાધન છે.<br>લખાણ શાળા શીટના <b>વાંચન · ફકરો</b> '+
+    'પાનામાંથી પણ આવે છે — ત્યાં ઉમેરો એટલે અહીં દેખાશે.';
+  w.appendChild(n2);
+});
+
+/* ================= 3. અનુકૂળ મહાવરો ================= */
+definePage('ai_adapt','🎯 અનુકૂળ મહાવરો',function(body){
+  var w=fcWrap(body);
+  fcLead(w,'બાળકનાં <b>જૂનાં પરિણામ</b> વાંચીને બોર્ડ નક્કી કરે છે કે હવે '+
+    'શેનો મહાવરો કરાવવો. સૌથી નબળા વિષયથી શરૂ કરે છે — અને <b>શા માટે</b> '+
+    'પસંદ કર્યું તે પણ બતાવે છે.');
+
+  var card=document.createElement('div');
+  card.className='evCard'; card.style.cssText+=';margin:0 0 11px';
+  w.appendChild(card);
+  var pick=document.createElement('div');
+  card.appendChild(pick);
+  var out=document.createElement('div');
+  out.style.cssText='margin-top:11px';
+  card.appendChild(out);
+
+  var cls='6', roll='';
+  pick.innerHTML='<div class="evLbl">ધોરણ અને રોલ નંબર</div>';
+  var rowd=document.createElement('div');
+  rowd.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
+  pick.appendChild(rowd);
+  var sel=document.createElement('select');
+  sel.className='evSel'; sel.style.cssText+=';flex:0 0 130px;margin-bottom:0';
+  ['6','7','8'].forEach(function(c){
+    var o=document.createElement('option'); o.value=c; o.textContent='ધોરણ '+c;
+    sel.appendChild(o);
+  });
+  sel.onchange=function(){ cls=sel.value };
+  rowd.appendChild(sel);
+  var inp=document.createElement('input');
+  inp.className='evSel';
+  inp.style.cssText+=';flex:1;min-width:110px;margin-bottom:0;text-align:center;'+
+    'font-family:var(--mono);font-size:18px';
+  inp.placeholder='રોલ નં';
+  inp.setAttribute('inputmode','numeric');
+  rowd.appendChild(inp);
+  var go=document.createElement('button');
+  go.className='btn pri'; go.style.cssText+=';flex:0 0 auto;padding:0 20px';
+  go.textContent='જુઓ';
+  go.onclick=function(){ roll=String(inp.value||'').trim(); load() };
+  rowd.appendChild(go);
+
+  function msg(t,col){
+    out.innerHTML='<div style="text-align:center;font-family:var(--guj);'+
+      'font-size:14.5px;padding:16px;color:'+(col||'var(--dim)')+'">'+t+'</div>';
+  }
+  function load(){
+    if(!roll){ msg('રોલ નંબર નાખો'); return }
+    if(!studentUrl()){ msg('પહેલાં ⚙ Settings માં શાળા શીટ જોડો','#fbbf24'); return }
+    msg('⏳ પરિણામ વંચાય છે…');
+    studentApi('results',{cls:'ધોરણ '+cls},function(d){
+      if(!d||!d.ok){ msg('પરિણામ મળ્યાં નહીં','#f87171'); return }
+      var rows=[];
+      ['fln','results'].forEach(function(k){
+        var g=d[k]&&d[k][cls];
+        if(g&&g.length) rows=rows.concat(g);
+      });
+      rows=rows.filter(function(r){ return String(r.roll).trim()===roll });
+      analyse(rows);
+    },function(){ msg('જોડાણ થયું નહીં','#f87171') });
+  }
+  function analyse(rows){
+    if(!rows.length){
+      msg('આ રોલ નંબરનાં કોઈ પરિણામ મળ્યાં નથી.<br>'+
+          '<span style="font-size:13px">પહેલાં થોડી કસોટી લેવડાવો, પછી અહીં આવો.</span>');
+      return;
+    }
+    var by={};
+    rows.forEach(function(r){
+      var a=r.act||'અન્ય';
+      if(!by[a]) by[a]={act:a,n:0,sc:0,tt:0,last:''};
+      by[a].n++; by[a].sc+=Number(r.score)||0; by[a].tt+=Number(r.total)||0;
+      if(String(r.d)>String(by[a].last)) by[a].last=String(r.d||'');
+    });
+    var list=[];
+    for(var k in by) if(by.hasOwnProperty(k)){
+      var t=by[k];
+      t.pct=t.tt? Math.round(t.sc*100/t.tt) : 0;
+      list.push(t);
+    }
+    list.sort(function(a,b){ return a.pct-b.pct });
+    var weak=list[0], name=(rows[0]&&rows[0].name)||('રોલ '+roll);
+
+    var html='<div style="padding:13px;border-radius:13px;background:#0d1f16;'+
+      'border-left:4px solid #22c55e;font-family:var(--guj);font-size:14.5px;line-height:1.9">'+
+      '<b style="font-size:16px">👦 '+esc(name)+'</b><br>'+
+      'કુલ '+rows.length+' કસોટી · '+list.length+' વિષય<br>'+
+      '<b style="color:#fbbf24">હવે આનો મહાવરો કરાવો: '+esc(weak.act)+'</b><br>'+
+      '<span style="font-size:13px;color:var(--dim)">કારણ: આ વિષયમાં સૌથી ઓછા '+
+      'ગુણ છે — '+weak.pct+'% ('+weak.n+' કસોટીમાં)</span></div>';
+
+    html+='<div style="margin-top:11px">';
+    list.forEach(function(t,i){
+      var col=t.pct>=75?'#22c55e':t.pct>=50?'#fbbf24':'#f87171';
+      html+='<div style="margin-bottom:9px">'+
+        '<div style="display:flex;justify-content:space-between;font-family:var(--guj);'+
+        'font-size:14px;margin-bottom:4px"><span>'+(i===0?'⚠ ':'')+esc(t.act)+'</span>'+
+        '<span style="font-family:var(--mono);font-size:13px;color:'+col+'">'+t.pct+'% '+
+        '<span style="color:#475569">('+t.n+')</span></span></div>'+
+        '<div style="height:9px;border-radius:5px;background:#111827;overflow:hidden">'+
+        '<i style="display:block;height:100%;width:'+t.pct+'%;background:'+col+'"></i>'+
+        '</div></div>';
+    });
+    html+='</div>';
+    out.innerHTML=html;
+
+    var b=document.createElement('button');
+    b.className='btn pri';
+    b.style.cssText+=';width:100%;padding:14px;margin-top:12px';
+    b.textContent='▶ '+weak.act+' નો મહાવરો શરૂ કરો';
+    b.onclick=function(){
+      var a=String(weak.act);
+      if(/બાદબાકી/.test(a)) FC_KIND='sub';
+      else if(/ગુણાકાર/.test(a)) FC_KIND='mulb';
+      else if(/ભાગાકાર/.test(a)) FC_KIND='divb';
+      else if(/સરવાળો/.test(a)) FC_KIND='add';
+      else FC_KIND='base';
+      NAV.go('fc_op');
+    };
+    out.appendChild(b);
+  }
+  msg('ધોરણ અને રોલ નંબર નાખીને "જુઓ" દબાવો');
+
+  var n3=document.createElement('div'); n3.className='note';
+  n3.innerHTML='<b>પ્રામાણિક વાત:</b> આ ભાગ <b>શીખતો</b> નથી — એ નિર્ણય-અલ્ગોરિધમ છે. '+
+    'નિયમ સાદો છે: સૌથી ઓછા ટકાવાળો વિષય પહેલો. મેળામાં આને "AI" ન કહો, '+
+    '"પરિણામ જોઈને નક્કી કરતું અલ્ગોરિધમ" કહો — ન્યાયાધીશો એ પ્રામાણિકતાની કદર કરે છે.';
+  w.appendChild(n3);
+});
+
+/* ================= AI એટલે શું — મેળા માટે ================= */
+definePage('ai_about','📖 AI એટલે શું?',function(body){
+  var w=fcWrap(body);
+  fcLead(w,'વિજ્ઞાન મેળામાં ન્યાયાધીશ પૂછે — "આમાં AI ક્યાં છે?" '+
+    'આ પાનું એનો સીધો જવાબ છે.');
+
+  fcCard(w,{icon:'🧠',title:'ન્યુરલ નેટવર્ક કેવી રીતે શીખે છે?',
+    sub:'અંક ઓળખવાળા ભાગમાં જે ચાલે છે તે',
+    why:'મગજમાં ચેતાકોષ એકબીજાને સંદેશ મોકલે છે, અને જે જોડાણ વારંવાર વપરાય '+
+      'તે મજબૂત થાય છે. ન્યુરલ નેટવર્ક એ જ વિચારનું ગણિતનું રૂપ છે — '+
+      'સંખ્યાઓનું જાળું, જેમાં દરેક જોડાણનું એક <b>વજન</b> હોય છે.',
+    steps:['<b>જોવું:</b> લખેલો અંક 8×8 ના 64 ખાનામાં ફેરવાય છે — '+
+      'દરેક ખાનું 0 (ખાલી) થી 1 (ભરેલું).',
+      '<b>ગણવું:</b> 64 આંકડા 24 વચ્ચેના કોષોમાં જાય, ત્યાંથી 10 જવાબમાં — '+
+      '0 થી 9 દરેક માટે એક.',
+      '<b>અંદાજ:</b> સૌથી મોટો આંકડો જેનો હોય તે જવાબ. શરૂઆતમાં આ અટકળ જ છે, '+
+      'કારણ કે વજન યાદચ્છિક હોય છે.',
+      '<b>ભૂલ માપવી:</b> સાચો જવાબ કહો એટલે મશીન જુએ છે કે એ કેટલું ખોટું હતું.',
+      '<b>સુધારવું:</b> દરેક વજન થોડું બદલાય છે — એવી દિશામાં કે આવતી વાર '+
+      'ભૂલ ઓછી થાય. આને <b>બૅકપ્રોપેગેશન</b> કહે છે.',
+      'આ પાંચ પગલાં સેંકડો વાર થાય એટલે મશીન ઓળખતાં શીખી જાય છે.'],
+    ex:'આ બોર્ડમાં કુલ <b>64×24 + 24×10 = 1,776 વજન</b> છે. કોઈ બહારની '+
+      'લાઇબ્રેરી નથી — આખું ગણિત આ જ ફાઇલમાં લખેલું છે, અને તાલીમ '+
+      'તમારી પેનલમાં જ થાય છે, બહાર કશું જતું નથી.',
+    err:'"મશીન સમજે છે" એમ કહેવું. એ સમજતું નથી — એ <b>ભાત ઓળખે</b> છે. '+
+      'ફરક મોટો છે, અને મેળામાં એ ફરક કહેવો જ જોઈએ.'});
+
+  fcCard(w,{icon:'🎤',title:'સ્પીચ રેકગ્નિશન કેવી રીતે કામ કરે છે?',
+    sub:'વાંચન તપાસવાળા ભાગમાં જે ચાલે છે તે',
+    why:'અવાજ હવાનું કંપન છે. માઇક એને સંખ્યાઓમાં ફેરવે છે. પછી એક મોટું '+
+      'ન્યુરલ નેટવર્ક — લાખો કલાકના અવાજ પર તાલીમ પામેલું — એ સંખ્યાઓમાંથી '+
+      'અક્ષર અને શબ્દ ઓળખે છે.',
+    steps:['માઇક અવાજને દર સેકન્ડે હજારો સંખ્યામાં ફેરવે છે.',
+      'એ સંખ્યાઓમાંથી અવાજની "આકૃતિ" કઢાય છે.',
+      'નેટવર્ક એ આકૃતિ પરથી સંભવિત અક્ષરો કાઢે છે.',
+      'ભાષાનું જ્ઞાન વાપરીને સૌથી સંભવિત શબ્દ પસંદ થાય છે.',
+      'બોર્ડ પછી એ શબ્દોને લખાણ સાથે સરખાવે છે.'],
+    ex:'આ ભાગ બ્રાઉઝરની અંદરની ગુજરાતી ઓળખ વાપરે છે — એટલે એ મોડેલ '+
+      'આપણે બનાવ્યું નથી, વાપર્યું છે. મેળામાં એ સ્પષ્ટ કહેવું.',
+    err:'સંપૂર્ણ સાચું ધારી લેવું. ઘોંઘાટ, ધીમો અવાજ કે અલગ ઉચ્ચાર — '+
+      'ત્રણેય ભૂલ કરાવે છે.'});
+
+  fcCard(w,{icon:'⚖',title:'આ બોર્ડમાં શું AI છે અને શું નથી',
+    sub:'મેળામાં આ જ કહેવાનું',
+    why:'મોટા ભાગનું સૉફ્ટવેર AI નથી હોતું, અને એ કહેવામાં કોઈ નબળાઈ નથી. '+
+      'ખોટો દાવો પકડાય તો આખો પ્રોજેક્ટ નબળો પડે છે.',
+    steps:['<b>✅ AI છે:</b> અંક ઓળખ (ન્યુરલ નેટવર્ક, અહીં જ તાલીમ પામે છે).',
+      '<b>✅ AI છે:</b> વાંચન તપાસ (સ્પીચ રેકગ્નિશન — બ્રાઉઝરનું મોડેલ).',
+      '<b>➖ AI નથી:</b> અનુકૂળ મહાવરો — નિર્ણય-અલ્ગોરિધમ છે, શીખતું નથી.',
+      '<b>❌ AI નથી:</b> બાકીનું આખું બોર્ડ — દાખલા સૂત્રથી બને છે, '+
+      'રમતો યાદચ્છિક આંકડાથી, પરિણામ સાદા સરવાળા-ભાગાકારથી.'],
+    ex:'મેળામાં કહેવાનું વાક્ય: <b>"આખું બોર્ડ AI નથી. એમાં બે ભાગ AI છે — '+
+      'એક શીખતું ન્યુરલ નેટવર્ક જે અમે વર્ગમાં તાલીમ આપીએ છીએ, અને '+
+      'ગુજરાતી વાંચન ઓળખ."</b>',
+    err:'બધું "AI આધારિત" કહી દેવું. એક પ્રશ્નમાં જ પકડાઈ જવાય.'});
+
+  fcCard(w,{icon:'🔬',title:'ન્યાયાધીશને શું બતાવવું',
+    sub:'ત્રણ મિનિટમાં દેખાડવાનો ક્રમ',
+    why:'સૌથી અસરકારક દેખાડો એ છે જેમાં મશીન <b>તમારી સામે</b> શીખે. '+
+      'તૈયાર જવાબ કરતાં શીખવાની ક્રિયા વધુ સ્પષ્ટ દેખાય છે.',
+    steps:['પહેલાં "બધું ભૂલી જાઓ" દબાવો — મશીન કોરું થઈ જાય.',
+      'એક અંક લખો. બતાવો કે ખાતરી 10% આસપાસ છે અને જવાબ ખોટો છે.',
+      '64 ખાનાંનું ચિત્ર બતાવો — "મશીન આ જુએ છે, અક્ષર નહીં".',
+      'હવે દરેક અંકના 3-4 દાખલા શીખવો.',
+      'ફરી લખો — હવે સાચો જવાબ અને ઊંચી ખાતરી. પટ્ટીઓ બતાવો.',
+      'છેલ્લે વાંચન તપાસ ચલાવો — બોલો, અને શબ્દ લીલા થતા બતાવો.'],
+    ex:'આખો દેખાડો 3 મિનિટમાં થાય છે અને એમાં કશું અગાઉથી તૈયાર નથી — '+
+      'એ જ સૌથી મજબૂત ભાગ છે.',
+    err:'પહેલેથી શીખવેલું મશીન બતાવવું. કોરેથી શરૂ કરો — શીખવાની ક્રિયા '+
+      'જ ખરો દેખાડો છે.'});
+
+  var n4=document.createElement('div'); n4.className='note';
+  n4.innerHTML='<b>પ્રોજેક્ટનું નામ સૂચન:</b> "શિક્ષકે AI ની મદદથી બનાવેલું '+
+    'વર્ગખંડ સાધન — જેમાં બે ભાગ પોતે AI છે". આ સાચું છે, રસપ્રદ છે, '+
+    'અને કોઈ પ્રશ્નમાં તૂટતું નથી.';
+  w.appendChild(n4);
+});
+
+/* ==================================================================
    ❓ બે ચોપડી સાથે · 2 PDF — સ્ક્રીન બે ભાગમાં
    ------------------------------------------------------------------
    ડાબે એક PDF, જમણે બીજું. બંને એ જ Drive ફોલ્ડરમાંથી ખૂલે છે જે
@@ -10404,7 +11311,11 @@ definePage('twopdf','❓ બે ચોપડી સાથે · 2 PDF',function(
        એટલે આપણે એને ભૂંસી શકતા નથી — પણ ફ્રેમને થોડી મોટી બનાવીને
        એ ભાગ કાપી નાખીએ, જેથી ચોપડી પૂરી જગ્યા વાપરે.
        ઝૂમ માટે ઉપર આપણાં પોતાનાં − ⊕ બટન છે. */
-    var CLIP_B=58, CLIP_R=52;
+    /* નીચેની પટ્ટી કાપીએ છીએ, પણ પહોળાઈ <b>નહીં</b> —
+       પહેલાં જમણે 52px વધારતા હતા, એથી PDF નું પાનું 26px જમણે ખસી જતું
+       અને ડાબે વ્યૂઅરનું ભૂખરું પડદું દેખાતું. ડાર્ક મોડમાં એ ઊંધું થઈને
+       સફેદ પટ્ટી બની જતી. પહોળાઈ ન વધારીએ એટલે એ પટ્ટી જ ન રહે. */
+    var CLIP_B=58, CLIP_R=0;
     var pan=document.createElement('div');
     pan.style.cssText='position:absolute;inset:0;overflow:auto;'+
       '-webkit-overflow-scrolling:touch';
@@ -10416,8 +11327,8 @@ definePage('twopdf','❓ બે ચોપડી સાથે · 2 PDF',function(
 
     var fr=document.createElement('iframe');
     fr.title='PDF '+sd;
-    fr.style.cssText='width:calc(100% + '+CLIP_R+'px);height:calc(100% + '+CLIP_B+'px);'+
-      'border:0;display:none;background:#fff';
+    fr.style.cssText='width:'+(CLIP_R? 'calc(100% + '+CLIP_R+'px)' : '100%')+';'+
+      'height:calc(100% + '+CLIP_B+'px);border:0;display:none;background:#fff';
     hold.appendChild(fr);
 
     /* ---- આપણું પોતાનું ઝૂમ — ચોપડી ફરી લોડ થતી નથી ---- */
@@ -10473,7 +11384,9 @@ definePage('twopdf','❓ બે ચોપડી સાથે · 2 PDF',function(
     bar.appendChild(zLbl);
     tb('+','મોટું કરો',function(){ zoom(Z+(Z>=1.5?0.25:0.1)) });
     var dk=tb('🌙','ડાર્ક · લાઇટ',function(){
-      var on=fr.style.filter ? '' : 'invert(1) hue-rotate(180deg)';
+      /* brightness થોડું ઘટાડ્યું છે: પાનાં વચ્ચેની જગ્યા ઊંધી થઈને
+         ચમકતી સફેદ થતી હતી, હવે ઝાંખી ભૂખરી રહે છે. અક્ષર હજી સાફ. */
+      var on=fr.style.filter ? '' : 'invert(1) hue-rotate(180deg) brightness(.86)';
       fr.style.filter=on;
       dk.classList.toggle('on',!!on);
       dk.innerHTML=on?'☀':'🌙';
