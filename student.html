@@ -11,7 +11,7 @@
    =================================================================== */
 window.STUDENT_MODE=true;
 (function(){
-  var K='sb_board_html', KV='sb_board_ver', MINE='2026-09-27 20:00';
+  var K='sb_board_html', KV='sb_board_ver', MINE='2026-09-27 22:00';
   window.__SB_CHECK=function(url){
     try{
       fetch(url+(url.indexOf('?')>-1?'&':'?')+'t='+Date.now(),{cache:'no-store'})
@@ -5161,6 +5161,9 @@ function studentApi(action,params,ok,err){
   if(window.STUDENT_MODE){                                   /* 🏠 home file */
     if(/^(saveresult|record|savemistakes|mistakes|fixmistake)$/.test(action)) params.src='home';   /* never into school tabs */
     else if(/^(results|records|reportStudent|reportClass)$/.test(action) && !params.src) params.src='home';
+    var hsv=store.get('vrd_home_stu',null);
+    if(hsv && hsv.guest && /^(saveresult|record|savemistakes|mistakes|fixmistake|results|records|reportStudent|reportClass)$/.test(action))
+      params.src='visitor';                                  /* 🙋 visitor → own VISITOR tabs, read and write */
   }
   params.action=action;
   params.dev=devId();                       /* આ પેનલ કોણ છે */
@@ -7940,8 +7943,8 @@ var EMO=['🍎','⭐','🌸','🐟','🥭','🦋','🎈','🍬'];
    Options include the mistakes students really make, so a wrong tap
    is a teaching moment.
    ================================================================== */
-var BOARD_BUILD='2026-09-27 20:00 · ઘરની ફાઇલ — મુલાકાતી: ફક્ત નામથી';
-window.BOARD_STAMP='2026-09-27 20:00';
+var BOARD_BUILD='2026-09-27 22:00 · ઘરની ફાઇલ — બે બટન પ્રવેશ + VISITOR ટેબ';
+window.BOARD_STAMP='2026-09-27 22:00';
 var GEN_TYPE='whole';     /* number type દાખલા બનાવો builds for */
 var DUAL_SCOPE='whole';   /* tools the 2-student page offers */
 window.__setScope=function(g,d){ if(g) GEN_TYPE=g; if(d) DUAL_SCOPE=d };
@@ -8423,11 +8426,12 @@ definePage('student','🎓 વિદ્યાર્થી વિભાગ · Stu
   if(window.STUDENT_MODE){
     var me=homeStu();
     if(!me){ setTimeout(function(){ NAV.go('hprofile') },0); return }
+    if(me.guest && !visitorAllowed()){ store.set('vrd_home_stu',null); setTimeout(function(){ NAV.go('hprofile') },0); return }
     var chip=document.createElement('div');
     chip.style.cssText='max-width:1100px;margin:0 auto 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;'+
       'padding:10px 14px;border-radius:14px;background:#111a2c;border:1px solid #26324a;font-family:var(--guj)';
     chip.innerHTML='<span style="font-size:22px">👤</span><b style="font-size:16px">'+esc(me.name||'')+'</b>'+
-      '<span style="color:#8b97b0">ધોરણ '+esc(me.cls)+' · રોલ '+esc(me.roll)+'</span><span style="flex:1"></span>';
+      '<span style="color:#8b97b0">ધોરણ '+esc(me.cls)+(me.guest?' · 🙋 મુલાકાતી':' · રોલ '+esc(me.roll))+'</span><span style="flex:1"></span>';
     var ch=document.createElement('button'); ch.className='btn'; ch.textContent='બદલો';
     ch.onclick=function(){ if(confirm('આ ફાઇલ બીજા વિદ્યાર્થી માટે વાપરવી છે?')) NAV.go('hprofile') };
     chip.appendChild(ch); w.appendChild(chip);
@@ -8823,39 +8827,63 @@ definePage('coach','🤖 AI વ્યક્તિગત સહાયક',functio
   start();
 });
 
+function visitorAllowed(){ var a=MAIN.cfg&&MAIN.cfg.allow; return !a || a.visitor!==false }
 definePage('hprofile','👤 તમારી ઓળખ · Who are you?',function(body){
   body.classList.add('mid');
   var w=document.createElement('div'); w.className='evWrap'; body.appendChild(w);
-  gHead(w,'👋 નમસ્તે!','તમારું ધોરણ અને રોલ નંબર એક વાર લખો — પછી આ ફાઇલ ફક્ત તમારી છે.');
   store.set('vrd_home_stu',null);
   window.__HPROF=true;
-  flnStu(w,true,function(stu,cls){
-    window.__HPROF=false;
-    store.set('vrd_home_stu',{cls:String(cls),roll:String(stu.roll),gr:stu.gr||'',name:stu.name||''});
-    store.set('vrd_class',String(cls));
-    NAV.go('student');
-  });
-  /* 🙋 visitors (science fair, teachers, judges): name only — everything works,
-     results go to the HOME tabs under a guest roll "G…" (easy to delete later) */
-  var g=document.createElement('div'); g.className='evCard';
-  g.style.cssText+=';margin-top:14px;border:2px dashed #a78bfa';
-  g.innerHTML='<div style="font-size:18px;font-weight:800">🙋 મુલાકાતી છો? ફક્ત નામ લખો</div>'+
-    '<div style="color:var(--dim);font-size:13.5px;margin:4px 0 10px">રોલ નંબર વગર — શીખો, મહાવરો, કસોટી, AI ટ્યુટર બધું ચાલશે. (Visitors: just type your name.)</div>'+
-    '<div class="evLbl">નામ · Name</div><input id="gName" class="evSel" style="width:100%;font-size:18px" placeholder="તમારું નામ · your name" maxlength="40">'+
-    '<div class="evLbl" style="margin-top:8px">ધોરણ · Class</div><select id="gCls" class="evSel"><option value="6">ધોરણ 6</option><option value="7" selected>ધોરણ 7</option><option value="8">ધોરણ 8</option></select>';
-  var gb=document.createElement('button'); gb.className='btn pri'; gb.style.cssText+=';width:100%;margin-top:12px;padding:14px;font-size:17px';
-  gb.textContent='▶ નામથી આગળ વધો · Continue';
-  gb.onclick=function(){
-    var nm=String(g.querySelector('#gName').value||'').trim();
-    if(nm.length<2){ g.querySelector('#gName').focus(); g.querySelector('#gName').style.borderColor='#ef4444'; return }
-    var cls=g.querySelector('#gCls').value, roll='G'+String(Date.now()).slice(-5);
-    window.__HPROF=false;
-    store.set('vrd_home_stu',{cls:String(cls),roll:roll,gr:'',name:nm,guest:true});
-    store.set('vrd_class',String(cls));
-    NAV.go('student');
-  };
-  g.appendChild(gb);
-  w.appendChild(g);
+  var tries=0;
+  function choose(){
+    w.innerHTML='';
+    gHead(w,'👋 નમસ્તે!','કેવી રીતે પ્રવેશ કરવો છે? · How do you want to enter?');
+    var row=document.createElement('div');
+    row.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;max-width:900px;margin:0 auto';
+    function big(ic,t,sub,col,fn){
+      var b=document.createElement('button');
+      b.style.cssText='padding:26px 18px;border-radius:18px;border:2px solid '+col+';background:#0d1320;color:var(--ink);cursor:pointer;text-align:center;font-family:var(--guj)';
+      b.innerHTML='<div style="font-size:48px">'+ic+'</div><div style="font-size:22px;font-weight:800;margin-top:6px">'+t+'</div>'+
+        '<div style="font-size:13.5px;color:var(--dim);margin-top:6px;line-height:1.5">'+sub+'</div>';
+      b.onclick=fn; row.appendChild(b);
+    }
+    big('🎓','રોલ નંબરથી પ્રવેશ','Enter with roll no · શાળાના વિદ્યાર્થી માટે — ધોરણ અને રોલ નંબર એક વાર','#22c55e',withRoll);
+    if(visitorAllowed())
+      big('🙋','મુલાકાતી તરીકે પ્રવેશ','Enter as visitor · ફક્ત નામ — શીખો, મહાવરો, કસોટી, AI ટ્યુટર બધું ચાલે','#a78bfa',asVisitor);
+    w.appendChild(row);
+    if(!MAIN.cfg && tries++<12) setTimeout(function(){ if(window.__HPROF && !w.querySelector('input')) choose() },700);   /* settings still loading */
+  }
+  function back(){ var b=document.createElement('button'); b.className='btn'; b.textContent='← પાછા'; b.style.cssText+=';margin:0 auto 10px;display:block'; b.onclick=choose; w.appendChild(b) }
+  function withRoll(){
+    w.innerHTML=''; back();
+    gHead(w,'🎓 રોલ નંબરથી પ્રવેશ','તમારું ધોરણ અને રોલ નંબર એક વાર લખો — પછી આ ફાઇલ ફક્ત તમારી છે.');
+    flnStu(w,true,function(stu,cls){
+      window.__HPROF=false;
+      store.set('vrd_home_stu',{cls:String(cls),roll:String(stu.roll),gr:stu.gr||'',name:stu.name||''});
+      store.set('vrd_class',String(cls));
+      NAV.go('student');
+    });
+  }
+  function asVisitor(){
+    w.innerHTML=''; back();
+    gHead(w,'🙋 મુલાકાતી તરીકે પ્રવેશ','ફક્ત નામ લખો. તમારાં પરિણામ અલગ VISITOR ટેબમાં સચવાશે, જેથી AI ટ્યુટર તમારા માટે પણ ચાલે.');
+    var g=document.createElement('div'); g.className='evCard';
+    g.innerHTML='<div class="evLbl">નામ · Name</div><input id="gName" class="evSel" style="width:100%;font-size:18px" placeholder="તમારું નામ · your name" maxlength="40">'+
+      '<div class="evLbl" style="margin-top:8px">ધોરણ · Class</div><select id="gCls" class="evSel"><option value="6">ધોરણ 6</option><option value="7" selected>ધોરણ 7</option><option value="8">ધોરણ 8</option></select>';
+    var gb=document.createElement('button'); gb.className='btn pri'; gb.style.cssText+=';width:100%;margin-top:12px;padding:14px;font-size:17px';
+    gb.textContent='▶ આગળ વધો · Continue';
+    gb.onclick=function(){
+      var inp=g.querySelector('#gName'), nm=String(inp.value||'').trim();
+      if(nm.length<2){ inp.focus(); inp.style.borderColor='#ef4444'; return }
+      var cls=g.querySelector('#gCls').value, roll='G'+String(Date.now()).slice(-6);
+      window.__HPROF=false;
+      store.set('vrd_home_stu',{cls:String(cls),roll:roll,gr:'',name:nm,guest:true});
+      store.set('vrd_class',String(cls));
+      NAV.go('student');
+    };
+    g.appendChild(gb); w.appendChild(g);
+    setTimeout(function(){ try{ g.querySelector('#gName').focus() }catch(e){} },100);
+  }
+  choose();
 });
 definePage('guru_cp','👩‍🏫 વર્ગ મહાવરો · Class Practice',function(body,pg){
   if(pg){ pg.classList.add('wide'); pg.classList.add('bare') }
