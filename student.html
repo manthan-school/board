@@ -1,6 +1,49 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+/* ===================================================================
+   🏠 STUDENT (HOME) FILE — same board, student pages only.
+   • every test from here is saved as a HOME result (separate tabs)
+   • AUTO-UPDATE: when the teacher uploads a new teaching_board.html to the
+     link in the main sheet (SETTINGS → BOARD FILE LINK), this file picks it
+     up and uses it from the next opening — no need to share a new file.
+   =================================================================== */
+window.STUDENT_MODE=true;
+(function(){
+  var K='sb_board_html', KV='sb_board_ver', MINE='2026-09-27 20:00';
+  window.__SB_CHECK=function(url){
+    try{
+      fetch(url+(url.indexOf('?')>-1?'&':'?')+'t='+Date.now(),{cache:'no-store'})
+      .then(function(r){ return r.ok?r.text():null }).then(function(h){
+        if(!h) return;
+        var m=h.match(/window\.BOARD_STAMP='([^']+)'/), v=m?m[1]:'';
+        var have=localStorage.getItem(KV)||MINE;
+        if(v && v>have && v>MINE){
+          try{ localStorage.setItem(K,h); localStorage.setItem(KV,v) }catch(e){ return }
+          var t=document.createElement('div');
+          t.style.cssText='position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:9999;padding:12px 18px;'+
+            'border-radius:14px;background:#1e293b;border:1px solid #a78bfa;color:#e7ecf5;font-family:sans-serif;font-size:15px;cursor:pointer';
+          t.textContent='✨ નવું સુધારેલું વર્ઝન તૈયાર છે — અહીં દબાવો';
+          t.onclick=function(){ location.reload() };
+          document.body.appendChild(t);
+        }
+      }).catch(function(){});
+    }catch(e){}
+  };
+  if(window.__SB_LOADED) return;                /* already running the downloaded board */
+  try{
+    var c=localStorage.getItem(K), cv=localStorage.getItem(KV)||'';
+    if(c && cv>MINE){                                  /* a newer board was downloaded last time */
+      document.open();
+      document.write(c.replace(/<head[^>]*>/i,function(m){ return m+'<script>window.__SB_LOADED=1;window.STUDENT_MODE=true;<\/script>' }));
+      document.close();
+      return;
+    }
+  }catch(e){}
+})();
+</script>
+
 <meta charset="UTF-8">
 <meta name="theme-color" content="#0a0e14">
 <meta name="mobile-web-app-capable" content="yes">
@@ -11,7 +54,7 @@
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='38' fill='%230a0e14'/%3E%3Crect x='26' y='40' width='128' height='84' rx='9' fill='none' stroke='%2322c55e' stroke-width='7'/%3E%3Cpath d='M48 66h60M48 84h44M48 102h30' stroke='%2360a5fa' stroke-width='7' stroke-linecap='round'/%3E%3Cpath d='M70 140h40' stroke='%23fbbf24' stroke-width='8' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0e14'/%3E%3Crect x='9' y='14' width='46' height='30' rx='4' fill='none' stroke='%2322c55e' stroke-width='3'/%3E%3Cpath d='M17 23h22M17 30h16' stroke='%2360a5fa' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Teaching Board</title>
+<title>🏠 વિદ્યાર્થી · Student</title>
 <meta name="theme-color" content="#000000">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
