@@ -11,7 +11,7 @@
    =================================================================== */
 window.STUDENT_MODE=true;
 (function(){
-  var K='sb_board_html', KV='sb_board_ver', MINE='2026-09-27 22:00';
+  var K='sb_board_html', KV='sb_board_ver', MINE='2026-09-27 23:00';
   window.__SB_CHECK=function(url){
     try{
       fetch(url+(url.indexOf('?')>-1?'&':'?')+'t='+Date.now(),{cache:'no-store'})
@@ -7943,8 +7943,8 @@ var EMO=['🍎','⭐','🌸','🐟','🥭','🦋','🎈','🍬'];
    Options include the mistakes students really make, so a wrong tap
    is a teaching moment.
    ================================================================== */
-var BOARD_BUILD='2026-09-27 22:00 · ઘરની ફાઇલ — બે બટન પ્રવેશ + VISITOR ટેબ';
-window.BOARD_STAMP='2026-09-27 22:00';
+var BOARD_BUILD='2026-09-27 23:00 · મુલાકાતી — ફક્ત નામ, ધોરણ નહીં';
+window.BOARD_STAMP='2026-09-27 23:00';
 var GEN_TYPE='whole';     /* number type દાખલા બનાવો builds for */
 var DUAL_SCOPE='whole';   /* tools the 2-student page offers */
 window.__setScope=function(g,d){ if(g) GEN_TYPE=g; if(d) DUAL_SCOPE=d };
@@ -8431,7 +8431,7 @@ definePage('student','🎓 વિદ્યાર્થી વિભાગ · Stu
     chip.style.cssText='max-width:1100px;margin:0 auto 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;'+
       'padding:10px 14px;border-radius:14px;background:#111a2c;border:1px solid #26324a;font-family:var(--guj)';
     chip.innerHTML='<span style="font-size:22px">👤</span><b style="font-size:16px">'+esc(me.name||'')+'</b>'+
-      '<span style="color:#8b97b0">ધોરણ '+esc(me.cls)+(me.guest?' · 🙋 મુલાકાતી':' · રોલ '+esc(me.roll))+'</span><span style="flex:1"></span>';
+      '<span style="color:#8b97b0">'+(me.guest?'🙋 મુલાકાતી':'ધોરણ '+esc(me.cls))+(me.guest?'':' · રોલ '+esc(me.roll))+'</span><span style="flex:1"></span>';
     var ch=document.createElement('button'); ch.className='btn'; ch.textContent='બદલો';
     ch.onclick=function(){ if(confirm('આ ફાઇલ બીજા વિદ્યાર્થી માટે વાપરવી છે?')) NAV.go('hprofile') };
     chip.appendChild(ch); w.appendChild(chip);
@@ -8848,7 +8848,7 @@ definePage('hprofile','👤 તમારી ઓળખ · Who are you?',function(
     }
     big('🎓','રોલ નંબરથી પ્રવેશ','Enter with roll no · શાળાના વિદ્યાર્થી માટે — ધોરણ અને રોલ નંબર એક વાર','#22c55e',withRoll);
     if(visitorAllowed())
-      big('🙋','મુલાકાતી તરીકે પ્રવેશ','Enter as visitor · ફક્ત નામ — શીખો, મહાવરો, કસોટી, AI ટ્યુટર બધું ચાલે','#a78bfa',asVisitor);
+      big('🙋','મુલાકાતી તરીકે પ્રવેશ','Enter as visitor · ફક્ત નામ, બીજું કંઈ નહીં — શીખો, મહાવરો, કસોટી, AI ટ્યુટર બધું ચાલે','#a78bfa',asVisitor);
     w.appendChild(row);
     if(!MAIN.cfg && tries++<12) setTimeout(function(){ if(window.__HPROF && !w.querySelector('input')) choose() },700);   /* settings still loading */
   }
@@ -8865,16 +8865,15 @@ definePage('hprofile','👤 તમારી ઓળખ · Who are you?',function(
   }
   function asVisitor(){
     w.innerHTML=''; back();
-    gHead(w,'🙋 મુલાકાતી તરીકે પ્રવેશ','ફક્ત નામ લખો. તમારાં પરિણામ અલગ VISITOR ટેબમાં સચવાશે, જેથી AI ટ્યુટર તમારા માટે પણ ચાલે.');
+    gHead(w,'🙋 મુલાકાતી તરીકે પ્રવેશ','ફક્ત નામ લખો — બીજું કંઈ નહીં. તમારાં પરિણામ અલગ VISITOR ટેબમાં સચવાશે, જેથી AI ટ્યુટર તમારા માટે પણ ચાલે.');
     var g=document.createElement('div'); g.className='evCard';
-    g.innerHTML='<div class="evLbl">નામ · Name</div><input id="gName" class="evSel" style="width:100%;font-size:18px" placeholder="તમારું નામ · your name" maxlength="40">'+
-      '<div class="evLbl" style="margin-top:8px">ધોરણ · Class</div><select id="gCls" class="evSel"><option value="6">ધોરણ 6</option><option value="7" selected>ધોરણ 7</option><option value="8">ધોરણ 8</option></select>';
+    g.innerHTML='<div class="evLbl">નામ · Name</div><input id="gName" class="evSel" style="width:100%;font-size:18px" placeholder="તમારું નામ · your name" maxlength="40">';
     var gb=document.createElement('button'); gb.className='btn pri'; gb.style.cssText+=';width:100%;margin-top:12px;padding:14px;font-size:17px';
     gb.textContent='▶ આગળ વધો · Continue';
     gb.onclick=function(){
       var inp=g.querySelector('#gName'), nm=String(inp.value||'').trim();
       if(nm.length<2){ inp.focus(); inp.style.borderColor='#ef4444'; return }
-      var cls=g.querySelector('#gCls').value, roll='G'+String(Date.now()).slice(-6);
+      var cls='7', roll='G'+String(Date.now()).slice(-6);          /* visitors: no class asked — class 7 content is shown */
       window.__HPROF=false;
       store.set('vrd_home_stu',{cls:String(cls),roll:roll,gr:'',name:nm,guest:true});
       store.set('vrd_class',String(cls));
